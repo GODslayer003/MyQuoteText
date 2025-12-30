@@ -11,7 +11,7 @@ import AboutUs from './pages/AboutUs';
 import Terms from './pages/Terms';
 import Privacy from './pages/Privacy';
 import LoginModal from './pages/LogIn';
-import SignUpModal from './pages/SignUp';
+import SignUpModal from './pages/Signup';
 
 // Create Auth Context
 const AuthContext = createContext();
