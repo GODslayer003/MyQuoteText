@@ -11,7 +11,8 @@ import AboutUs from './pages/AboutUs';
 import Terms from './pages/Terms';
 import Privacy from './pages/Privacy';
 import LoginModal from './pages/LogIn';
-import SignUpModal from './pages/Signup';
+import SignUpModal from './pages/SignUp';
+import Profile from './pages/Profile';
 
 // Create Auth Context
 const AuthContext = createContext();
@@ -118,6 +119,11 @@ function App() {
             <Route path="/pricing" element={
               <ProtectedRoute>
                 <Pricing />
+              </ProtectedRoute>
+            } />
+            <Route path="/profile" element={
+              <ProtectedRoute>
+                <Profile />
               </ProtectedRoute>
             } />
             <Route path="/check-quote" element={
