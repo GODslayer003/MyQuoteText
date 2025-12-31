@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { 
-  X, 
-  Clock, 
-  User, 
-  FileText, 
-  AlertTriangle, 
+import {
+  X,
+  Clock,
+  User,
+  FileText,
+  AlertTriangle,
   DollarSign,
   Shield,
   HelpCircle,
@@ -32,8 +32,8 @@ const Guides = () => {
   const [activeCategory, setActiveCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
 
-const guides = [
-  {
+  const guides = [
+    {
   id: 1,
   category: "Red Flags",
   readTime: "7 min read",
@@ -99,39 +99,64 @@ const guides = [
               While everyone loves a bargain, extremely low quotes often indicate one of three problems: <strong class="text-gray-900">incompetence</strong>, <strong class="text-gray-900">cutting corners</strong>, or <strong class="text-gray-900">hidden costs that will appear later</strong>.
             </p>
             
-// In guide 1 content, replace the table section with:
-<div class="overflow-x-auto mb-4">
-  <table class="w-full border-collapse">
-    <thead>
-      <tr class="bg-gray-50">
-        <th class="py-3 px-4 text-left border-b border-gray-200 text-gray-900 font-semibold">Service Type</th>
-        <th class="py-3 px-4 text-left border-b border-gray-200 text-gray-900 font-semibold">Average Range</th>
-        <th class="py-3 px-4 text-left border-b border-gray-200 text-gray-900 font-semibold">Red Flag</th>
-        <th class="py-3 px-4 text-left border-b border-gray-200 text-gray-900 font-semibold">Potential Issues</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr class="border-b border-gray-100">
-        <td class="py-3 px-4 text-gray-900 font-medium">Bathroom Renovation</td>
-        <td class="py-3 px-4 text-gray-600">$15,000 - $35,000</td>
-        <td class="py-3 px-4 text-red-600 font-medium">Below $10,000</td>
-        <td class="py-3 px-4 text-gray-600">Cheap materials, unlicensed work</td>
-      </tr>
-      <tr class="border-b border-gray-100">
-        <td class="py-3 px-4 text-gray-900 font-medium">Deck Construction (15m²)</td>
-        <td class="py-3 px-4 text-gray-600">$3,500 - $6,000</td>
-        <td class="py-3 px-4 text-red-600 font-medium">Below $2,000</td>
-        <td class="py-3 px-4 text-gray-600">Untreated timber, poor foundations</td>
-      </tr>
-      <tr>
-        <td class="py-3 px-4 text-gray-900 font-medium">Kitchen Renovation</td>
-        <td class="py-3 px-4 text-gray-600">$20,000 - $45,000</td>
-        <td class="py-3 px-4 text-red-600 font-medium">Below $12,000</td>
-        <td class="py-3 px-4 text-gray-600">Poor quality cabinets, shortcuts</td>
-      </tr>
-    </tbody>
-  </table>
-</div>
+            <div class="mb-6">
+              <h4 class="font-medium text-gray-900 mb-3">Market Rate Comparison</h4>
+              <div class="space-y-4">
+                <!-- Bathroom Renovation -->
+                <div class="bg-white border border-gray-200 rounded-lg p-4">
+                  <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-2">
+                    <h5 class="font-medium text-gray-900">Bathroom Renovation</h5>
+                    <div class="flex items-center gap-4 mt-1 sm:mt-0">
+                      <span class="text-gray-600 text-sm">Average Range:</span>
+                      <span class="text-gray-900 font-medium">$15,000 - $35,000</span>
+                    </div>
+                  </div>
+                  <div class="flex flex-col sm:flex-row sm:items-center justify-between">
+                    <div class="flex items-center gap-2">
+                      <div class="w-3 h-3 bg-red-500 rounded-full"></div>
+                      <span class="text-red-600 font-medium text-sm">Red Flag: Below $10,000</span>
+                    </div>
+                    <span class="text-gray-600 text-sm mt-1 sm:mt-0">Cheap materials, unlicensed work</span>
+                  </div>
+                </div>
+
+                <!-- Deck Construction -->
+                <div class="bg-white border border-gray-200 rounded-lg p-4">
+                  <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-2">
+                    <h5 class="font-medium text-gray-900">Deck Construction (15m²)</h5>
+                    <div class="flex items-center gap-4 mt-1 sm:mt-0">
+                      <span class="text-gray-600 text-sm">Average Range:</span>
+                      <span class="text-gray-900 font-medium">$3,500 - $6,000</span>
+                    </div>
+                  </div>
+                  <div class="flex flex-col sm:flex-row sm:items-center justify-between">
+                    <div class="flex items-center gap-2">
+                      <div class="w-3 h-3 bg-red-500 rounded-full"></div>
+                      <span class="text-red-600 font-medium text-sm">Red Flag: Below $2,000</span>
+                    </div>
+                    <span class="text-gray-600 text-sm mt-1 sm:mt-0">Untreated timber, poor foundations</span>
+                  </div>
+                </div>
+
+                <!-- Kitchen Renovation -->
+                <div class="bg-white border border-gray-200 rounded-lg p-4">
+                  <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-2">
+                    <h5 class="font-medium text-gray-900">Kitchen Renovation</h5>
+                    <div class="flex items-center gap-4 mt-1 sm:mt-0">
+                      <span class="text-gray-600 text-sm">Average Range:</span>
+                      <span class="text-gray-900 font-medium">$20,000 - $45,000</span>
+                    </div>
+                  </div>
+                  <div class="flex flex-col sm:flex-row sm:items-center justify-between">
+                    <div class="flex items-center gap-2">
+                      <div class="w-3 h-3 bg-red-500 rounded-full"></div>
+                      <span class="text-red-600 font-medium text-sm">Red Flag: Below $12,000</span>
+                    </div>
+                    <span class="text-gray-600 text-sm mt-1 sm:mt-0">Poor quality cabinets, shortcuts</span>
+                  </div>
+                </div>
+              </div>
+            </div>
             
             <p class="text-gray-500 text-sm">
               <strong class="text-gray-700">Protection Tip:</strong> Always get at least 3 quotes for comparison. If one quote is significantly lower (30%+ difference), ask detailed questions about materials, labor rates, and inclusions.
@@ -271,18 +296,18 @@ const guides = [
     </div>
   `
 },
-  {
-    id: 2,
-    category: "Pricing",
-    readTime: "7 min read",
-    title: "How Much Should Plumbing Really Cost in Australia?",
-    description: "A comprehensive guide to fair plumbing prices across different types of jobs, from fixing leaky taps to full bathroom renovations.",
-    icon: <DollarSign className="w-5 h-5" />,
-    color: "from-green-500 to-emerald-600",
-    bgColor: "bg-gradient-to-br from-green-50 to-emerald-50",
-    difficulty: "Intermediate",
-    rating: 4.8,
-    content: `
+    {
+      id: 2,
+      category: "Pricing",
+      readTime: "7 min read",
+      title: "How Much Should Plumbing Really Cost in Australia?",
+      description: "A comprehensive guide to fair plumbing prices across different types of jobs, from fixing leaky taps to full bathroom renovations.",
+      icon: <DollarSign className="w-5 h-5" />,
+      color: "from-green-500 to-emerald-600",
+      bgColor: "bg-gradient-to-br from-green-50 to-emerald-50",
+      difficulty: "Intermediate",
+      rating: 4.8,
+      content: `
       <div class="space-y-8">
         <div class="text-center mb-8">
           <h1 class="text-3xl sm:text-4xl font-bold mb-4 text-gray-900">How Much Should Plumbing Really Cost in Australia?</h1>
@@ -557,19 +582,19 @@ const guides = [
         </div>
       </div>
     `
-  },
-  {
-    id: 3,
-    category: "Checklists",
-    readTime: "8 min read",
-    title: "Electrical Quote Checklist: What Should Be Included?",
-    description: "Find out what every electrical quote should contain, from itemized materials to safety certifications.",
-    icon: <Zap className="w-5 h-5" />,
-    color: "from-yellow-500 to-amber-500",
-    bgColor: "bg-gradient-to-br from-yellow-50 to-amber-50",
-    difficulty: "Beginner",
-    rating: 4.9,
-    content: `
+    },
+    {
+      id: 3,
+      category: "Checklists",
+      readTime: "8 min read",
+      title: "Electrical Quote Checklist: What Should Be Included?",
+      description: "Find out what every electrical quote should contain, from itemized materials to safety certifications.",
+      icon: <Zap className="w-5 h-5" />,
+      color: "from-yellow-500 to-amber-500",
+      bgColor: "bg-gradient-to-br from-yellow-50 to-amber-50",
+      difficulty: "Beginner",
+      rating: 4.9,
+      content: `
       <div class="space-y-8">
         <div class="text-center mb-8">
           <h1 class="text-3xl sm:text-4xl font-bold mb-4 text-gray-900">Electrical Quote Checklist: What Should Be Included?</h1>
@@ -885,19 +910,19 @@ const guides = [
         </div>
       </div>
     `
-  },
-  {
-    id: 4,
-    category: "Renovations",
-    readTime: "12 min read",
-    title: "Building Renovation Quotes: The Ultimate Guide",
-    description: "Everything you need to know about getting, comparing, and accepting building quotes for your home renovation.",
-    icon: <Hammer className="w-5 h-5" />,
-    color: "from-blue-500 to-cyan-500",
-    bgColor: "bg-gradient-to-br from-blue-50 to-cyan-50",
-    difficulty: "Advanced",
-    rating: 4.7,
-    content: `
+    },
+    {
+      id: 4,
+      category: "Renovations",
+      readTime: "12 min read",
+      title: "Building Renovation Quotes: The Ultimate Guide",
+      description: "Everything you need to know about getting, comparing, and accepting building quotes for your home renovation.",
+      icon: <Hammer className="w-5 h-5" />,
+      color: "from-blue-500 to-cyan-500",
+      bgColor: "bg-gradient-to-br from-blue-50 to-cyan-50",
+      difficulty: "Advanced",
+      rating: 4.7,
+      content: `
       <div class="space-y-8">
         <div class="text-center mb-8">
           <h1 class="text-3xl sm:text-4xl font-bold mb-4 text-gray-900">Building Renovation Quotes: The Ultimate Guide</h1>
@@ -1230,19 +1255,19 @@ const guides = [
         </div>
       </div>
     `
-  },
-  {
-    id: 5,
-    category: "Tips",
-    readTime: "6 min read",
-    title: "5 Questions Every Homeowner Should Ask Before Accepting a Quote",
-    description: "The essential questions that will help you avoid problems down the track and ensure you're getting a fair deal.",
-    icon: <HelpCircle className="w-5 h-5" />,
-    color: "from-purple-500 to-pink-500",
-    bgColor: "bg-gradient-to-br from-purple-50 to-pink-50",
-    difficulty: "Beginner",
-    rating: 5.0,
-    content: `
+    },
+    {
+      id: 5,
+      category: "Tips",
+      readTime: "6 min read",
+      title: "5 Questions Every Homeowner Should Ask Before Accepting a Quote",
+      description: "The essential questions that will help you avoid problems down the track and ensure you're getting a fair deal.",
+      icon: <HelpCircle className="w-5 h-5" />,
+      color: "from-purple-500 to-pink-500",
+      bgColor: "bg-gradient-to-br from-purple-50 to-pink-50",
+      difficulty: "Beginner",
+      rating: 5.0,
+      content: `
       <div class="space-y-8">
         <div class="text-center mb-8">
           <h1 class="text-3xl sm:text-4xl font-bold mb-4 text-gray-900">5 Essential Questions Every Homeowner Should Ask</h1>
@@ -1503,19 +1528,19 @@ const guides = [
         </div>
       </div>
     `
-  },
-  {
-    id: 6,
-    category: "Education",
-    readTime: "9 min read",
-    title: "Understanding Tradie Terms: A Plain English Dictionary",
-    description: "Decode common tradie jargon and technical terms so you can understand exactly what you're paying for.",
-    icon: <BookOpen className="w-5 h-5" />,
-    color: "from-indigo-500 to-violet-500",
-    bgColor: "bg-gradient-to-br from-indigo-50 to-violet-50",
-    difficulty: "Intermediate",
-    rating: 4.8,
-    content: `
+    },
+    {
+      id: 6,
+      category: "Education",
+      readTime: "9 min read",
+      title: "Understanding Tradie Terms: A Plain English Dictionary",
+      description: "Decode common tradie jargon and technical terms so you can understand exactly what you're paying for.",
+      icon: <BookOpen className="w-5 h-5" />,
+      color: "from-indigo-500 to-violet-500",
+      bgColor: "bg-gradient-to-br from-indigo-50 to-violet-50",
+      difficulty: "Intermediate",
+      rating: 4.8,
+      content: `
       <div class="space-y-8">
         <div class="text-center mb-8">
           <h1 class="text-3xl sm:text-4xl font-bold mb-4 text-gray-900">Tradie Terms: Plain English Dictionary</h1>
@@ -1743,9 +1768,9 @@ const guides = [
         </div>
         </div>
     `
-  },
-];
-// Handle guide click
+    },
+  ];
+  // Handle guide click
   const handleGuideClick = (guide) => {
     setSelectedGuide(guide);
     setIsModalOpen(true);
@@ -1780,7 +1805,7 @@ const guides = [
   // Filter guides based on category and search
   const filteredGuides = guides.filter(guide => {
     const matchesCategory = activeCategory === 'All' || guide.category === activeCategory;
-    const matchesSearch = searchQuery === '' || 
+    const matchesSearch = searchQuery === '' ||
       guide.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       guide.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
       guide.category.toLowerCase().includes(searchQuery.toLowerCase());
@@ -1803,7 +1828,7 @@ const guides = [
     if (isModalOpen) {
       document.addEventListener('keydown', handleEscape);
     }
-    
+
     return () => {
       document.removeEventListener('keydown', handleEscape);
     };
@@ -2060,9 +2085,8 @@ const guides = [
           <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] sm:w-[500px] sm:h-[500px] bg-amber-400 rounded-full blur-3xl animate-float-delayed"></div>
         </div>
 
-        <div className={`relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center transition-all duration-1000 ${
-          isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
-        }`}>
+        <div className={`relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center transition-all duration-1000 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
+          }`}>
           <div className="inline-flex items-center px-4 py-1.5 bg-orange-50 text-orange-600 rounded-full text-sm font-semibold mb-6 tracking-wide">
             <Sparkles className="w-4 h-4 mr-2" />
             EXPERT KNOWLEDGE BASE
@@ -2103,21 +2127,19 @@ const guides = [
               <button
                 key={index}
                 onClick={() => setActiveCategory(category.name)}
-                className={`group flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg transition-all duration-300 ${
-                  activeCategory === category.name
+                className={`group flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg transition-all duration-300 ${activeCategory === category.name
                     ? 'bg-gradient-to-r from-orange-500 to-amber-600 text-white shadow-lg shadow-orange-500/30'
                     : 'bg-white border border-gray-200 hover:border-orange-300 hover:shadow-md'
-                }`}
+                  }`}
               >
                 <div className={activeCategory === category.name ? 'text-white' : 'text-orange-500'}>
                   {category.icon}
                 </div>
                 <span className="text-sm sm:text-base font-medium">{category.name}</span>
-                <span className={`text-xs px-2 py-0.5 rounded-full ${
-                  activeCategory === category.name
+                <span className={`text-xs px-2 py-0.5 rounded-full ${activeCategory === category.name
                     ? 'bg-white/20 text-white'
                     : 'bg-gray-100 text-gray-600'
-                }`}>
+                  }`}>
                   {category.count}
                 </span>
               </button>
@@ -2170,9 +2192,8 @@ const guides = [
               <div
                 key={guide.id}
                 onClick={() => handleGuideClick(guide)}
-                className={`group bg-white border border-gray-200 rounded-xl sm:rounded-2xl p-4 sm:p-6 hover:border-orange-300 cursor-pointer transition-all duration-300 hover:shadow-xl hover:shadow-orange-100/50 transform hover:-translate-y-1 ${
-                  isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
-                }`}
+                className={`group bg-white border border-gray-200 rounded-xl sm:rounded-2xl p-4 sm:p-6 hover:border-orange-300 cursor-pointer transition-all duration-300 hover:shadow-xl hover:shadow-orange-100/50 transform hover:-translate-y-1 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
+                  }`}
                 style={{ transitionDelay: `${index * 100}ms` }}
               >
                 {/* Category Badge */}
@@ -2331,13 +2352,12 @@ const guides = [
 
       {/* Modal for Guide Content */}
       {isModalOpen && selectedGuide && (
-        <div 
+        <div
           className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/70 backdrop-blur-sm transition-all duration-300"
           onClick={handleOverlayClick}
         >
-          <div className={`relative w-full max-w-6xl max-h-[90vh] overflow-y-auto bg-white border border-gray-200 rounded-xl sm:rounded-2xl shadow-2xl transition-all duration-300 ${
-            isModalOpen ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
-          }`}>
+          <div className={`relative w-full max-w-6xl max-h-[90vh] overflow-y-auto bg-white border border-gray-200 rounded-xl sm:rounded-2xl shadow-2xl transition-all duration-300 ${isModalOpen ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
+            }`}>
             {/* Modal Header */}
             <div className="sticky top-0 z-10 bg-white border-b border-gray-200 p-4 sm:p-6">
               <div className="flex items-center justify-between">
@@ -2364,14 +2384,14 @@ const guides = [
               </div>
               <h2 className="text-xl sm:text-2xl font-bold mt-4 text-gray-900">{selectedGuide.title}</h2>
             </div>
-            
+
             {/* Modal Content */}
             <div className="p-4 sm:p-6 lg:p-8">
-              <div 
+              <div
                 className="guide-content"
                 dangerouslySetInnerHTML={{ __html: selectedGuide.content }}
               />
-              
+
               {/* Action Buttons at Bottom */}
               <div className="sticky bottom-0 bg-white pt-6 border-t border-gray-200 mt-8">
                 <div className="flex flex-col sm:flex-row gap-3 justify-between">
