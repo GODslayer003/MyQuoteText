@@ -25,7 +25,7 @@ class AuthController {
       // Create user
       const user = await User.create({
         email: email.toLowerCase(),
-        passwordHash: password, // Will be hashed by pre-save hook
+        passwordHash: password,
         firstName,
         lastName,
         phone,
@@ -279,7 +279,7 @@ class AuthController {
       }
 
       // Update password
-      user.passwordHash = newPassword; // Will be hashed by pre-save hook
+      user.passwordHash = newPassword;
       user.passwordResetToken = undefined;
       user.passwordResetExpires = undefined;
       await user.save();

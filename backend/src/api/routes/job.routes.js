@@ -1,70 +1,73 @@
-// ============================================
-// src/api/routes/job.routes.js
-// ============================================
-
+// backend/src/api/routes/job.routes.js - SIMPLIFIED
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
-
 const JobController = require('../controllers/JobController');
 const authMiddleware = require('../middleware/auth.middleware');
-const validationMiddleware = require('../middleware/validation.middleware');
-const rateLimitMiddleware = require('../middleware/rateLimit.middleware');
 
-// Safety wrapper
-const safe = (fn, name) => {
-  if (typeof fn !== 'function') {
-    throw new Error(`Missing or invalid handler: ${name}`);
-  }
-  return fn;
-};
-
-// Multer (PDF only)
+// Multer configuration
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 10 * 1024 * 1024 },
+  limits: { 
+    fileSize: 10 * 1024 * 1024 // 10MB
+  },
   fileFilter: (req, file, cb) => {
-    if (file.mimetype === 'application/pdf') cb(null, true);
-    else cb(new Error('Only PDF files are allowed'));
+    if (file.mimetype === 'application/pdf') {
+      cb(null, true);
+    } else {
+      cb(new Error('Only PDF files are allowed'));
+    }
   }
 });
 
-// Create job
+// Create job (upload PDF)
 router.post(
   '/',
-  safe(rateLimitMiddleware.jobCreationLimiter, 'jobCreationLimiter'),
+  authMiddleware.authenticate,
   upload.single('document'),
-  safe(validationMiddleware.validateJobCreation, 'validateJobCreation'),
-  safe(authMiddleware.optionalAuth, 'optionalAuth'),
-  safe(JobController.createJob, 'createJob')
+  JobController.createJob
 );
 
-// Get all jobs (auth)
+// Get user's jobs
 router.get(
   '/',
-  safe(authMiddleware.authenticate, 'authenticate'),
-  safe(JobController.getUserJobs, 'getUserJobs')
+  authMiddleware.authenticate,
+  JobController.getUserJobs
 );
 
 // Get single job
 router.get(
   '/:jobId',
-  safe(authMiddleware.optionalAuth, 'optionalAuth'),
-  safe(JobController.getJob, 'getJob')
+  authMiddleware.optionalAuth,
+  JobController.getJob
+);
+
+// Get job status
+router.get(
+  '/:jobId/status',
+  authMiddleware.optionalAuth,
+  JobController.getJobStatus
+);
+
+// Get job result (analysis)
+router.get(
+  '/:jobId/result',
+  authMiddleware.optionalAuth,
+  JobController.getJobResult
 );
 
 // Delete job
 router.delete(
   '/:jobId',
-  safe(authMiddleware.authenticate, 'authenticate'),
-  safe(JobController.deleteJob, 'deleteJob')
+  authMiddleware.authenticate,
+  JobController.deleteJob
 );
 
 // Download document
 router.get(
   '/:jobId/documents/:documentId/download',
-  safe(authMiddleware.optionalAuth, 'optionalAuth'),
-  safe(JobController.downloadDocument, 'downloadDocument')
+  authMiddleware.optionalAuth,
+  JobController.downloadDocument
 );
 
 module.exports = router;

@@ -18,6 +18,8 @@ const auditLogSchema = new mongoose.Schema({
       'user.password_reset',
       'user.email_verify',
       'user.delete_account',
+      'user.profile_update',
+      'user.avatar_upload',
       // Job actions
       'job.create',
       'job.upload_document',

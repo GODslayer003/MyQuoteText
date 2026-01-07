@@ -1,168 +1,297 @@
-// ============================================
-// src/config/queue.js
-// ============================================
+// backend/src/config/queue.js
 const Queue = require('bull');
 const Redis = require('ioredis');
 const logger = require('../utils/logger');
 
-const ENABLE_QUEUES = process.env.ENABLE_QUEUES === 'true';
-
-// --------------------------------------------
-// Redis configuration
-// --------------------------------------------
-const redisConfig = {
-  host: process.env.REDIS_HOST || '127.0.0.1',
-  port: Number(process.env.REDIS_PORT) || 6379,
-  password: process.env.REDIS_PASSWORD || undefined,
-  db: Number(process.env.REDIS_DB) || 0,
-
-  // 🚫 prevent retry spam
-  maxRetriesPerRequest: 3,
-  enableReadyCheck: false,
-  retryStrategy: (times) => {
-    if (times > 3) return null; // STOP retrying
-    return Math.min(times * 200, 1000);
-  }
-};
-
-// --------------------------------------------
-// Placeholders (safe exports)
-// --------------------------------------------
-let redisClient = null;
-let redisSubscriber = null;
-
-let documentProcessingQueue = null;
-let aiAnalysisQueue = null;
-let emailQueue = null;
-let retentionQueue = null;
-
-// --------------------------------------------
-// Queue options
-// --------------------------------------------
-const defaultQueueOptions = {
-  redis: redisConfig,
-  defaultJobOptions: {
-    attempts: Number(process.env.QUEUE_MAX_RETRIES) || 3,
-    backoff: {
-      type: 'exponential',
-      delay: Number(process.env.QUEUE_BACKOFF_DELAY) || 5000
-    },
-    removeOnComplete: 100,
-    removeOnFail: 1000
-  }
-};
-
-// --------------------------------------------
-// Setup queue events
-// --------------------------------------------
-const setupQueueEvents = (queue, name) => {
-  queue.on('completed', (job) => {
-    logger.debug(`Queue ${name} - Job ${job.id} completed`);
-  });
-
-  queue.on('failed', (job, err) => {
-    logger.error(`Queue ${name} - Job ${job?.id} failed`, {
-      message: err.message
-    });
-  });
-
-  queue.on('stalled', (job) => {
-    logger.warn(`Queue ${name} - Job ${job.id} stalled`);
-  });
-
-  // 🚫 swallow redis errors to avoid spam
-  queue.on('error', () => {});
-};
-
-// --------------------------------------------
-// Initialize queues ONLY if enabled
-// --------------------------------------------
-if (!ENABLE_QUEUES) {
-  logger.warn('⚠️ Queues are DISABLED (ENABLE_QUEUES=false)');
-} else {
-  logger.info('🔌 Initializing Redis & Bull queues');
-
-  redisClient = new Redis(redisConfig);
-  redisSubscriber = new Redis(redisConfig);
-
-  // 🚫 silence ioredis error spam
-  redisClient.on('error', () => {});
-  redisSubscriber.on('error', () => {});
-
-  documentProcessingQueue = new Queue(
-    'document-processing',
-    defaultQueueOptions
-  );
-  aiAnalysisQueue = new Queue('ai-analysis', defaultQueueOptions);
-  emailQueue = new Queue('email', defaultQueueOptions);
-  retentionQueue = new Queue('retention', defaultQueueOptions);
-
-  setupQueueEvents(documentProcessingQueue, 'document-processing');
-  setupQueueEvents(aiAnalysisQueue, 'ai-analysis');
-  setupQueueEvents(emailQueue, 'email');
-  setupQueueEvents(retentionQueue, 'retention');
-}
-
-// --------------------------------------------
-// Queue health check
-// --------------------------------------------
-const checkQueueHealth = async () => {
-  if (!ENABLE_QUEUES) {
-    return { queues: 'disabled' };
+class QueueManager {
+  constructor() {
+    this.queues = {};
+    this.redisClient = null;
+    this.redisSubscriber = null;
+    this.isConnected = false;
   }
 
-  const queues = [
-    { name: 'document-processing', queue: documentProcessingQueue },
-    { name: 'ai-analysis', queue: aiAnalysisQueue },
-    { name: 'email', queue: emailQueue },
-    { name: 'retention', queue: retentionQueue }
-  ];
+  /**
+   * Initialize Redis connection
+   */
+  async initRedis() {
+    if (this.isConnected) return;
 
-  const health = {};
-
-  for (const { name, queue } of queues) {
     try {
-      await queue.isReady();
-      health[name] = { status: 'healthy' };
-    } catch (err) {
-      health[name] = {
-        status: 'unhealthy',
-        error: err.message
+      const redisConfig = {
+        host: process.env.REDIS_HOST || 'localhost',
+        port: parseInt(process.env.REDIS_PORT) || 6379,
+        password: process.env.REDIS_PASSWORD,
+        db: parseInt(process.env.REDIS_DB) || 0,
+        retryStrategy: (times) => {
+          const delay = Math.min(times * 100, 3000);
+          logger.warn(`Redis connection attempt ${times}, retrying in ${delay}ms`);
+          return delay;
+        },
+        maxRetriesPerRequest: 3,
+        enableReadyCheck: true,
+        autoResubscribe: true,
+        autoResendUnfulfilledCommands: true
       };
+
+      // Create Redis clients
+      this.redisClient = new Redis(redisConfig);
+      this.redisSubscriber = new Redis(redisConfig);
+
+      // Test connection
+      await this.redisClient.ping();
+      
+      this.isConnected = true;
+      logger.info('Redis connected successfully');
+      
+      // Handle connection events
+      this.redisClient.on('error', (error) => {
+        logger.error('Redis client error:', error);
+        this.isConnected = false;
+      });
+      
+      this.redisClient.on('connect', () => {
+        logger.info('Redis client reconnected');
+        this.isConnected = true;
+      });
+
+    } catch (error) {
+      logger.error('Failed to connect to Redis:', error);
+      throw error;
     }
   }
 
-  return health;
-};
+  /**
+   * Create a queue with production settings
+   */
+  createQueue(name, options = {}) {
+    if (!this.isConnected) {
+      throw new Error('Redis not connected. Call initRedis() first.');
+    }
 
-// --------------------------------------------
-// Graceful shutdown
-// --------------------------------------------
-const shutdownQueues = async () => {
-  if (!ENABLE_QUEUES) return;
+    const queueOptions = {
+      redis: {
+        port: parseInt(process.env.REDIS_PORT) || 6379,
+        host: process.env.REDIS_HOST || 'localhost',
+        password: process.env.REDIS_PASSWORD,
+        db: parseInt(process.env.REDIS_DB) || 0,
+        tls: process.env.REDIS_TLS === 'true' ? {} : undefined
+      },
+      defaultJobOptions: {
+        removeOnComplete: 100, // Keep last 100 completed jobs
+        removeOnFail: 1000, // Keep last 1000 failed jobs
+        attempts: 3,
+        backoff: {
+          type: 'exponential',
+          delay: 1000
+        },
+        timeout: 300000 // 5 minutes timeout
+      },
+      settings: {
+        stalledInterval: 30000, // Check for stalled jobs every 30 seconds
+        maxStalledCount: 2,
+        guardInterval: 5000,
+        retryProcessDelay: 5000,
+        drainDelay: 5
+      },
+      ...options
+    };
 
-  logger.info('Shutting down queues...');
+    const queue = new Queue(name, queueOptions);
 
-  await Promise.all([
-    documentProcessingQueue?.close(),
-    aiAnalysisQueue?.close(),
-    emailQueue?.close(),
-    retentionQueue?.close()
-  ]);
+    // Queue event handlers
+    queue.on('error', (error) => {
+      logger.error(`Queue ${name} error:`, error);
+    });
 
-  await redisClient?.quit();
-  await redisSubscriber?.quit();
+    queue.on('waiting', (jobId) => {
+      logger.debug(`Queue ${name}: Job ${jobId} is waiting`);
+    });
 
-  logger.info('All queues closed');
-};
+    queue.on('active', (job) => {
+      logger.debug(`Queue ${name}: Job ${job.id} is now active`);
+    });
 
+    queue.on('completed', (job, result) => {
+      logger.info(`Queue ${name}: Job ${job.id} completed successfully`);
+    });
+
+    queue.on('failed', (job, error) => {
+      logger.error(`Queue ${name}: Job ${job.id} failed:`, {
+        error: error.message,
+        attempts: job.attemptsMade,
+        data: job.data
+      });
+    });
+
+    queue.on('stalled', (job) => {
+      logger.warn(`Queue ${name}: Job ${job.id} stalled`);
+    });
+
+    this.queues[name] = queue;
+    return queue;
+  }
+
+  /**
+   * Get existing queue or create new one
+   */
+  getQueue(name, options = {}) {
+    if (!this.queues[name]) {
+      this.queues[name] = this.createQueue(name, options);
+    }
+    return this.queues[name];
+  }
+
+  /**
+   * Initialize all queues
+   */
+  async initializeQueues() {
+    await this.initRedis();
+    
+    // Create all required queues
+    const queues = {
+      'document-processing': {
+        defaultJobOptions: {
+          priority: 1,
+          attempts: 5,
+          timeout: 600000 // 10 minutes for processing
+        }
+      },
+      'ai-analysis': {
+        defaultJobOptions: {
+          priority: 2,
+          attempts: 3,
+          timeout: 300000 // 5 minutes for AI analysis
+        }
+      },
+      'email-notifications': {
+        defaultJobOptions: {
+          priority: 3,
+          attempts: 3,
+          timeout: 60000 // 1 minute for emails
+        }
+      },
+      'data-cleanup': {
+        defaultJobOptions: {
+          priority: 4,
+          attempts: 1,
+          delay: 3600000 // Run every hour
+        }
+      }
+    };
+
+    Object.entries(queues).forEach(([name, options]) => {
+      this.getQueue(name, options);
+    });
+
+    logger.info(`Initialized ${Object.keys(queues).length} queues`);
+  }
+
+  /**
+   * Check queue health
+   */
+  async checkQueueHealth() {
+    const health = {};
+    
+    for (const [name, queue] of Object.entries(this.queues)) {
+      try {
+        const counts = await queue.getJobCounts();
+        const isHealthy = await queue.client.ping() === 'PONG';
+        
+        health[name] = {
+          status: isHealthy ? 'healthy' : 'unhealthy',
+          counts,
+          clientStatus: isHealthy ? 'connected' : 'disconnected'
+        };
+      } catch (error) {
+        logger.error(`Health check failed for queue ${name}:`, error);
+        health[name] = {
+          status: 'error',
+          error: error.message
+        };
+      }
+    }
+    
+    return health;
+  }
+
+  /**
+   * Shutdown all queues gracefully
+   */
+  async shutdownQueues() {
+    logger.info('Shutting down queues...');
+    
+    const shutdownPromises = Object.values(this.queues).map(async (queue) => {
+      try {
+        await queue.close();
+        logger.info(`Queue ${queue.name} closed`);
+      } catch (error) {
+        logger.error(`Failed to close queue ${queue.name}:`, error);
+      }
+    });
+    
+    await Promise.all(shutdownPromises);
+    
+    // Close Redis connections
+    if (this.redisClient) {
+      await this.redisClient.quit();
+    }
+    
+    if (this.redisSubscriber) {
+      await this.redisSubscriber.quit();
+    }
+    
+    this.isConnected = false;
+    logger.info('All queues and Redis connections closed');
+  }
+
+  /**
+   * Clean old jobs from queues
+   */
+  async cleanOldJobs(days = 7) {
+    const cutoff = Date.now() - (days * 24 * 60 * 60 * 1000);
+    
+    for (const [name, queue] of Object.entries(this.queues)) {
+      try {
+        const jobs = await queue.getJobs(['completed', 'failed']);
+        const oldJobs = jobs.filter(job => job.timestamp < cutoff);
+        
+        for (const job of oldJobs) {
+          await job.remove();
+        }
+        
+        logger.info(`Cleaned ${oldJobs.length} old jobs from ${name} queue`);
+      } catch (error) {
+        logger.error(`Failed to clean old jobs from ${name}:`, error);
+      }
+    }
+  }
+}
+
+// Create singleton instance
+const queueManager = new QueueManager();
+
+// Export commonly used queues and methods
 module.exports = {
-  documentProcessingQueue,
-  aiAnalysisQueue,
-  emailQueue,
-  retentionQueue,
-  checkQueueHealth,
-  shutdownQueues,
-  redisClient,
-  redisSubscriber
+  // Queue instances
+  documentProcessingQueue: null,
+  aiAnalysisQueue: null,
+  emailQueue: null,
+  
+  // Initialize function
+  initializeQueues: async () => {
+    await queueManager.initializeQueues();
+    
+    module.exports.documentProcessingQueue = queueManager.getQueue('document-processing');
+    module.exports.aiAnalysisQueue = queueManager.getQueue('ai-analysis');
+    module.exports.emailQueue = queueManager.getQueue('email-notifications');
+    
+    return queueManager;
+  },
+  
+  // Helper methods
+  checkQueueHealth: () => queueManager.checkQueueHealth(),
+  shutdownQueues: () => queueManager.shutdownQueues(),
+  cleanOldJobs: (days) => queueManager.cleanOldJobs(days),
+  getQueue: (name) => queueManager.getQueue(name)
 };

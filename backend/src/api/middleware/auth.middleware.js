@@ -19,6 +19,9 @@ const authenticate = async (req, res, next) => {
       });
     }
 
+    // Debug: Log token info
+    logger.info(`Token received: ${token.substring(0, 20)}... (length: ${token.length})`);
+
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
     const user = await User.findById(decoded.userId);

@@ -1,7 +1,3 @@
-// ============================================
-// src/api/routes/auth.routes.js
-// ============================================
-
 const express = require('express');
 const router = express.Router();
 
@@ -56,3 +52,5 @@ router.get(
 );
 
 module.exports = router;
+
+// REMOVE EVERYTHING AFTER THIS LINE - NO AuthController CLASS HERE

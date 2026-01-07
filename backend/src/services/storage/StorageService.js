@@ -96,6 +96,72 @@ class StorageService {
     }
   }
 
+  // backend/src/services/storage/StorageService.js (partial update)
+// Add avatar-specific upload method
+async uploadAvatar(fileBuffer, metadata) {
+  try {
+    // Use a different folder for avatars
+    const publicId = `avatars/${metadata.userId}_${Date.now()}`;
+    
+    const bufferStream = new stream.PassThrough();
+    bufferStream.end(fileBuffer);
+
+    const result = await new Promise((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        {
+          folder: this.cloudinaryFolder,
+          public_id: publicId,
+          resource_type: 'image',
+          overwrite: true, // Allow overwriting avatars
+          transformation: [
+            { width: 500, height: 500, crop: 'fill' }, // Resize and crop
+            { quality: 'auto:good' } // Optimize quality
+          ],
+          context: {
+            type: 'avatar',
+            userId: metadata.userId
+          }
+        },
+        (error, result) => {
+          if (error) return reject(error);
+          resolve(result);
+        }
+      );
+
+      bufferStream.pipe(uploadStream);
+    });
+
+    logger.info(`Avatar uploaded to Cloudinary: ${result.public_id}`);
+
+    return {
+      storageKey: result.public_id,
+      publicId: result.public_id,
+      location: result.secure_url,
+      resourceType: result.resource_type
+    };
+  } catch (error) {
+    logger.error('Cloudinary avatar upload failed:', error);
+    throw error;
+  }
+}
+
+// Add to existing uploadFile method
+async uploadFile(fileBuffer, metadata) {
+  if (!fileBuffer) {
+    throw new Error("No file buffer provided");
+  }
+
+  // Check if this is an avatar upload
+  if (metadata.mimeType?.startsWith('image/') && metadata.jobId?.startsWith('avatar_')) {
+    return this.uploadAvatar(fileBuffer, metadata);
+  }
+
+  if (STORAGE_PROVIDER === "cloudinary") {
+    return this.uploadToCloudinary(fileBuffer, metadata);
+  }
+
+  return this.uploadToLocal(fileBuffer, metadata);
+}
   // ------------------ LOCAL ------------------
   uploadToLocal(fileBuffer, metadata) {
     try {

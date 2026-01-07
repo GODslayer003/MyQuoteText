@@ -1,4 +1,4 @@
-// components/auth/SignUpModal.jsx
+// src/pages/Signup.jsx
 import React, { useState, useEffect } from 'react';
 import {
   X,
@@ -7,20 +7,22 @@ import {
   Eye,
   EyeOff,
   User,
+  Phone,
   UserPlus,
   AlertCircle,
-  CheckCircle2
+  CheckCircle2,
+  Loader2
 } from 'lucide-react';
-
 import { useAuth } from "../hooks/useAuth";
 
-
-const SignUpModal = ({ isOpen, onClose, onSwitchToLogin }) => {
-  const { signup, loading, error, isAuthenticated } = useAuth();
+const SignUpModal = ({ isOpen, onClose, onSwitchToLogin, showForgotPassword = false }) => {
+  const { login, loading, error, clearError } = useAuth();
 
   const [formData, setFormData] = useState({
-    name: '',
+    firstName: '',
+    lastName: '',
     email: '',
+    phone: '',
     password: '',
     confirmPassword: ''
   });
@@ -29,70 +31,109 @@ const SignUpModal = ({ isOpen, onClose, onSwitchToLogin }) => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
   const [passwordStrength, setPasswordStrength] = useState(0);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [showForgotPasswordForm, setShowForgotPasswordForm] = useState(showForgotPassword);
 
-  // Close modal after successful signup
   useEffect(() => {
-    if (isAuthenticated && isOpen) {
-      onClose();
+    if (!isOpen) {
+      // Reset form when modal closes
+      setFormData({
+        firstName: '',
+        lastName: '',
+        email: '',
+        phone: '',
+        password: '',
+        confirmPassword: ''
+      });
+      setFieldErrors({});
+      setShowPassword(false);
+      setShowConfirmPassword(false);
+      setPasswordStrength(0);
+      setAcceptedTerms(false);
+      setShowForgotPasswordForm(false);
     }
-  }, [isAuthenticated, isOpen, onClose]);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
-  // ----------------------------
-  // Helpers
-  // ----------------------------
+  // Password strength calculator
   const calculatePasswordStrength = (password) => {
     let strength = 0;
-    if (password.length >= 6) strength += 25;
-    if (/[A-Z]/.test(password)) strength += 25;
-    if (/[0-9]/.test(password)) strength += 25;
-    if (/[^A-Za-z0-9]/.test(password)) strength += 25;
-    return strength;
+    if (password.length >= 8) strength += 20;
+    if (password.length >= 12) strength += 10;
+    if (/[A-Z]/.test(password)) strength += 20;
+    if (/[a-z]/.test(password)) strength += 10;
+    if (/[0-9]/.test(password)) strength += 20;
+    if (/[^A-Za-z0-9]/.test(password)) strength += 20;
+    return Math.min(strength, 100);
   };
 
-  // ----------------------------
-  // Handlers
-  // ----------------------------
   const handleChange = (e) => {
     const { name, value } = e.target;
-
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    
+    // Handle phone number formatting
+    let formattedValue = value;
+    if (name === 'phone') {
+      // Remove non-numeric characters except +
+      formattedValue = value.replace(/[^\d+]/g, '');
+    }
+    
+    setFormData(prev => ({ ...prev, [name]: formattedValue }));
 
     if (name === 'password') {
-      setPasswordStrength(calculatePasswordStrength(value));
+      setPasswordStrength(calculatePasswordStrength(formattedValue));
     }
 
     if (fieldErrors[name]) {
-      setFieldErrors((prev) => ({ ...prev, [name]: '' }));
+      setFieldErrors(prev => ({ ...prev, [name]: '' }));
     }
   };
 
   const validateForm = () => {
     const errors = {};
 
-    if (!formData.name.trim()) {
-      errors.name = 'Name is required';
+    if (!showForgotPasswordForm) {
+      if (!formData.firstName.trim()) {
+        errors.firstName = 'First name is required';
+      } else if (formData.firstName.trim().length < 2) {
+        errors.firstName = 'First name must be at least 2 characters';
+      }
+
+      if (!formData.lastName.trim()) {
+        errors.lastName = 'Last name is required';
+      } else if (formData.lastName.trim().length < 2) {
+        errors.lastName = 'Last name must be at least 2 characters';
+      }
+
+      if (formData.phone && !/^[\d+\s\-()]{10,}$/.test(formData.phone)) {
+        errors.phone = 'Please enter a valid phone number';
+      }
     }
 
     if (!formData.email.trim()) {
       errors.email = 'Email is required';
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      errors.email = 'Invalid email address';
+      errors.email = 'Please enter a valid email address';
     }
 
-    if (!formData.password) {
-      errors.password = 'Password is required';
-    } else if (formData.password.length < 6) {
-      errors.password = 'Password must be at least 6 characters';
-    } else if (passwordStrength < 50) {
-      errors.password = 'Password is too weak';
-    }
+    if (!showForgotPasswordForm) {
+      if (!formData.password) {
+        errors.password = 'Password is required';
+      } else if (formData.password.length < 8) {
+        errors.password = 'Password must be at least 8 characters';
+      } else if (passwordStrength < 50) {
+        errors.password = 'Password is too weak';
+      }
 
-    if (!formData.confirmPassword) {
-      errors.confirmPassword = 'Please confirm your password';
-    } else if (formData.password !== formData.confirmPassword) {
-      errors.confirmPassword = 'Passwords do not match';
+      if (!formData.confirmPassword) {
+        errors.confirmPassword = 'Please confirm your password';
+      } else if (formData.password !== formData.confirmPassword) {
+        errors.confirmPassword = 'Passwords do not match';
+      }
+
+      if (!acceptedTerms) {
+        errors.terms = 'You must accept the terms and conditions';
+      }
     }
 
     return errors;
@@ -101,36 +142,88 @@ const SignUpModal = ({ isOpen, onClose, onSwitchToLogin }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    if (showForgotPasswordForm) {
+      // Handle forgot password submission
+      if (!formData.email.trim()) {
+        setFieldErrors({ email: 'Email is required' });
+        return;
+      }
+      
+      // TODO: Implement forgot password API call
+      alert(`Password reset link will be sent to ${formData.email}`);
+      return;
+    }
+
     const validationErrors = validateForm();
     if (Object.keys(validationErrors).length > 0) {
       setFieldErrors(validationErrors);
       return;
     }
 
-    await signup({
-      name: formData.name.trim(),
+    // Prepare data matching backend User model
+    const userData = {
       email: formData.email.trim().toLowerCase(),
-      password: formData.password
-    });
+      password: formData.password,
+      firstName: formData.firstName.trim(),
+      lastName: formData.lastName.trim(),
+      ...(formData.phone && { phone: formData.phone.trim() }),
+      metadata: {
+        registrationSource: 'manual',
+        ipAddress: '', // Will be set by backend
+        userAgent: navigator.userAgent
+      }
+    };
+
+    await signup(userData);
   };
 
   const passwordRequirements = [
-    { text: 'At least 6 characters', check: formData.password.length >= 6 },
-    { text: 'One uppercase letter', check: /[A-Z]/.test(formData.password) },
-    { text: 'One number', check: /[0-9]/.test(formData.password) }
+    { text: 'At least 8 characters', check: formData.password.length >= 8 },
+    { text: 'Contains uppercase letter', check: /[A-Z]/.test(formData.password) },
+    { text: 'Contains lowercase letter', check: /[a-z]/.test(formData.password) },
+    { text: 'Contains number', check: /[0-9]/.test(formData.password) },
+    { text: 'Contains special character', check: /[^A-Za-z0-9]/.test(formData.password) }
   ];
 
-  // ----------------------------
-  // UI
-  // ----------------------------
+  const strengthLabels = {
+    0: 'Very Weak',
+    25: 'Weak',
+    50: 'Fair',
+    75: 'Good',
+    90: 'Strong',
+    100: 'Very Strong'
+  };
+
+  const getStrengthLabel = (strength) => {
+    for (const [threshold, label] of Object.entries(strengthLabels).reverse()) {
+      if (strength >= parseInt(threshold)) return label;
+    }
+    return 'Very Weak';
+  };
+
+  const getStrengthColor = (strength) => {
+    if (strength < 25) return 'bg-red-500';
+    if (strength < 50) return 'bg-orange-500';
+    if (strength < 75) return 'bg-yellow-500';
+    if (strength < 90) return 'bg-blue-500';
+    return 'bg-green-500';
+  };
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
-      <div className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto animate-slide-up">
-        {/* Close */}
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+      style={{ animation: 'fade-in 0.2s ease-out' }}
+    >
+      <div 
+        className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto"
+        style={{ animation: 'slide-up 0.25s ease-out' }}
+      >
+        {/* Close button */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 p-2 hover:bg-gray-100 rounded-lg"
+          className="absolute top-4 right-4 p-2 hover:bg-gray-100 rounded-lg transition-colors"
           aria-label="Close"
+          disabled={loading}
         >
           <X className="w-5 h-5 text-gray-500" />
         </button>
@@ -143,10 +236,12 @@ const SignUpModal = ({ isOpen, onClose, onSwitchToLogin }) => {
             </div>
             <div>
               <h2 className="text-2xl font-bold text-gray-900">
-                Create Account
+                {showForgotPasswordForm ? 'Reset Password' : 'Create Account'}
               </h2>
               <p className="text-gray-600">
-                Join thousands of smart homeowners
+                {showForgotPasswordForm 
+                  ? 'We\'ll send you a reset link' 
+                  : 'Join thousands of smart homeowners'}
               </p>
             </div>
           </div>
@@ -156,35 +251,102 @@ const SignUpModal = ({ isOpen, onClose, onSwitchToLogin }) => {
         <div className="p-6">
           {/* Global error */}
           {error && (
-            <div className="mb-4 flex items-center gap-2 p-3 bg-red-50 text-red-700 rounded-lg text-sm">
-              <AlertCircle className="w-4 h-4" />
-              {error}
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                <span className="text-sm">{error}</span>
+              </div>
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Name */}
-            <div>
-              <label className="block text-sm font-medium mb-1">Full Name</label>
-              <div className="relative">
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <input
-                  name="name"
-                  value={formData.name}
-                  onChange={handleChange}
-                  className={`w-full pl-10 pr-3 py-2.5 rounded-lg border ${
-                    fieldErrors.name ? 'border-red-300' : 'border-gray-300'
-                  } focus:ring-2 focus:ring-orange-500`}
-                />
-              </div>
-              {fieldErrors.name && (
-                <p className="text-xs text-red-600 mt-1">{fieldErrors.name}</p>
-              )}
-            </div>
+            {!showForgotPasswordForm && (
+              <>
+                {/* Name fields */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      First Name
+                    </label>
+                    <div className="relative">
+                      <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                      <input
+                        name="firstName"
+                        value={formData.firstName}
+                        onChange={handleChange}
+                        disabled={loading}
+                        className={`w-full pl-10 pr-3 py-2.5 rounded-lg border ${
+                          fieldErrors.firstName
+                            ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
+                            : 'border-gray-300 focus:border-orange-500 focus:ring-orange-500'
+                        } focus:ring-2 focus:ring-opacity-20 transition-colors disabled:bg-gray-50 disabled:cursor-not-allowed`}
+                        placeholder="John"
+                        autoComplete="given-name"
+                      />
+                    </div>
+                    {fieldErrors.firstName && (
+                      <p className="mt-1 text-xs text-red-600">{fieldErrors.firstName}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Last Name
+                    </label>
+                    <div className="relative">
+                      <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                      <input
+                        name="lastName"
+                        value={formData.lastName}
+                        onChange={handleChange}
+                        disabled={loading}
+                        className={`w-full pl-10 pr-3 py-2.5 rounded-lg border ${
+                          fieldErrors.lastName
+                            ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
+                            : 'border-gray-300 focus:border-orange-500 focus:ring-orange-500'
+                        } focus:ring-2 focus:ring-opacity-20 transition-colors disabled:bg-gray-50 disabled:cursor-not-allowed`}
+                        placeholder="Doe"
+                        autoComplete="family-name"
+                      />
+                    </div>
+                    {fieldErrors.lastName && (
+                      <p className="mt-1 text-xs text-red-600">{fieldErrors.lastName}</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Phone */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Phone Number <span className="text-gray-500 font-normal">(Optional)</span>
+                  </label>
+                  <div className="relative">
+                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <input
+                      name="phone"
+                      type="tel"
+                      value={formData.phone}
+                      onChange={handleChange}
+                      disabled={loading}
+                      className={`w-full pl-10 pr-3 py-2.5 rounded-lg border ${
+                        fieldErrors.phone
+                          ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
+                          : 'border-gray-300 focus:border-orange-500 focus:ring-orange-500'
+                      } focus:ring-2 focus:ring-opacity-20 transition-colors disabled:bg-gray-50 disabled:cursor-not-allowed`}
+                      placeholder="+1 (555) 123-4567"
+                      autoComplete="tel"
+                    />
+                  </div>
+                  {fieldErrors.phone && (
+                    <p className="mt-1 text-xs text-red-600">{fieldErrors.phone}</p>
+                  )}
+                </div>
+              </>
+            )}
 
             {/* Email */}
             <div>
-              <label className="block text-sm font-medium mb-1">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
                 Email Address
               </label>
               <div className="relative">
@@ -194,183 +356,226 @@ const SignUpModal = ({ isOpen, onClose, onSwitchToLogin }) => {
                   type="email"
                   value={formData.email}
                   onChange={handleChange}
+                  disabled={loading}
                   className={`w-full pl-10 pr-3 py-2.5 rounded-lg border ${
-                    fieldErrors.email ? 'border-red-300' : 'border-gray-300'
-                  } focus:ring-2 focus:ring-orange-500`}
+                    fieldErrors.email
+                      ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
+                      : 'border-gray-300 focus:border-orange-500 focus:ring-orange-500'
+                  } focus:ring-2 focus:ring-opacity-20 transition-colors disabled:bg-gray-50 disabled:cursor-not-allowed`}
+                  placeholder="you@example.com"
+                  autoComplete="email"
                 />
               </div>
               {fieldErrors.email && (
-                <p className="text-xs text-red-600 mt-1">{fieldErrors.email}</p>
+                <p className="mt-1 text-xs text-red-600">{fieldErrors.email}</p>
               )}
             </div>
 
-            {/* Password */}
-            <div>
-              <label className="block text-sm font-medium mb-1">Password</label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <input
-                  name="password"
-                  type={showPassword ? 'text' : 'password'}
-                  value={formData.password}
-                  onChange={handleChange}
-                  className={`w-full pl-10 pr-10 py-2.5 rounded-lg border ${
-                    fieldErrors.password ? 'border-red-300' : 'border-gray-300'
-                  } focus:ring-2 focus:ring-orange-500`}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((p) => !p)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2"
-                >
-                  {showPassword ? (
-                    <EyeOff className="w-4 h-4 text-gray-400" />
-                  ) : (
-                    <Eye className="w-4 h-4 text-gray-400" />
-                  )}
-                </button>
-              </div>
-
-              {/* Strength */}
-              {formData.password && (
-                <div className="mt-2 space-y-1">
-                  <div className="flex justify-between text-xs">
-                    <span>Password strength</span>
-                    <span
-                      className={
-                        passwordStrength < 50
-                          ? 'text-red-600'
-                          : passwordStrength < 75
-                          ? 'text-orange-600'
-                          : 'text-green-600'
-                      }
-                    >
-                      {passwordStrength < 50
-                        ? 'Weak'
-                        : passwordStrength < 75
-                        ? 'Fair'
-                        : 'Strong'}
-                    </span>
-                  </div>
-                  <div className="h-1.5 bg-gray-200 rounded-full">
-                    <div
-                      className={`h-1.5 rounded-full transition-all ${
-                        passwordStrength < 50
-                          ? 'bg-red-500'
-                          : passwordStrength < 75
-                          ? 'bg-orange-500'
-                          : 'bg-green-500'
-                      }`}
-                      style={{ width: `${passwordStrength}%` }}
+            {!showForgotPasswordForm && (
+              <>
+                {/* Password */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Password
+                  </label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <input
+                      name="password"
+                      type={showPassword ? 'text' : 'password'}
+                      value={formData.password}
+                      onChange={handleChange}
+                      disabled={loading}
+                      className={`w-full pl-10 pr-10 py-2.5 rounded-lg border ${
+                        fieldErrors.password
+                          ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
+                          : 'border-gray-300 focus:border-orange-500 focus:ring-orange-500'
+                      } focus:ring-2 focus:ring-opacity-20 transition-colors disabled:bg-gray-50 disabled:cursor-not-allowed`}
+                      placeholder="••••••••"
+                      autoComplete="new-password"
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(p => !p)}
+                      disabled={loading}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                      aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    >
+                      {showPassword ? (
+                        <EyeOff className="w-4 h-4" />
+                      ) : (
+                        <Eye className="w-4 h-4" />
+                      )}
+                    </button>
                   </div>
 
-                  <div className="space-y-1">
-                    {passwordRequirements.map((req, i) => (
-                      <div key={i} className="flex items-center gap-2 text-xs">
-                        {req.check ? (
-                          <CheckCircle2 className="w-3 h-3 text-green-500" />
-                        ) : (
-                          <AlertCircle className="w-3 h-3 text-gray-400" />
-                        )}
-                        <span
-                          className={
-                            req.check ? 'text-green-600' : 'text-gray-500'
-                          }
-                        >
-                          {req.text}
+                  {/* Password strength indicator */}
+                  {formData.password && (
+                    <div className="mt-2 space-y-2">
+                      <div className="flex justify-between text-xs">
+                        <span className="text-gray-600">Password strength</span>
+                        <span className={`font-medium ${
+                          passwordStrength < 25 ? 'text-red-600' :
+                          passwordStrength < 50 ? 'text-orange-600' :
+                          passwordStrength < 75 ? 'text-yellow-600' :
+                          passwordStrength < 90 ? 'text-blue-600' : 'text-green-600'
+                        }`}>
+                          {getStrengthLabel(passwordStrength)}
                         </span>
                       </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+                      <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full transition-all duration-300 ${getStrengthColor(passwordStrength)}`}
+                          style={{ width: `${passwordStrength}%` }}
+                        />
+                      </div>
 
-              {fieldErrors.password && (
-                <p className="text-xs text-red-600 mt-1">
-                  {fieldErrors.password}
-                </p>
-              )}
-            </div>
-
-            {/* Confirm Password */}
-            <div>
-              <label className="block text-sm font-medium mb-1">
-                Confirm Password
-              </label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <input
-                  name="confirmPassword"
-                  type={showConfirmPassword ? 'text' : 'password'}
-                  value={formData.confirmPassword}
-                  onChange={handleChange}
-                  className={`w-full pl-10 pr-10 py-2.5 rounded-lg border ${
-                    fieldErrors.confirmPassword
-                      ? 'border-red-300'
-                      : 'border-gray-300'
-                  } focus:ring-2 focus:ring-orange-500`}
-                />
-                <button
-                  type="button"
-                  onClick={() =>
-                    setShowConfirmPassword((prev) => !prev)
-                  }
-                  className="absolute right-3 top-1/2 -translate-y-1/2"
-                >
-                  {showConfirmPassword ? (
-                    <EyeOff className="w-4 h-4 text-gray-400" />
-                  ) : (
-                    <Eye className="w-4 h-4 text-gray-400" />
+                      {/* Requirements checklist */}
+                      <div className="grid grid-cols-2 gap-1 pt-1">
+                        {passwordRequirements.map((req, i) => (
+                          <div key={i} className="flex items-center gap-1.5">
+                            {req.check ? (
+                              <CheckCircle2 className="w-3 h-3 text-green-500 flex-shrink-0" />
+                            ) : (
+                              <div className="w-3 h-3 rounded-full border border-gray-300 flex-shrink-0" />
+                            )}
+                            <span className={`text-xs ${
+                              req.check ? 'text-green-600' : 'text-gray-500'
+                            }`}>
+                              {req.text}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   )}
-                </button>
-              </div>
-              {fieldErrors.confirmPassword && (
-                <p className="text-xs text-red-600 mt-1">
-                  {fieldErrors.confirmPassword}
-                </p>
-              )}
-            </div>
 
-            {/* Submit */}
+                  {fieldErrors.password && (
+                    <p className="mt-1 text-xs text-red-600">{fieldErrors.password}</p>
+                  )}
+                </div>
+
+                {/* Confirm Password */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Confirm Password
+                  </label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <input
+                      name="confirmPassword"
+                      type={showConfirmPassword ? 'text' : 'password'}
+                      value={formData.confirmPassword}
+                      onChange={handleChange}
+                      disabled={loading}
+                      className={`w-full pl-10 pr-10 py-2.5 rounded-lg border ${
+                        fieldErrors.confirmPassword
+                          ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
+                          : 'border-gray-300 focus:border-orange-500 focus:ring-orange-500'
+                      } focus:ring-2 focus:ring-opacity-20 transition-colors disabled:bg-gray-50 disabled:cursor-not-allowed`}
+                      placeholder="••••••••"
+                      autoComplete="new-password"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(p => !p)}
+                      disabled={loading}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                      aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+                    >
+                      {showConfirmPassword ? (
+                        <EyeOff className="w-4 h-4" />
+                      ) : (
+                        <Eye className="w-4 h-4" />
+                      )}
+                    </button>
+                  </div>
+                  {fieldErrors.confirmPassword && (
+                    <p className="mt-1 text-xs text-red-600">{fieldErrors.confirmPassword}</p>
+                  )}
+                </div>
+
+                {/* Terms and conditions */}
+                <div className="pt-2">
+                  <label className="flex items-start gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={acceptedTerms}
+                      onChange={(e) => setAcceptedTerms(e.target.checked)}
+                      disabled={loading}
+                      className="mt-0.5 w-4 h-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500 focus:ring-offset-0"
+                    />
+                    <span className="text-sm text-gray-600">
+                      I agree to the{' '}
+                      <button type="button" className="text-orange-600 hover:underline">
+                        Terms of Service
+                      </button>{' '}
+                      and{' '}
+                      <button type="button" className="text-orange-600 hover:underline">
+                        Privacy Policy
+                      </button>
+                    </span>
+                  </label>
+                  {fieldErrors.terms && (
+                    <p className="mt-1 text-xs text-red-600">{fieldErrors.terms}</p>
+                  )}
+                </div>
+              </>
+            )}
+
+            {/* Submit button */}
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 bg-gradient-to-r from-orange-500 to-amber-600 text-white rounded-lg font-semibold hover:shadow-lg disabled:opacity-50"
+              className="w-full py-3 bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-600 hover:to-amber-700 text-white font-medium rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2"
             >
-              {loading ? 'Creating account…' : 'Create Account'}
+              {loading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  {showForgotPasswordForm ? 'Sending...' : 'Creating Account...'}
+                </span>
+              ) : (
+                showForgotPasswordForm ? 'Send Reset Link' : 'Create Account'
+              )}
             </button>
           </form>
 
-          {/* Switch */}
+          {/* Switch between forms */}
           <div className="mt-6 text-center text-sm">
-            Already have an account?{' '}
-            <button
-              onClick={onSwitchToLogin}
-              className="font-semibold text-orange-600 hover:underline"
-            >
-              Sign in
-            </button>
+            {showForgotPasswordForm ? (
+              <>
+                Remember your password?{' '}
+                <button
+                  onClick={() => {
+                    setShowForgotPasswordForm(false);
+                    onSwitchToLogin(false);
+                  }}
+                  className="font-medium text-orange-600 hover:text-orange-700 hover:underline"
+                >
+                  Back to login
+                </button>
+              </>
+            ) : (
+              <>
+                Already have an account?{' '}
+                <button
+                  onClick={() => onSwitchToLogin(false)}
+                  className="font-medium text-orange-600 hover:text-orange-700 hover:underline"
+                >
+                  Sign in
+                </button>
+              </>
+            )}
           </div>
         </div>
       </div>
 
-      <style jsx>{`
-        .animate-fade-in {
-          animation: fade-in 0.2s ease-out;
-        }
-        .animate-slide-up {
-          animation: slide-up 0.25s ease-out;
-        }
-        @keyframes fade-in {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-        @keyframes slide-up {
-          from { opacity: 0; transform: translateY(20px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-      `}</style>
+      {/* Background click handler */}
+      <div
+        className="absolute inset-0"
+        onClick={onClose}
+        aria-hidden="true"
+      />
     </div>
   );
 };

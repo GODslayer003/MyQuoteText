@@ -1,61 +1,90 @@
-// ============================================
-// src/api/middleware/rateLimit.middleware.js
-// ============================================
-
+// backend/src/api/middleware/rateLimit.middleware.js
 const rateLimit = require('express-rate-limit');
-const logger = require('../../utils/logger');
 
 /**
  * Global rate limiter
  */
 const globalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100,
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per windowMs
+  message: {
+    success: false,
+    error: 'Too many requests from this IP, please try again after 15 minutes'
+  },
   standardHeaders: true,
-  legacyHeaders: false
+  legacyHeaders: false,
+  keyGenerator: (req) => {
+    // Use IP + user ID for authenticated users
+    return req.user?._id ? `${req.ip}-${req.user._id}` : req.ip;
+  },
+  skip: (req) => {
+    // Skip rate limiting for health checks
+    return req.path === '/health' || req.path === '/health/detailed';
+  }
 });
 
 /**
- * Auth limiter
+ * Strict rate limiter for authentication endpoints
  */
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 10,
-  skipSuccessfulRequests: true,
+  max: 5,
+  message: {
+    success: false,
+    error: 'Too many login attempts, please try again after 15 minutes'
+  },
   standardHeaders: true,
-  legacyHeaders: false
+  keyGenerator: (req) => req.ip
 });
 
 /**
- * Strict limiter
+ * File upload rate limiter
+ */
+const uploadLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 10,
+  message: {
+    success: false,
+    error: 'Too many file uploads, please try again after 1 hour'
+  },
+  standardHeaders: true,
+  keyGenerator: (req) => req.user?._id ? req.user._id.toString() : req.ip
+});
+
+/**
+ * API key rate limiter
+ */
+const apiKeyLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 1000,
+  message: {
+    success: false,
+    error: 'API rate limit exceeded'
+  },
+  keyGenerator: (req) => {
+    const apiKey = req.headers['x-api-key'] || req.query.apiKey;
+    return apiKey || req.ip;
+  }
+});
+
+/**
+ * Strict rate limiter for password reset endpoints
  */
 const strictLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 5,
-  standardHeaders: true,
-  legacyHeaders: false
-});
-
-/**
- * Job creation limiter (THIS WAS MISSING)
- */
-const jobCreationLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
-  max: 5,
+  max: 3, // Only 3 attempts per hour
+  message: {
+    success: false,
+    error: 'Too many attempts, please try again after 1 hour'
+  },
   standardHeaders: true,
-  legacyHeaders: false,
-  handler: (req, res) => {
-    logger.warn(`Job creation rate limit exceeded: ${req.ip}`);
-    res.status(429).json({
-      success: false,
-      error: 'Too many jobs created. Please try again later.'
-    });
-  }
+  keyGenerator: (req) => req.ip
 });
 
 module.exports = {
   globalLimiter,
   authLimiter,
-  strictLimiter,
-  jobCreationLimiter // ✅ REQUIRED
+  uploadLimiter,
+  apiKeyLimiter,
+  strictLimiter
 };

@@ -1,22 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { 
-  FileText, 
-  Shield, 
-  AlertTriangle, 
+import {
+  FileText,
+  Shield,
+  AlertTriangle,
   CheckCircle2,
   Clock,
   Users,
-  BookOpen,
-  ChevronRight,
-  Sparkles,
-  X,
-  ArrowRight,
-  Home,
   DollarSign,
-  Hammer,
+  X,
+  Home,
   Zap,
-  Eye
+  Eye,
+  Lock,
+  Mail,
+  Phone,
+  ArrowRight,
+  ChevronRight
 } from 'lucide-react';
 
 const Terms = () => {
@@ -406,7 +406,7 @@ const Terms = () => {
               }`} style={{ transitionDelay: '200ms' }}>
                 <div className="flex items-center gap-3 mb-6">
                   <div className="w-10 h-10 bg-gradient-to-r from-orange-500 to-amber-600 rounded-lg flex items-center justify-center">
-                    <BookOpen className="w-5 h-5 text-white" />
+                    <FileText className="w-5 h-5 text-white" />
                   </div>
                   <div>
                     <h3 className="font-bold text-gray-900">Quick Navigation</h3>

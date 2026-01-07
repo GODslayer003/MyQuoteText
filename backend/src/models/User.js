@@ -1,3 +1,4 @@
+// backend/src/models/User.js
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
@@ -12,19 +13,81 @@ const userSchema = new mongoose.Schema({
   },
   passwordHash: {
     type: String,
-    select: false // Don't return password by default
+    select: false
   },
   firstName: {
     type: String,
-    trim: true
+    trim: true,
+    default: ''
   },
   lastName: {
     type: String,
-    trim: true
+    trim: true,
+    default: ''
   },
   phone: {
     type: String,
+    trim: true,
+    default: ''
+  },
+  address: {
+    type: String,
+    trim: true,
+    default: ''
+  },
+  avatarUrl: {
+    type: String,
     trim: true
+  },
+  subscription: {
+    plan: {
+      type: String,
+      enum: ['Free', 'Professional', 'Enterprise'],
+      default: 'Free'
+    },
+    status: {
+      type: String,
+      enum: ['active', 'canceled', 'expired'],
+      default: 'active'
+    },
+    expiresAt: {
+      type: Date
+    },
+    reportsUsed: {
+      type: Number,
+      default: 0
+    },
+    reportsTotal: {
+      type: Number,
+      default: 3 // Default for Free plan
+    }
+  },
+  preferences: {
+    email: {
+      type: Boolean,
+      default: true
+    },
+    reportReady: {
+      type: Boolean,
+      default: true
+    },
+    promotional: {
+      type: Boolean,
+      default: false
+    },
+    reminders: {
+      type: Boolean,
+      default: true
+    }
+  },
+  security: {
+    twoFactorEnabled: {
+      type: Boolean,
+      default: false
+    },
+    lastLoginAt: {
+      type: Date
+    }
   },
   accountStatus: {
     type: String,
@@ -51,7 +114,7 @@ const userSchema = new mongoose.Schema({
     type: Date,
     select: false
   },
-  lastLoginAt: {
+  deletedAt: {
     type: Date
   },
   loginAttempts: {
@@ -68,16 +131,29 @@ const userSchema = new mongoose.Schema({
   }
 }, {
   timestamps: true,
-  collection: 'users'
+  collection: 'users',
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
 });
 
 // Indexes
 userSchema.index({ email: 1, accountStatus: 1 });
 userSchema.index({ createdAt: 1 });
+userSchema.index({ 'subscription.status': 1 });
+
+// Virtual for full name
+userSchema.virtual('fullName').get(function() {
+  return `${this.firstName} ${this.lastName}`.trim();
+});
 
 // Virtual for account locked status
 userSchema.virtual('isLocked').get(function() {
   return !!(this.lockUntil && this.lockUntil > Date.now());
+});
+
+// Virtual for active subscription
+userSchema.virtual('hasActiveSubscription').get(function() {
+  return this.subscription.status === 'active';
 });
 
 // Hash password before saving
@@ -99,47 +175,50 @@ userSchema.methods.comparePassword = async function(candidatePassword) {
   return bcrypt.compare(candidatePassword, this.passwordHash);
 };
 
+// Method to update last login
+userSchema.methods.updateLastLogin = function() {
+  this.security.lastLoginAt = new Date();
+  return this.save();
+};
+
 // Method to increment login attempts
 userSchema.methods.incLoginAttempts = function() {
-  // Reset attempts if lock has expired
   if (this.lockUntil && this.lockUntil < Date.now()) {
-    return this.updateOne({
-      $set: { loginAttempts: 1 },
-      $unset: { lockUntil: 1 }
-    });
+    this.loginAttempts = 1;
+    this.lockUntil = undefined;
+    return this.save();
   }
   
-  const updates = { $inc: { loginAttempts: 1 } };
-  const maxAttempts = 5;
-  const lockTime = 2 * 60 * 60 * 1000; // 2 hours
+  this.loginAttempts += 1;
   
-  // Lock account after max attempts
-  if (this.loginAttempts + 1 >= maxAttempts && !this.isLocked) {
-    updates.$set = { lockUntil: Date.now() + lockTime };
+  if (this.loginAttempts >= 5 && !this.isLocked) {
+    this.lockUntil = new Date(Date.now() + 2 * 60 * 60 * 1000); // 2 hours
   }
   
-  return this.updateOne(updates);
+  return this.save();
 };
 
 // Method to reset login attempts
 userSchema.methods.resetLoginAttempts = function() {
-  return this.updateOne({
-    $set: { loginAttempts: 0 },
-    $unset: { lockUntil: 1 }
-  });
+  this.loginAttempts = 0;
+  this.lockUntil = undefined;
+  return this.save();
 };
 
 // Static method to find by email
 userSchema.statics.findByEmail = function(email) {
   return this.findOne({ 
     email: email.toLowerCase(), 
-    accountStatus: 'active' 
+    accountStatus: { $ne: 'deleted' }
   });
 };
 
 // Soft delete
 userSchema.methods.softDelete = function() {
   this.accountStatus = 'deleted';
+  this.deletedAt = new Date();
+  // Anonymize email to allow reuse
+  this.email = `deleted_${Date.now()}_${this.email}`;
   return this.save();
 };
 

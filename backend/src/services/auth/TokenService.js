@@ -1,111 +1,127 @@
-// ============================================
-// src/services/auth/TokenService.js
-// ============================================
+// backend/src/services/auth/TokenService.js
 const jwt = require('jsonwebtoken');
-const appConfig = require('../../config/app');
 const logger = require('../../utils/logger');
 
 class TokenService {
   /**
-   * Generate access token
+   * Generate access token (short-lived)
+   * @param {string} userId - User ID
+   * @returns {string} JWT access token
    */
-  generateAccessToken(userId) {
+  static generateAccessToken(userId) {
     try {
-      return jwt.sign(
-        { userId: userId.toString() },
-        appConfig.security.jwtSecret,
-        { expiresIn: appConfig.security.jwtExpiresIn }
+      const token = jwt.sign(
+        { userId },
+        process.env.JWT_SECRET || 'your-secret-key',
+        {
+          expiresIn: process.env.JWT_EXPIRES_IN || '15m',
+          issuer: 'myquotemate',
+          subject: userId.toString()
+        }
       );
+      return token;
     } catch (error) {
-      logger.error('Failed to generate access token:', error);
+      logger.error('Error generating access token:', error);
       throw error;
     }
   }
 
   /**
-   * Generate refresh token
+   * Generate refresh token (long-lived)
+   * @param {string} userId - User ID
+   * @returns {string} JWT refresh token
    */
-  generateRefreshToken(userId) {
+  static generateRefreshToken(userId) {
     try {
-      return jwt.sign(
-        { 
-          userId: userId.toString(),
-          type: 'refresh'
-        },
-        appConfig.security.jwtRefreshSecret,
-        { expiresIn: appConfig.security.jwtRefreshExpiresIn }
+      const token = jwt.sign(
+        { userId },
+        process.env.JWT_REFRESH_SECRET || 'your-refresh-secret-key',
+        {
+          expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
+          issuer: 'myquotemate',
+          subject: userId.toString()
+        }
       );
+      return token;
     } catch (error) {
-      logger.error('Failed to generate refresh token:', error);
+      logger.error('Error generating refresh token:', error);
       throw error;
     }
   }
 
   /**
    * Verify access token
+   * @param {string} token - JWT token
+   * @returns {object} Decoded token payload
    */
-  verifyAccessToken(token) {
+  static verifyAccessToken(token) {
     try {
-      return jwt.verify(token, appConfig.security.jwtSecret);
+      const decoded = jwt.verify(
+        token,
+        process.env.JWT_SECRET || 'your-secret-key',
+        {
+          issuer: 'myquotemate'
+        }
+      );
+      return decoded;
     } catch (error) {
-      if (error.name === 'TokenExpiredError') {
-        logger.debug('Access token expired');
-      } else if (error.name === 'JsonWebTokenError') {
-        logger.debug('Invalid access token');
-      } else {
-        logger.error('Token verification error:', error);
-      }
+      logger.error('Error verifying access token:', error.message);
       return null;
     }
   }
 
   /**
    * Verify refresh token
+   * @param {string} token - JWT token
+   * @returns {object} Decoded token payload
    */
-  verifyRefreshToken(token) {
+  static verifyRefreshToken(token) {
     try {
-      const decoded = jwt.verify(token, appConfig.security.jwtRefreshSecret);
-      
-      if (decoded.type !== 'refresh') {
-        logger.warn('Invalid token type for refresh');
-        return null;
-      }
-      
+      const decoded = jwt.verify(
+        token,
+        process.env.JWT_REFRESH_SECRET || 'your-refresh-secret-key',
+        {
+          issuer: 'myquotemate'
+        }
+      );
       return decoded;
     } catch (error) {
-      if (error.name === 'TokenExpiredError') {
-        logger.debug('Refresh token expired');
-      } else if (error.name === 'JsonWebTokenError') {
-        logger.debug('Invalid refresh token');
-      } else {
-        logger.error('Refresh token verification error:', error);
-      }
+      logger.error('Error verifying refresh token:', error.message);
       return null;
     }
   }
 
   /**
-   * Decode token without verification (for debugging)
+   * Decode token without verification (for inspection)
+   * @param {string} token - JWT token
+   * @returns {object} Decoded token payload
    */
-  decodeToken(token) {
+  static decodeToken(token) {
     try {
       return jwt.decode(token);
     } catch (error) {
-      logger.error('Token decode error:', error);
+      logger.error('Error decoding token:', error.message);
       return null;
     }
   }
 
   /**
-   * Generate token pair
+   * Extract token from Authorization header
+   * @param {string} authHeader - Authorization header value
+   * @returns {string} Token without "Bearer " prefix
    */
-  generateTokenPair(userId) {
-    return {
-      accessToken: this.generateAccessToken(userId),
-      refreshToken: this.generateRefreshToken(userId),
-      expiresIn: appConfig.security.jwtExpiresIn
-    };
+  static extractTokenFromHeader(authHeader) {
+    if (!authHeader || typeof authHeader !== 'string') {
+      return null;
+    }
+    
+    const parts = authHeader.split(' ');
+    if (parts.length === 2 && parts[0].toLowerCase() === 'bearer') {
+      return parts[1];
+    }
+    
+    return null;
   }
 }
 
-module.exports = new TokenService();
+module.exports = TokenService;

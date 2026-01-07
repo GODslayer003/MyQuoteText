@@ -1,29 +1,29 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { 
-  Shield, 
-  Lock, 
-  Eye, 
-  Trash2,
+import {
+  Shield,
+  Lock,
+  Eye,
   Download,
-  Server,
   Cookie,
   Mail,
   Users,
   Clock,
   ChevronRight,
-  Sparkles,
   AlertTriangle,
   CheckCircle2,
   FileText,
   ArrowRight,
-  Home,
-  X,
-  Bell,
+  Trash2,
   Globe,
-  Calendar,
   Database,
-  Key
+  Phone,
+  Bell,
+  Calendar,
+  Key,
+  Server,
+  X,
+  Sparkles
 } from 'lucide-react';
 
 const Privacy = () => {

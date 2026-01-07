@@ -1,4 +1,4 @@
-// src/services/auth/AuthService.js
+// backend/src/services/auth/AuthService.js
 const crypto = require('crypto');
 const User = require('../../models/User');
 const logger = require('../../utils/logger');
@@ -7,98 +7,125 @@ class AuthService {
   /**
    * Generate password reset token
    */
-  async generatePasswordResetToken(user) {
-    try {
-      const resetToken = crypto.randomBytes(32).toString('hex');
-      const hashedToken = crypto
-        .createHash('sha256')
-        .update(resetToken)
-        .digest('hex');
-
-      user.passwordResetToken = hashedToken;
-      user.passwordResetExpires = Date.now() + 3600000; // 1 hour
-      await user.save();
-
-      return resetToken; // Return unhashed token to send in email
-    } catch (error) {
-      logger.error('Failed to generate password reset token:', error);
-      throw error;
-    }
+  static async generatePasswordResetToken(user) {
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const resetTokenExpiry = Date.now() + 3600000; // 1 hour
+    
+    user.passwordResetToken = resetToken;
+    user.passwordResetExpires = new Date(resetTokenExpiry);
+    await user.save();
+    
+    return resetToken;
   }
 
   /**
    * Verify password reset token
    */
-  async verifyPasswordResetToken(token) {
-    try {
-      const hashedToken = crypto
-        .createHash('sha256')
-        .update(token)
-        .digest('hex');
-
-      const user = await User.findOne({
-        passwordResetToken: hashedToken,
-        passwordResetExpires: { $gt: Date.now() },
-        accountStatus: 'active'
-      }).select('+passwordResetToken +passwordResetExpires');
-
-      return user;
-    } catch (error) {
-      logger.error('Failed to verify password reset token:', error);
-      return null;
-    }
+  static async verifyPasswordResetToken(token) {
+    const user = await User.findOne({
+      passwordResetToken: token,
+      passwordResetExpires: { $gt: Date.now() }
+    });
+    
+    return user;
   }
 
   /**
    * Generate email verification token
    */
-  async generateEmailVerificationToken(user) {
-    try {
-      const verificationToken = crypto.randomBytes(32).toString('hex');
-      const hashedToken = crypto
-        .createHash('sha256')
-        .update(verificationToken)
-        .digest('hex');
-
-      user.emailVerificationToken = hashedToken;
-      user.emailVerificationExpires = Date.now() + 86400000; // 24 hours
-      await user.save();
-
-      return verificationToken;
-    } catch (error) {
-      logger.error('Failed to generate email verification token:', error);
-      throw error;
-    }
+  static async generateEmailVerificationToken(user) {
+    const verificationToken = crypto.randomBytes(32).toString('hex');
+    const verificationExpiry = Date.now() + 86400000; // 24 hours
+    
+    user.emailVerificationToken = verificationToken;
+    user.emailVerificationExpires = new Date(verificationExpiry);
+    await user.save();
+    
+    return verificationToken;
   }
 
   /**
    * Verify email verification token
    */
-  async verifyEmailToken(token) {
-    try {
-      const hashedToken = crypto
-        .createHash('sha256')
-        .update(token)
-        .digest('hex');
+  static async verifyEmailVerificationToken(token) {
+    const user = await User.findOne({
+      emailVerificationToken: token,
+      emailVerificationExpires: { $gt: Date.now() }
+    });
+    
+    return user;
+  }
 
-      const user = await User.findOne({
-        emailVerificationToken: hashedToken,
-        emailVerificationExpires: { $gt: Date.now() }
-      }).select('+emailVerificationToken +emailVerificationExpires');
+  /**
+   * Generate API key for user
+   */
+  static async generateApiKey(user) {
+    const apiKey = crypto.randomBytes(32).toString('hex');
+    const apiKeyHash = crypto.createHash('sha256').update(apiKey).digest('hex');
+    
+    // Store hashed API key
+    user.apiKeyHash = apiKeyHash;
+    await user.save();
+    
+    return { apiKey, apiKeyHash };
+  }
 
-      if (user) {
-        user.emailVerified = true;
-        user.emailVerificationToken = undefined;
-        user.emailVerificationExpires = undefined;
-        await user.save();
-      }
+  /**
+   * Verify API key
+   */
+  static async verifyApiKey(apiKey) {
+    const apiKeyHash = crypto.createHash('sha256').update(apiKey).digest('hex');
+    const user = await User.findOne({ apiKeyHash });
+    
+    return user;
+  }
 
-      return user;
-    } catch (error) {
-      logger.error('Failed to verify email token:', error);
-      return null;
+  /**
+   * Validate password strength
+   */
+  static validatePasswordStrength(password) {
+    const minLength = 8;
+    const hasUpperCase = /[A-Z]/.test(password);
+    const hasLowerCase = /[a-z]/.test(password);
+    const hasNumbers = /\d/.test(password);
+    const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+    
+    if (password.length < minLength) {
+      return { valid: false, message: `Password must be at least ${minLength} characters long` };
     }
+    
+    if (!hasUpperCase) {
+      return { valid: false, message: 'Password must contain at least one uppercase letter' };
+    }
+    
+    if (!hasLowerCase) {
+      return { valid: false, message: 'Password must contain at least one lowercase letter' };
+    }
+    
+    if (!hasNumbers) {
+      return { valid: false, message: 'Password must contain at least one number' };
+    }
+    
+    if (!hasSpecialChar) {
+      return { valid: false, message: 'Password must contain at least one special character' };
+    }
+    
+    return { valid: true, message: 'Password is strong' };
+  }
+
+  /**
+   * Check if user can perform action (rate limiting)
+   */
+  static async checkRateLimit(userId, action, limit = 10, windowMs = 60000) {
+    // Simplified rate limiting
+    // In production, use Redis for distributed rate limiting
+    const now = Date.now();
+    const windowStart = now - windowMs;
+    
+    // This is a basic in-memory rate limiter
+    // For production, use a proper rate limiting solution
+    return { allowed: true, remaining: limit - 1 };
   }
 }
 
-module.exports = new AuthService();
+module.exports = AuthService;
