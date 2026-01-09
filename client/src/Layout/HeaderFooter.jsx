@@ -51,8 +51,8 @@ const HeaderFooter = ({ children }) => {
     user?.firstName && user?.lastName
       ? `${user.firstName[0]}${user.lastName[0]}`.toUpperCase()
       : user?.email
-      ? user.email.substring(0, 2).toUpperCase()
-      : 'U';
+        ? user.email.substring(0, 2).toUpperCase()
+        : 'U';
 
   const navigationItems = [
     { name: 'Home', path: '/' },
@@ -66,15 +66,11 @@ const HeaderFooter = ({ children }) => {
     'Quick Links': navigationItems,
     Support: [
       { name: 'FAQ', path: '/faq' },
-      { name: 'Check Your Quote', path: '/check-quote' },
-      { name: 'Help Center', path: '/help' }
+      { name: 'Check Your Quote', path: '/check-quote' }
     ],
     Legal: [
       { name: 'Privacy Policy', path: '/privacy' },
       { name: 'Terms of Use', path: '/terms' },
-      { name: 'Cookie Policy', path: '/cookies' }
-    ],
-    Company: [
       { name: 'About Us', path: '/about' }
     ]
   };
@@ -110,21 +106,20 @@ const HeaderFooter = ({ children }) => {
     <div className="min-h-screen flex flex-col bg-gray-50 text-gray-900">
       {/* HEADER */}
       <header
-        className={`sticky top-0 z-50 transition-all ${
-          scrolled
+        className={`sticky top-0 z-50 transition-all ${scrolled
             ? 'bg-white/95 backdrop-blur shadow-lg border-b'
             : 'bg-white border-b'
-        }`}
+          }`}
       >
         <nav className="max-w-7xl mx-auto px-4 h-16 lg:h-20 flex items-center justify-between">
           {/* Logo */}
-          
-            <img
-              src={logo}
-              alt="MyQuoteMate"
-              className="h-80 lg:h-84 object-contain"
-            />
-          
+
+          <img
+            src={logo}
+            alt="MyQuoteMate"
+            className="h-80 lg:h-84 object-contain"
+          />
+
 
           {/* Desktop Nav */}
           <div className="hidden lg:flex items-center gap-2">
@@ -132,11 +127,10 @@ const HeaderFooter = ({ children }) => {
               <Link
                 key={item.path}
                 to={item.path}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
-                  isActive(item.path)
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition ${isActive(item.path)
                     ? 'text-orange-600 bg-orange-50'
                     : 'text-gray-600 hover:bg-gray-50'
-                }`}
+                  }`}
               >
                 {item.name}
               </Link>
@@ -158,8 +152,8 @@ const HeaderFooter = ({ children }) => {
                   className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-100 transition-colors"
                 >
                   {user.avatarUrl ? (
-                    <img 
-                      src={user.avatarUrl} 
+                    <img
+                      src={user.avatarUrl}
                       alt={`${user.firstName} ${user.lastName}`}
                       className="w-10 h-10 rounded-full object-cover"
                     />
@@ -169,9 +163,8 @@ const HeaderFooter = ({ children }) => {
                     </div>
                   )}
                   <ChevronDown
-                    className={`w-4 h-4 transition ${
-                      profileMenuOpen ? 'rotate-180' : ''
-                    }`}
+                    className={`w-4 h-4 transition ${profileMenuOpen ? 'rotate-180' : ''
+                      }`}
                   />
                 </button>
 
@@ -238,11 +231,10 @@ const HeaderFooter = ({ children }) => {
                 key={item.path}
                 to={item.path}
                 onClick={() => setMobileMenuOpen(false)}
-                className={`block px-4 py-3 rounded-lg transition-colors ${
-                  isActive(item.path)
+                className={`block px-4 py-3 rounded-lg transition-colors ${isActive(item.path)
                     ? 'bg-orange-50 text-orange-600'
                     : 'hover:bg-gray-50'
-                }`}
+                  }`}
               >
                 {item.name}
               </Link>
@@ -318,14 +310,19 @@ const HeaderFooter = ({ children }) => {
       <footer className="bg-white border-t mt-auto">
         <div className="max-w-7xl mx-auto px-4 py-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8">
           <div className="lg:col-span-2">
-            
-              <img src={logo} alt="MyQuoteMate" className="h-70 mb-74" />
-            
+            <img
+              src={logo}
+              alt="MyQuoteMate"
+              className="h-70 object-contain"
+            />
+
+
             <p className="text-sm text-gray-600 max-w-md">
               Helping Australian homeowners understand tradie quotes with
               confidence using AI-powered analysis.
             </p>
           </div>
+
 
           {Object.entries(footerLinks).map(([title, links]) => (
             <div key={title}>

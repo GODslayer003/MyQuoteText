@@ -143,10 +143,10 @@ const Landing = () => {
             {/* CTA Button */}
             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center mb-8 sm:mb-10 px-4">
               <Link
-                to="/upload"
+                to="/check-quote"
                 className="group relative px-6 sm:px-8 py-3 sm:py-4 bg-gradient-to-r from-orange-500 to-amber-600 text-white rounded-xl sm:rounded-2xl font-semibold text-base sm:text-lg hover:shadow-2xl hover:shadow-orange-500/40 transition-all duration-300 transform hover:scale-105 flex items-center gap-2 shadow-lg shadow-orange-500/20 w-full sm:w-auto"
               >
-                <span className="relative z-10">Check Your Quote Now - $29.99</span>
+                <span className="relative z-10">Check Your Quote Now</span>
                 <ArrowRight className="w-5 h-5 relative z-10 group-hover:translate-x-1 transition-transform" />
                 <div className="absolute inset-0 bg-gradient-to-r from-orange-600 to-amber-700 rounded-xl sm:rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
               </Link>
@@ -383,10 +383,10 @@ const Landing = () => {
 
           <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center mb-10 sm:mb-12">
             <Link
-              to="/upload"
+              to="/check-quote"
               className="group relative px-6 sm:px-8 py-3 sm:py-4 bg-white text-orange-600 rounded-xl sm:rounded-2xl font-bold text-base sm:text-lg hover:shadow-2xl transition-all duration-300 transform hover:scale-105 shadow-xl shadow-orange-700/30 w-full sm:w-auto"
             >
-              <span className="relative z-10">Analyze Your Quote - $29.99</span>
+              <span className="relative z-10">Analyze Your Quote</span>
               <ArrowRight className="inline-block w-4 h-4 sm:w-5 sm:h-5 ml-2 relative z-10 group-hover:translate-x-1 transition-transform" />
               <div className="absolute inset-0 bg-gradient-to-r from-orange-50 to-amber-50 rounded-xl sm:rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
             </Link>

@@ -1,10 +1,10 @@
 // client/src/App.jsx
-import React from "react";
+import React, { useEffect } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 
 import HeaderFooter from "./Layout/HeaderFooter";
-import { AuthProvider } from "./providers/AuthProvider";
 import { useAuth } from "./hooks/useAuth";
+
 import Landing from "./pages/Landing";
 import HowItWorks from "./pages/HowItWorks";
 import Pricing from "./pages/Pricing";
@@ -17,21 +17,19 @@ import Privacy from "./pages/Privacy";
 import FAQ from "./pages/FAQ";
 import Profile from "./pages/Profile";
 
-// ------------------------------
-// Protected Route
-// ------------------------------
+// ------------------------------------
+// Protected Route (modal-based auth)
+// ------------------------------------
 const ProtectedRoute = ({ children }) => {
   const { user, requestLogin } = useAuth();
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (!user) {
       requestLogin(window.location.pathname);
     }
   }, [user, requestLogin]);
 
-  if (!user) {
-    return null;
-  }
+  if (!user) return null;
 
   return children;
 };
@@ -39,49 +37,50 @@ const ProtectedRoute = ({ children }) => {
 export default function App() {
   return (
     <Router>
-      <AuthProvider>
-        <HeaderFooter>
-          <Routes>
-            <Route path="/" element={<Landing />} />
-            <Route path="/how-it-works" element={<HowItWorks />} />
-            <Route path="/guides" element={<Guides />} />
-            <Route path="/contact" element={<Contact />} />
-            <Route path="/about" element={<AboutUs />} />
-            <Route path="/faq" element={<FAQ />} />
-            <Route path="/terms" element={<Terms />} />
-            <Route path="/privacy" element={<Privacy />} />
+      <HeaderFooter>
+        <Routes>
+          {/* Public routes */}
+          <Route path="/" element={<Landing />} />
+          <Route path="/how-it-works" element={<HowItWorks />} />
+          <Route path="/guides" element={<Guides />} />
+          <Route path="/contact" element={<Contact />} />
+          <Route path="/about" element={<AboutUs />} />
+          <Route path="/faq" element={<FAQ />} />
+          <Route path="/terms" element={<Terms />} />
+          <Route path="/privacy" element={<Privacy />} />
 
-            <Route
-              path="/pricing"
-              element={
-                <ProtectedRoute>
-                  <Pricing />
-                </ProtectedRoute>
-              }
-            />
+          {/* Protected routes */}
+          <Route
+            path="/pricing"
+            element={
+              <ProtectedRoute>
+                <Pricing />
+              </ProtectedRoute>
+            }
+          />
 
-            <Route
-              path="/check-quote"
-              element={
-                <ProtectedRoute>
-                  <CheckQuote />
-                </ProtectedRoute>
-              }
-            />
+          <Route
+            path="/check-quote"
+            element={
+              <ProtectedRoute>
+                <CheckQuote />
+              </ProtectedRoute>
+            }
+          />
 
-            <Route
-              path="/profile"
-              element={
-                <ProtectedRoute>
-                  <Profile />
-                </ProtectedRoute>
-              }
-            />
+          <Route
+            path="/profile"
+            element={
+              <ProtectedRoute>
+                <Profile />
+              </ProtectedRoute>
+            }
+          />
 
-            <Route path="*" element={<Navigate to="/" />} />
-          </Routes>
-        </HeaderFooter>
-      </AuthProvider>
+          {/* Fallback */}
+          <Route path="*" element={<Navigate to="/" />} />
+        </Routes>
+      </HeaderFooter>
     </Router>
   );
 }
