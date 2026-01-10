@@ -148,3 +148,5 @@ const LoginPage = () => {
 };
 
 export default LoginPage;
+
+// Note: The "input-field" and "btn-primary" classes should be defined in your CSS for styling the input fields and buttons respectively.
