@@ -247,7 +247,7 @@ npm run dev
 npm run worker:dev
 ```
 
-The API will be available at `http://localhost:3000`
+The API will be available at `https://myquotemate-7u5w.onrender.com`
 
 ### Production Mode
 
@@ -398,7 +398,7 @@ myquotemate-backend/
 ### Base URL
 
 ```
-Development: http://localhost:3000/api/v1
+Development: https://myquotemate-7u5w.onrender.com/api/v1
 Production: https://api.myquotemate.com.au/api/v1
 ```
 
@@ -447,7 +447,7 @@ DELETE /users/me              - Delete account
 #### 1. Register User
 
 ```bash
-curl -X POST http://localhost:3000/api/v1/auth/register \
+curl -X POST https://myquotemate-7u5w.onrender.com/api/v1/auth/register \
   -H "Content-Type: application/json" \
   -d '{
     "email": "user@example.com",
@@ -480,7 +480,7 @@ curl -X POST http://localhost:3000/api/v1/auth/register \
 #### 2. Upload Quote PDF
 
 ```bash
-curl -X POST http://localhost:3000/api/v1/jobs \
+curl -X POST https://myquotemate-7u5w.onrender.com/api/v1/jobs \
   -H "Authorization: Bearer YOUR_TOKEN" \
   -F "document=@/path/to/quote.pdf" \
   -F "email=user@example.com" \
@@ -490,7 +490,7 @@ curl -X POST http://localhost:3000/api/v1/jobs \
 #### 3. Create Payment
 
 ```bash
-curl -X POST http://localhost:3000/api/v1/payments/create-intent \
+curl -X POST https://myquotemate-7u5w.onrender.com/api/v1/payments/create-intent \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer YOUR_TOKEN" \
   -d '{
@@ -532,10 +532,10 @@ Use the provided Postman collection or test with curl:
 
 ```bash
 # Health check
-curl http://localhost:3000/health
+curl https://myquotemate-7u5w.onrender.com/health
 
 # Detailed health check
-curl http://localhost:3000/health/detailed
+curl https://myquotemate-7u5w.onrender.com/health/detailed
 ```
 
 ---

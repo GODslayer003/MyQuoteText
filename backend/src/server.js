@@ -44,7 +44,7 @@ const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:3001',
   'http://localhost:5174',
-  'http://localhost:3000',
+  'https://myquotemate-7u5w.onrender.com',
   process.env.FRONTEND_URL
 ].filter(Boolean);
 
@@ -169,7 +169,7 @@ app.get('/', (req, res) => {
     version: process.env.API_VERSION || 'v1',
     status: 'operational',
     environment: process.env.NODE_ENV || 'development',
-    documentation: `${process.env.API_BASE_URL || 'http://localhost:3000'}/docs`,
+    documentation: `${process.env.API_BASE_URL || 'https://myquotemate-7u5w.onrender.com'}/docs`,
     endpoints: {
       health: '/health',
       healthDetailed: '/health/detailed',
@@ -276,7 +276,7 @@ process.on('uncaughtException', (error) => {
 // SERVER STARTUP
 // ============================================
 
-const PORT = process.env.PORT || 3002;
+const PORT = process.env.PORT || 3000;
 let server;
 
 const startServer = async () => {

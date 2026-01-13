@@ -56,7 +56,7 @@ const LoginModal = ({ isOpen, onClose, onSwitchToSignUp }) => {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
-    
+
     // Clear field-specific error
     if (fieldErrors[name]) {
       setFieldErrors(prev => ({ ...prev, [name]: '' }));
@@ -81,7 +81,7 @@ const LoginModal = ({ isOpen, onClose, onSwitchToSignUp }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (isLocked) {
       const remainingTime = Math.ceil((lockUntil - Date.now()) / 60000); // in minutes
       alert(`Account is locked. Please try again in ${remainingTime} minute(s).`);
@@ -95,11 +95,11 @@ const LoginModal = ({ isOpen, onClose, onSwitchToSignUp }) => {
     }
 
     const success = await login(formData);
-    
+
     if (!success) {
       const newAttempts = loginAttempts + 1;
       setLoginAttempts(newAttempts);
-      
+
       if (newAttempts >= 5) {
         // Lock account for 2 hours (matching backend)
         const lockTime = Date.now() + (2 * 60 * 60 * 1000);
@@ -121,7 +121,7 @@ const LoginModal = ({ isOpen, onClose, onSwitchToSignUp }) => {
   };
 
   return (
-    <div 
+    <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
       style={{ animation: 'fade-in 0.2s ease-out' }}
     >
@@ -208,11 +208,10 @@ const LoginModal = ({ isOpen, onClose, onSwitchToSignUp }) => {
                   value={formData.email}
                   onChange={handleChange}
                   disabled={isLocked || loading}
-                  className={`w-full pl-10 pr-3 py-2.5 rounded-lg border ${
-                    fieldErrors.email
+                  className={`w-full pl-10 pr-3 py-2.5 rounded-lg border ${fieldErrors.email
                       ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
                       : 'border-gray-300 focus:border-orange-500 focus:ring-orange-500'
-                  } focus:ring-2 focus:ring-opacity-20 transition-colors disabled:bg-gray-50 disabled:cursor-not-allowed`}
+                    } focus:ring-2 focus:ring-opacity-20 transition-colors disabled:bg-gray-50 disabled:cursor-not-allowed`}
                   placeholder="you@example.com"
                   autoComplete="email"
                 />
@@ -244,11 +243,10 @@ const LoginModal = ({ isOpen, onClose, onSwitchToSignUp }) => {
                   value={formData.password}
                   onChange={handleChange}
                   disabled={isLocked || loading}
-                  className={`w-full pl-10 pr-10 py-2.5 rounded-lg border ${
-                    fieldErrors.password
+                  className={`w-full pl-10 pr-10 py-2.5 rounded-lg border ${fieldErrors.password
                       ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
                       : 'border-gray-300 focus:border-orange-500 focus:ring-orange-500'
-                  } focus:ring-2 focus:ring-opacity-20 transition-colors disabled:bg-gray-50 disabled:cursor-not-allowed`}
+                    } focus:ring-2 focus:ring-opacity-20 transition-colors disabled:bg-gray-50 disabled:cursor-not-allowed`}
                   placeholder="••••••••"
                   autoComplete="current-password"
                 />

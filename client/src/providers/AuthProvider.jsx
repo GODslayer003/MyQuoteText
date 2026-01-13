@@ -15,7 +15,7 @@ export const useAuth = () => {
 };
 
 // Get API base URL
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:3000";
+const API_BASE = import.meta.env.VITE_API_BASE || "https://myquotemate-7u5w.onrender.com";
 const API_VERSION = import.meta.env.VITE_API_VERSION || "v1";
 const API_URL = `${API_BASE}/api/${API_VERSION}`;
 
