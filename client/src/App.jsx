@@ -55,14 +55,7 @@ export default function App() {
           <Route path="/privacy" element={<Privacy />} />
 
           {/* Protected routes */}
-          <Route
-            path="/pricing"
-            element={
-              <ProtectedRoute>
-                <Pricing />
-              </ProtectedRoute>
-            }
-          />
+          <Route path="/pricing" element={<Pricing />} />
 
           <Route
             path="/check-quote"

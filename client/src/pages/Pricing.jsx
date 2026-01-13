@@ -1,6 +1,6 @@
 // client/src/pages/Pricing.jsx
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   CheckCircle,
   XCircle,
@@ -45,6 +45,7 @@ import { toast } from 'react-hot-toast'; // Assuming toast is available, or use 
 
 const Pricing = () => {
   const { user, refreshUser, requestLogin } = useAuth();
+  const navigate = useNavigate();
   const [isVisible, setIsVisible] = useState(false);
   const [hoveredPlan, setHoveredPlan] = useState(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -57,7 +58,7 @@ const Pricing = () => {
   const handlePlanSelect = (plan) => {
     if (plan.name === "Free") {
       // Free plan - redirect to upload or dashboard
-      window.location.href = '/upload';
+      navigate('/check-quote');
       return;
     }
 

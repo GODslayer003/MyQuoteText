@@ -1,6 +1,6 @@
 // client/src/pages/Profile.jsx
 import React, { useState, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   User,
   Settings,
@@ -37,6 +37,7 @@ import api from '../services/api';
 
 const Profile = () => {
   const { user, logout, updateUser } = useAuth(); // Assuming your auth hook provides these
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('personal');
   const [isEditing, setIsEditing] = useState(false);
   const [showChangePassword, setShowChangePassword] = useState(false);
@@ -295,8 +296,7 @@ const Profile = () => {
 
   const handleLogout = () => {
     logout();
-    // Optional: Redirect to home
-    // navigate('/');
+    navigate('/');
   };
 
   const handleDeleteAccount = async () => {
@@ -312,8 +312,7 @@ const Profile = () => {
 
       if (response.data.success) {
         logout();
-        // Optional: Show success message or redirect
-        window.location.href = '/';
+        navigate('/');
       }
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to delete account');

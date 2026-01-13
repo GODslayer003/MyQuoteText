@@ -193,7 +193,7 @@ export const AuthProvider = ({ children }) => {
       // Close modal and handle redirect
       setShowAuthModal(false);
       if (redirectPath) {
-        window.location.href = redirectPath;
+        navigate(redirectPath);
         setRedirectPath(null);
       }
 
@@ -283,11 +283,11 @@ export const AuthProvider = ({ children }) => {
   // REQUIRE LOGIN (FOR PROTECTED ROUTES)
   // ----------------------------------
   const requestLogin = useCallback((path) => {
-    if (user || showAuthModal) return; // Already logged in OR modal already showing
+    if (user) return; // Already logged in
 
     setRedirectPath(path);
     setShowAuthModal(true);
-  }, [user, showAuthModal]);
+  }, [user]); // Removed showAuthModal to stabilize identity and stop loops
 
   // ----------------------------------
   // CLEAR ERROR
@@ -495,7 +495,7 @@ export const AuthProvider = ({ children }) => {
           setShowAuthModal(false);
           clearError();
           // If on a protected route and closing modal, redirect to home
-          const protectedRoutes = ['/pricing', '/check-quote', '/profile'];
+          const protectedRoutes = ['/check-quote', '/profile'];
           if (protectedRoutes.some(route => window.location.pathname.startsWith(route)) && !user) {
             navigate('/');
           }
