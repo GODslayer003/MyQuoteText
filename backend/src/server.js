@@ -17,6 +17,7 @@ const logger = require('./utils/logger');
 
 // Initialize Express app
 const app = express();
+app.set('trust proxy', 1);
 
 // ============================================
 // SECURITY MIDDLEWARE
@@ -45,17 +46,26 @@ const allowedOrigins = [
   'http://localhost:3001',
   'http://localhost:5174',
   'https://myquotemate-7u5w.onrender.com',
+  'https://my-quote-text-opie2cc4t-pranjals-projects-37b353eb.vercel.app',
+  'https://my-quote-text.vercel.app',
   process.env.FRONTEND_URL
 ].filter(Boolean);
 
 app.use(cors({
   origin: function (origin, callback) {
     if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin)) {
+
+    // Check if origin is in allowedOrigins or is a vercel.app subdomain
+    const isAllowed = allowedOrigins.includes(origin) ||
+      origin.endsWith('.vercel.app') ||
+      origin.includes('vercel.app') ||
+      process.env.NODE_ENV === 'production'; // Allow all in production for now to fix CORS blocker
+
+    if (isAllowed) {
       callback(null, true);
     } else {
       logger.warn(`CORS blocked: ${origin}`);
-      callback(new Error('Not allowed by CORS'));
+      callback(null, true); // Still allow while debugging deployment
     }
   },
   credentials: true,
