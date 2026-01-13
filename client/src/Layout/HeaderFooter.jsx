@@ -107,8 +107,8 @@ const HeaderFooter = ({ children }) => {
       {/* HEADER */}
       <header
         className={`sticky top-0 z-50 transition-all ${scrolled
-            ? 'bg-white/95 backdrop-blur shadow-lg border-b'
-            : 'bg-white border-b'
+          ? 'bg-white/95 backdrop-blur shadow-lg border-b'
+          : 'bg-white border-b'
           }`}
       >
         <nav className="max-w-7xl mx-auto px-4 h-16 lg:h-20 flex items-center justify-between">
@@ -128,8 +128,8 @@ const HeaderFooter = ({ children }) => {
                 key={item.path}
                 to={item.path}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition ${isActive(item.path)
-                    ? 'text-orange-600 bg-orange-50'
-                    : 'text-gray-600 hover:bg-gray-50'
+                  ? 'text-orange-600 bg-orange-50'
+                  : 'text-gray-600 hover:bg-gray-50'
                   }`}
               >
                 {item.name}
@@ -232,8 +232,8 @@ const HeaderFooter = ({ children }) => {
                 to={item.path}
                 onClick={() => setMobileMenuOpen(false)}
                 className={`block px-4 py-3 rounded-lg transition-colors ${isActive(item.path)
-                    ? 'bg-orange-50 text-orange-600'
-                    : 'hover:bg-gray-50'
+                  ? 'bg-orange-50 text-orange-600'
+                  : 'hover:bg-gray-50'
                   }`}
               >
                 {item.name}
@@ -274,9 +274,17 @@ const HeaderFooter = ({ children }) => {
                   onClick={() => setMobileMenuOpen(false)}
                   className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-50"
                 >
-                  <div className="w-10 h-10 bg-gradient-to-r from-orange-500 to-amber-600 rounded-full flex items-center justify-center text-white font-semibold">
-                    {avatarInitials}
-                  </div>
+                  {user.avatarUrl ? (
+                    <img
+                      src={user.avatarUrl}
+                      alt={`${user.firstName} ${user.lastName}`}
+                      className="w-10 h-10 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-10 h-10 bg-gradient-to-r from-orange-500 to-amber-600 rounded-full flex items-center justify-center text-white font-semibold flex-shrink-0">
+                      {avatarInitials}
+                    </div>
+                  )}
                   <div>
                     <p className="font-semibold">
                       {user.firstName} {user.lastName}

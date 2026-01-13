@@ -52,9 +52,8 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
 
       {/* Sidebar */}
       <aside
-        className={`fixed left-0 top-0 h-screen w-64 bg-gradient-to-b from-gray-900 to-gray-800 transform transition-transform duration-300 ease-in-out z-40 hidden lg:flex flex-col lg:translate-x-0 ${
-          isOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
+        className={`fixed left-0 top-0 h-screen w-64 bg-gradient-to-b from-gray-900 to-gray-800 transform transition-transform duration-300 ease-in-out z-40 flex flex-col lg:translate-x-0 ${isOpen ? 'translate-x-0' : '-translate-x-full'
+          }`}
       >
         <div className="p-6 h-full flex flex-col">
           {/* Logo */}
@@ -75,11 +74,10 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                 key={item.path}
                 to={item.path}
                 onClick={() => setIsOpen(false)}
-                className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
-                  location.pathname === item.path
+                className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${location.pathname === item.path
                     ? 'bg-orange-600 text-white'
                     : 'text-gray-400 hover:bg-gray-700 hover:text-white'
-                }`}
+                  }`}
               >
                 {item.icon}
                 <span className="font-medium">{item.label}</span>

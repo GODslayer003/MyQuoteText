@@ -54,6 +54,10 @@ class AuthController {
 
       logger.info(`User registered: ${user.email}`);
 
+      // Send welcome email
+      const EmailService = require('../../services/email/EmailService');
+      await EmailService.sendWelcomeEmail(user);
+
       res.status(201).json({
         success: true,
         data: {
@@ -86,7 +90,7 @@ class AuthController {
 
       // Find user
       const user = await User.findByEmail(email).select('+passwordHash');
-      
+
       if (!user) {
         return res.status(401).json({
           success: false,
@@ -104,10 +108,10 @@ class AuthController {
 
       // Verify password
       const isPasswordValid = await user.comparePassword(password);
-      
+
       if (!isPasswordValid) {
         await user.incLoginAttempts();
-        
+
         return res.status(401).json({
           success: false,
           error: 'Invalid email or password'
@@ -179,7 +183,7 @@ class AuthController {
 
       // Verify refresh token
       const decoded = TokenService.verifyRefreshToken(refreshToken);
-      
+
       if (!decoded) {
         return res.status(401).json({
           success: false,
@@ -189,7 +193,7 @@ class AuthController {
 
       // Find user
       const user = await User.findById(decoded.userId);
-      
+
       if (!user || user.accountStatus !== 'active') {
         return res.status(401).json({
           success: false,
@@ -226,7 +230,7 @@ class AuthController {
       const { email } = req.body;
 
       const user = await User.findByEmail(email);
-      
+
       // Don't reveal if user exists
       if (!user) {
         return res.json({
@@ -270,7 +274,7 @@ class AuthController {
       const { token, newPassword } = req.body;
 
       const user = await AuthService.verifyPasswordResetToken(token);
-      
+
       if (!user) {
         return res.status(400).json({
           success: false,

@@ -1,6 +1,6 @@
 # MyQuoteMate Backend 🚀
 
-A production-ready, enterprise-grade SaaS backend for AI-powered contractor quote analysis, built specifically for Australian homeowners.
+A production-ready, Premium-grade SaaS backend for AI-powered contractor quote analysis, built specifically for Australian homeowners.
 
 [![Node.js](https://img.shields.io/badge/Node.js-18.x-green.svg)](https://nodejs.org/)
 [![MongoDB](https://img.shields.io/badge/MongoDB-5.0+-green.svg)](https://www.mongodb.com/)

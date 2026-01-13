@@ -47,7 +47,7 @@ const userSchema = new mongoose.Schema({
   subscription: {
     plan: {
       type: String,
-      enum: ['Free', 'Professional', 'Enterprise'],
+      enum: ['Free', 'Standard', 'Premium'],
       default: 'Free'
     },
     status: {
@@ -55,17 +55,22 @@ const userSchema = new mongoose.Schema({
       enum: ['active', 'canceled', 'expired'],
       default: 'active'
     },
-    expiresAt: {
-      type: Date
-    },
-    reportsUsed: {
+    credits: {
       type: Number,
       default: 0
     },
-    reportsTotal: {
-      type: Number,
-      default: 3 // Default for Free plan
-    }
+    freeReportDate: {
+      type: Date,
+      default: null
+    },
+    currentPeriodStart: Date,
+    currentPeriodEnd: Date,
+    stripeCustomerId: String,
+    stripeSubscriptionId: String
+  },
+  reportsUsed: {
+    type: Number,
+    default: 0
   },
   preferences: {
     email: {

@@ -173,8 +173,8 @@ const resultSchema = new mongoose.Schema(
     // Tier-specific flag
     tier: {
       type: String,
-      enum: ['free', 'standard', 'premium'],
-      default: 'free',
+      enum: ['Free', 'Standard', 'Premium'],
+      default: 'Free',
       index: true
     },
 

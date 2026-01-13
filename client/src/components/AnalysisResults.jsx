@@ -23,166 +23,166 @@ const AnalysisResults = ({ jobResult, userTier = 'free' }) => {
     materialsCost: 4500,
     fairPriceRange: { min: 6500, max: 8500 },
     costBreakdown: [
-      { 
-        description: "Labor - Bathroom Installation (3 days @ $95/hour)", 
-        quantity: 24, 
-        unitPrice: 95, 
-        totalPrice: 2280, 
+      {
+        description: "Labor - Bathroom Installation (3 days @ $95/hour)",
+        quantity: 24,
+        unitPrice: 95,
+        totalPrice: 2280,
         category: "labor",
         flagged: false
       },
-      { 
-        description: "Caroma Solus Wall-Mounted Toilet Suite", 
-        quantity: 1, 
-        unitPrice: 580, 
-        totalPrice: 580, 
+      {
+        description: "Caroma Solus Wall-Mounted Toilet Suite",
+        quantity: 1,
+        unitPrice: 580,
+        totalPrice: 580,
         category: "fixtures",
         flagged: false
       },
-      { 
-        description: "Caroma Liano 1700mm Freestanding Bath", 
-        quantity: 1, 
-        unitPrice: 1200, 
-        totalPrice: 1200, 
+      {
+        description: "Caroma Liano 1700mm Freestanding Bath",
+        quantity: 1,
+        unitPrice: 1200,
+        totalPrice: 1200,
         category: "fixtures",
         flagged: false
       },
-      { 
-        description: "Custom 1500mm Double Vanity with Stone Top", 
-        quantity: 1, 
-        unitPrice: 1500, 
-        totalPrice: 1500, 
+      {
+        description: "Custom 1500mm Double Vanity with Stone Top",
+        quantity: 1,
+        unitPrice: 1500,
+        totalPrice: 1500,
         category: "fixtures",
         flagged: false
       },
-      { 
-        description: "Astra Walker Icon Mixer Tap Set", 
-        quantity: 1, 
-        unitPrice: 340, 
-        totalPrice: 340, 
+      {
+        description: "Astra Walker Icon Mixer Tap Set",
+        quantity: 1,
+        unitPrice: 340,
+        totalPrice: 340,
         category: "fixtures",
         flagged: false
       },
-      { 
-        description: "Plumbing Fittings, Connections & Testing", 
-        quantity: 1, 
-        unitPrice: 800, 
-        totalPrice: 800, 
+      {
+        description: "Plumbing Fittings, Connections & Testing",
+        quantity: 1,
+        unitPrice: 800,
+        totalPrice: 800,
         category: "materials",
         flagged: false
       }
     ],
     redFlags: [
-      { 
-        title: "Old fixture disposal not explicitly mentioned", 
-        description: "Verify whether the quote includes cost of removing and disposing of old bathroom fixtures. This can add $300-500 if not included.", 
-        severity: "medium", 
-        category: "scope" 
+      {
+        title: "Old fixture disposal not explicitly mentioned",
+        description: "Verify whether the quote includes cost of removing and disposing of old bathroom fixtures. This can add $300-500 if not included.",
+        severity: "medium",
+        category: "scope"
       },
-      { 
-        title: "Warranty period is relatively short", 
-        description: "5-year warranty on workmanship is standard but industry best practice is 7-10 years. Consider negotiating for an extended warranty.", 
-        severity: "low", 
-        category: "warranty" 
+      {
+        title: "Warranty period is relatively short",
+        description: "5-year warranty on workmanship is standard but industry best practice is 7-10 years. Consider negotiating for an extended warranty.",
+        severity: "low",
+        category: "warranty"
       },
-      { 
-        title: "No contingency for structural issues", 
-        description: "Quote doesn't mention what happens if water damage or mold is discovered during installation. Clarify responsibility and additional costs.", 
-        severity: "medium", 
-        category: "risk" 
+      {
+        title: "No contingency for structural issues",
+        description: "Quote doesn't mention what happens if water damage or mold is discovered during installation. Clarify responsibility and additional costs.",
+        severity: "medium",
+        category: "risk"
       }
     ],
     questionsToAsk: [
-      { 
-        question: "Is the removal and disposal of old bathroom fixtures included in this quote, or will there be additional charges?", 
-        category: "scope", 
-        importance: "must-ask" 
+      {
+        question: "Is the removal and disposal of old bathroom fixtures included in this quote, or will there be additional charges?",
+        category: "scope",
+        importance: "must-ask"
       },
-      { 
-        question: "What is the breakdown of warranty - is it 5 years on both labor AND all fixtures, or separately?", 
-        category: "warranty", 
-        importance: "must-ask" 
+      {
+        question: "What is the breakdown of warranty - is it 5 years on both labor AND all fixtures, or separately?",
+        category: "warranty",
+        importance: "must-ask"
       },
-      { 
-        question: "Will you provide a detailed timeline showing when different trades will be on site (plumber, painter, tiler)?", 
-        category: "timeline", 
-        importance: "must-ask" 
+      {
+        question: "Will you provide a detailed timeline showing when different trades will be on site (plumber, painter, tiler)?",
+        category: "timeline",
+        importance: "must-ask"
       },
-      { 
-        question: "What is your contingency process and additional cost if we discover water damage or mold behind the walls?", 
-        category: "risk", 
-        importance: "should-ask" 
+      {
+        question: "What is your contingency process and additional cost if we discover water damage or mold behind the walls?",
+        category: "risk",
+        importance: "should-ask"
       },
-      { 
-        question: "Are plaster repairs after chasing walls for pipes included, or is that quoted separately?", 
-        category: "scope", 
-        importance: "should-ask" 
+      {
+        question: "Are plaster repairs after chasing walls for pipes included, or is that quoted separately?",
+        category: "scope",
+        importance: "should-ask"
       },
-      { 
-        question: "What is the payment schedule - full upfront, installments, or 50/50 deposit?", 
-        category: "payment", 
-        importance: "should-ask" 
+      {
+        question: "What is the payment schedule - full upfront, installments, or 50/50 deposit?",
+        category: "payment",
+        importance: "should-ask"
       }
     ],
-    detailedReview: `Quote Analysis Summary:\n\nThe quote demonstrates professional preparation with itemized costs and clear material selections. Labor at $95/hour is competitive for Sydney (market range: $80-120/hour). \n\nMaterial Pricing:\n• Caroma Solus toilet ($580) - Fair price, standard quality\n• Freestanding bath ($1200) - Mid-range pricing\n• Double vanity with stone ($1500) - Premium selection\n• Mixer set ($340) - Good value for Astra Walker brand\n\nStrengths:\n✓ Detailed itemization\n✓ Quality brand selections\n✓ Includes warranty\n✓ Clear scope of work\n\nConcerns:\n⚠ Disposal costs unclear\n⚠ Timeline not detailed\n⚠ Contingency plan not mentioned`,
+    detailedReview: `Quote Analysis Summary:\n\nThe quote demonstrates Standard preparation with itemized costs and clear material selections. Labor at $95/hour is competitive for Sydney (market range: $80-120/hour). \n\nMaterial Pricing:\n• Caroma Solus toilet ($580) - Fair price, standard quality\n• Freestanding bath ($1200) - Mid-range pricing\n• Double vanity with stone ($1500) - Premium selection\n• Mixer set ($340) - Good value for Astra Walker brand\n\nStrengths:\n✓ Detailed itemization\n✓ Quality brand selections\n✓ Includes warranty\n✓ Clear scope of work\n\nConcerns:\n⚠ Disposal costs unclear\n⚠ Timeline not detailed\n⚠ Contingency plan not mentioned`,
     recommendations: [
-      { 
-        title: "Negotiate fixture disposal inclusion", 
-        description: "Request that old fixture removal and responsible disposal be included at no extra cost. This is a standard practice and could save $300-500.", 
-        potentialSavings: 400, 
-        difficulty: "easy" 
+      {
+        title: "Negotiate fixture disposal inclusion",
+        description: "Request that old fixture removal and responsible disposal be included at no extra cost. This is a standard practice and could save $300-500.",
+        potentialSavings: 400,
+        difficulty: "easy"
       },
-      { 
-        title: "Request extended warranty", 
-        description: "Ask for 7-year warranty on labor (vs 5 years) in exchange for committing to payment terms. This small concession often costs the tradie nothing but adds value.", 
-        potentialSavings: 0, 
-        difficulty: "easy" 
+      {
+        title: "Request extended warranty",
+        description: "Ask for 7-year warranty on labor (vs 5 years) in exchange for committing to payment terms. This small concession often costs the tradie nothing but adds value.",
+        potentialSavings: 0,
+        difficulty: "easy"
       },
-      { 
-        title: "Ask about references for similar work", 
-        description: "Request contact details for 2-3 recent bathroom renovations they've completed. Verify quality and confirm timeline accuracy.", 
-        potentialSavings: 0, 
-        difficulty: "easy" 
+      {
+        title: "Ask about references for similar work",
+        description: "Request contact details for 2-3 recent bathroom renovations they've completed. Verify quality and confirm timeline accuracy.",
+        potentialSavings: 0,
+        difficulty: "easy"
       },
-      { 
-        title: "Clarify contingency plan upfront", 
-        description: "Get written agreement on process and costs if water damage/mold is discovered. Protects both parties and prevents surprise charges.", 
-        potentialSavings: 0, 
-        difficulty: "moderate" 
+      {
+        title: "Clarify contingency plan upfront",
+        description: "Get written agreement on process and costs if water damage/mold is discovered. Protects both parties and prevents surprise charges.",
+        potentialSavings: 0,
+        difficulty: "moderate"
       }
     ],
     benchmarking: [
-      { 
-        item: "Labor Rate (per hour)", 
-        quotePrice: 95, 
-        marketMin: 80, 
-        marketAvg: 95, 
-        marketMax: 120, 
-        percentile: 48 
+      {
+        item: "Labor Rate (per hour)",
+        quotePrice: 95,
+        marketMin: 80,
+        marketAvg: 95,
+        marketMax: 120,
+        percentile: 48
       },
-      { 
-        item: "Toilet Suite Cost", 
-        quotePrice: 580, 
-        marketMin: 400, 
-        marketAvg: 650, 
-        marketMax: 900, 
-        percentile: 32 
+      {
+        item: "Toilet Suite Cost",
+        quotePrice: 580,
+        marketMin: 400,
+        marketAvg: 650,
+        marketMax: 900,
+        percentile: 32
       },
-      { 
-        item: "Freestanding Bath", 
-        quotePrice: 1200, 
-        marketMin: 800, 
-        marketAvg: 1200, 
-        marketMax: 1800, 
-        percentile: 50 
+      {
+        item: "Freestanding Bath",
+        quotePrice: 1200,
+        marketMin: 800,
+        marketAvg: 1200,
+        marketMax: 1800,
+        percentile: 50
       },
-      { 
-        item: "Overall Project Cost", 
-        quotePrice: 7458, 
-        marketMin: 6500, 
-        marketAvg: 7800, 
-        marketMax: 9200, 
-        percentile: 46 
+      {
+        item: "Overall Project Cost",
+        quotePrice: 7458,
+        marketMin: 6500,
+        marketAvg: 7800,
+        marketMax: 9200,
+        percentile: 46
       }
     ],
     marketContext: {
@@ -198,9 +198,9 @@ const AnalysisResults = ({ jobResult, userTier = 'free' }) => {
   const displayResult = jobResult || mockJobResult;
 
   // Normalize tier names to lowercase
-  const normalizedTier = userTier?.toLowerCase() === 'professional' ? 'standard' : 
-                        userTier?.toLowerCase() === 'enterprise' ? 'premium' :
-                        userTier?.toLowerCase() || 'free';
+  const normalizedTier = userTier?.toLowerCase() === 'Standard' ? 'standard' :
+    userTier?.toLowerCase() === 'Premium' ? 'premium' :
+      userTier?.toLowerCase() || 'free';
 
   // Tier access mapping
   const tierAccess = {
@@ -342,7 +342,7 @@ const AnalysisResults = ({ jobResult, userTier = 'free' }) => {
                 let displayText = item;
                 let displaySubtext = null;
                 let category = null;
-                
+
                 if (typeof item === 'string') {
                   displayText = item;
                 } else if (item.question) {
@@ -361,7 +361,7 @@ const AnalysisResults = ({ jobResult, userTier = 'free' }) => {
                   // Generic object with description
                   displayText = item.description;
                 }
-                
+
                 return (
                   <li key={index} className="flex items-start gap-4 p-4 bg-white border border-gray-200 rounded-lg hover:border-orange-300 hover:shadow-sm transition-all">
                     <span className="text-lg mt-0.5 flex-shrink-0">✓</span>
@@ -401,18 +401,16 @@ const AnalysisResults = ({ jobResult, userTier = 'free' }) => {
     return (
       <div
         key={featureKey}
-        className={`border rounded-xl overflow-hidden transition-all ${
-          isUnlocked
-            ? 'bg-white border-gray-200 hover:shadow-lg'
-            : 'bg-gray-50 border-gray-300'
-        }`}
+        className={`border rounded-xl overflow-hidden transition-all ${isUnlocked
+          ? 'bg-white border-gray-200 hover:shadow-lg'
+          : 'bg-gray-50 border-gray-300'
+          }`}
       >
         {/* Header */}
         <button
           onClick={() => toggleSection(featureKey)}
-          className={`w-full p-4 sm:p-6 flex items-center justify-between transition-colors ${
-            isUnlocked ? 'hover:bg-gray-50' : 'hover:bg-gray-100 cursor-default'
-          }`}
+          className={`w-full p-4 sm:p-6 flex items-center justify-between transition-colors ${isUnlocked ? 'hover:bg-gray-50' : 'hover:bg-gray-100 cursor-default'
+            }`}
         >
           <div className="flex items-start gap-4 flex-1 text-left">
             <span className="text-3xl mt-1">{feature.icon}</span>
@@ -538,11 +536,10 @@ const AnalysisResults = ({ jobResult, userTier = 'free' }) => {
           </p>
           <Link
             to="/pricing"
-            className={`inline-flex items-center gap-2 px-8 py-3 text-white rounded-xl font-bold text-lg transition-all hover:shadow-lg ${
-              normalizedTier === 'free'
-                ? 'bg-gradient-to-r from-orange-500 to-amber-600 hover:shadow-orange-500/30'
-                : 'bg-black hover:bg-gray-900'
-            }`}
+            className={`inline-flex items-center gap-2 px-8 py-3 text-white rounded-xl font-bold text-lg transition-all hover:shadow-lg ${normalizedTier === 'free'
+              ? 'bg-gradient-to-r from-orange-500 to-amber-600 hover:shadow-orange-500/30'
+              : 'bg-black hover:bg-gray-900'
+              }`}
           >
             {normalizedTier === 'free' ? (
               <>

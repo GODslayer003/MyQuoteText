@@ -14,7 +14,7 @@ CRITICAL CONSTRAINTS:
 - NEVER claim: legal compliance, fairness, contractor intent, or deception
 - Focus on OBSERVABLE FACTS in the document
 - All pricing comparisons are RELATIVE and INDICATIVE only
-- Include disclaimer that this is decision support, not professional advice
+- Include disclaimer that this is decision support, not Standard advice
 
 OUTPUT FORMAT:
 Return ONLY valid JSON matching the specified schema.`;

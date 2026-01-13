@@ -123,7 +123,7 @@ const Terms = () => {
           </li>
           <li class="flex items-start gap-2">
             <X className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" />
-            <span>Not a substitute for professional inspections</span>
+            <span>Not a substitute for Standard inspections</span>
           </li>
           <li class="flex items-start gap-2">
             <X className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" />
@@ -238,15 +238,15 @@ const Terms = () => {
           <h3 class="font-semibold mb-2 text-gray-900">5.1 Nature of Service</h3>
           <p class="text-gray-600">MyQuoteMate's analysis is based on AI algorithms and market data. It is:</p>
           <ul class="list-disc pl-5 mt-2 space-y-1 text-gray-600">
-            <li>Informational only, not professional advice</li>
+            <li>Informational only, not Standard advice</li>
             <li>Based on available data and algorithms</li>
             <li>Subject to limitations of AI technology</li>
-            <li>Not a substitute for professional judgment</li>
+            <li>Not a substitute for Standard judgment</li>
           </ul>
         </div>
         
         <div class="p-4 bg-white border border-gray-200 rounded-lg">
-          <h3 class="font-semibold mb-2 text-gray-900">5.2 No Professional Advice</h3>
+          <h3 class="font-semibold mb-2 text-gray-900">5.2 No Standard Advice</h3>
           <p class="text-gray-600 mb-2">Our Service does not constitute:</p>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div class="flex items-center gap-2">
@@ -373,9 +373,8 @@ const Terms = () => {
           <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] sm:w-[500px] sm:h-[500px] bg-amber-400 rounded-full blur-3xl animate-float-delayed"></div>
         </div>
 
-        <div className={`relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center transition-all duration-1000 ${
-          isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
-        }`}>
+        <div className={`relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center transition-all duration-1000 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
+          }`}>
           <div className="inline-flex items-center px-4 py-1.5 bg-orange-50 text-orange-600 rounded-full text-sm font-semibold mb-6 tracking-wide">
             <FileText className="w-4 h-4 mr-2" />
             LEGAL DOCUMENTS
@@ -387,7 +386,7 @@ const Terms = () => {
           <p className="text-lg sm:text-xl lg:text-2xl text-gray-700 mb-6 sm:mb-8 max-w-3xl mx-auto">
             Please read these terms carefully before using MyQuoteMate
           </p>
-          
+
           <div className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 rounded-lg">
             <Clock className="w-4 h-4 text-gray-500" />
             <span className="text-sm text-gray-600">Last Updated: 15 March 2024</span>
@@ -401,9 +400,8 @@ const Terms = () => {
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
             {/* Sidebar Navigation */}
             <div className="lg:col-span-1">
-              <div className={`bg-white border border-gray-200 rounded-2xl p-6 sticky top-6 transition-all duration-700 ${
-                isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
-              }`} style={{ transitionDelay: '200ms' }}>
+              <div className={`bg-white border border-gray-200 rounded-2xl p-6 sticky top-6 transition-all duration-700 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
+                }`} style={{ transitionDelay: '200ms' }}>
                 <div className="flex items-center gap-3 mb-6">
                   <div className="w-10 h-10 bg-gradient-to-r from-orange-500 to-amber-600 rounded-lg flex items-center justify-center">
                     <FileText className="w-5 h-5 text-white" />
@@ -419,17 +417,15 @@ const Terms = () => {
                     <button
                       key={section.id}
                       onClick={() => setActiveSection(section.id)}
-                      className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all text-left ${
-                        activeSection === section.id
+                      className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all text-left ${activeSection === section.id
                           ? 'bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-200 text-orange-600'
                           : 'text-gray-600 hover:bg-gray-50'
-                      }`}
+                        }`}
                     >
-                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                        activeSection === section.id
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${activeSection === section.id
                           ? 'bg-gradient-to-r from-orange-500 to-amber-600 text-white'
                           : 'bg-gray-100 text-gray-600'
-                      }`}>
+                        }`}>
                         {section.icon}
                       </div>
                       <span className="text-sm font-medium">{section.title}</span>
@@ -456,9 +452,8 @@ const Terms = () => {
 
             {/* Main Content */}
             <div className="lg:col-span-3">
-              <div className={`bg-white border border-gray-200 rounded-2xl sm:rounded-3xl p-6 sm:p-8 transition-all duration-700 ${
-                isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
-              }`} style={{ transitionDelay: '300ms' }}>
+              <div className={`bg-white border border-gray-200 rounded-2xl sm:rounded-3xl p-6 sm:p-8 transition-all duration-700 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
+                }`} style={{ transitionDelay: '300ms' }}>
                 {/* Last Updated Banner */}
                 <div className="flex items-center justify-between mb-8 pb-6 border-b border-gray-200">
                   <div>
@@ -475,9 +470,9 @@ const Terms = () => {
 
                 {/* Terms Content */}
                 <div className="prose prose-lg max-w-none">
-                  <div 
-                    dangerouslySetInnerHTML={{ 
-                      __html: termsContent[activeSection] 
+                  <div
+                    dangerouslySetInnerHTML={{
+                      __html: termsContent[activeSection]
                     }}
                     className="text-gray-700 leading-relaxed"
                   />
@@ -511,9 +506,8 @@ const Terms = () => {
               </div>
 
               {/* Important Notice */}
-              <div className={`mt-6 bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-200 rounded-2xl p-6 transition-all duration-700 ${
-                isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
-              }`} style={{ transitionDelay: '400ms' }}>
+              <div className={`mt-6 bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-200 rounded-2xl p-6 transition-all duration-700 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
+                }`} style={{ transitionDelay: '400ms' }}>
                 <div className="flex items-start gap-4">
                   <div className="w-12 h-12 bg-gradient-to-r from-orange-500 to-amber-600 rounded-xl flex items-center justify-center flex-shrink-0">
                     <AlertTriangle className="w-6 h-6 text-white" />
@@ -537,25 +531,21 @@ const Terms = () => {
       {/* Contact Section */}
       <section className="py-12 sm:py-16 lg:py-20 bg-white">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <div className={`inline-flex items-center px-4 py-1.5 bg-orange-50 text-orange-600 rounded-full text-sm font-semibold mb-4 sm:mb-6 tracking-wide transition-all duration-700 ${
-            isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
-          }`} style={{ transitionDelay: '500ms' }}>
+          <div className={`inline-flex items-center px-4 py-1.5 bg-orange-50 text-orange-600 rounded-full text-sm font-semibold mb-4 sm:mb-6 tracking-wide transition-all duration-700 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
+            }`} style={{ transitionDelay: '500ms' }}>
             QUESTIONS?
           </div>
-          <h2 className={`text-2xl sm:text-3xl lg:text-4xl font-bold mb-4 sm:mb-6 tracking-tight transition-all duration-700 ${
-            isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
-          }`} style={{ transitionDelay: '600ms' }}>
+          <h2 className={`text-2xl sm:text-3xl lg:text-4xl font-bold mb-4 sm:mb-6 tracking-tight transition-all duration-700 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
+            }`} style={{ transitionDelay: '600ms' }}>
             Need Legal Clarification?
           </h2>
-          <p className={`text-lg sm:text-xl text-gray-700 mb-8 sm:mb-10 max-w-2xl mx-auto transition-all duration-700 ${
-            isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
-          }`} style={{ transitionDelay: '700ms' }}>
+          <p className={`text-lg sm:text-xl text-gray-700 mb-8 sm:mb-10 max-w-2xl mx-auto transition-all duration-700 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
+            }`} style={{ transitionDelay: '700ms' }}>
             Our legal team is here to help you understand our terms and policies.
           </p>
 
-          <div className={`flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center transition-all duration-700 ${
-            isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
-          }`} style={{ transitionDelay: '800ms' }}>
+          <div className={`flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center transition-all duration-700 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
+            }`} style={{ transitionDelay: '800ms' }}>
             <Link
               to="/contact"
               className="group relative px-6 sm:px-8 py-3 sm:py-4 bg-gradient-to-r from-orange-500 to-amber-600 text-white rounded-xl sm:rounded-2xl font-bold text-base sm:text-lg hover:shadow-xl hover:shadow-orange-500/30 transition-all duration-300 transform hover:scale-105 w-full sm:w-auto"

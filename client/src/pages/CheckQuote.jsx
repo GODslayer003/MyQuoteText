@@ -1,9 +1,9 @@
 // client/src/pages/CheckQuote.jsx
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { 
-  Upload, 
-  FileText, 
-  X, 
+import {
+  Upload,
+  FileText,
+  X,
   Send,
   Loader2,
   Brain,
@@ -52,7 +52,7 @@ const CheckQuote = () => {
   const [currentJob, setCurrentJob] = useState(null);
   const [jobStatus, setJobStatus] = useState(null);
   const [jobResult, setJobResult] = useState(null);
-  
+
   const fileInputRef = useRef(null);
   const messagesEndRef = useRef(null);
   const chatContainerRef = useRef(null);
@@ -105,7 +105,12 @@ const CheckQuote = () => {
   };
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTo({
+        top: chatContainerRef.current.scrollHeight,
+        behavior: 'smooth'
+      });
+    }
   };
 
   const formatRelativeTime = (dateString) => {
@@ -201,7 +206,7 @@ const CheckQuote = () => {
         // For text input, we need to create a text file
         const textBlob = new Blob([quoteText], { type: 'text/plain' });
         const textFile = new File([textBlob], 'quote-text.txt', { type: 'text/plain' });
-        
+
         jobData = await quoteApi.createJob({
           email: user.email,
           file: textFile,
@@ -218,7 +223,7 @@ const CheckQuote = () => {
       if (jobData) {
         setCurrentJob(jobData);
         setPhase('processing');
-        
+
         // Start polling for job status
         jobPollingService.startPolling(
           jobData.jobId,
@@ -229,7 +234,7 @@ const CheckQuote = () => {
           async (result) => {
             setJobResult(result);
             setSuccess('Analysis completed successfully!');
-            
+
             // Start chat phase
             await startChatPhase(jobData.jobId);
           },
@@ -252,7 +257,13 @@ const CheckQuote = () => {
       }
     } catch (err) {
       console.error('Analysis error:', err);
-      setError(err.message || 'Failed to analyze quote. Please try again.');
+      // Check for limit reached error
+      if (err.response?.status === 403 && err.response?.data?.nextAvailableDate) {
+        const nextDate = new Date(err.response.data.nextAvailableDate);
+        setError(`You have reached your Free Tier limit (1 report/month). Next free report available on: ${nextDate.toLocaleDateString()} at ${nextDate.toLocaleTimeString()}. Upgrade to Standard to continue immediately.`);
+      } else {
+        setError(err.message || 'Failed to analyze quote. Please try again.');
+      }
       setIsAnalyzing(false);
     }
   };
@@ -286,7 +297,7 @@ const CheckQuote = () => {
       // Fallback to basic chat
       setPhase('chat');
       setIsAnalyzing(false);
-      
+
       const initialMessage = {
         id: Date.now(),
         text: "Hi! I'm your Quote Assistant. I've analyzed your quote and found some interesting insights. Feel free to ask me any questions about pricing, scope, or anything else that needs clarification.",
@@ -313,7 +324,7 @@ const CheckQuote = () => {
     try {
       // Send message to AI
       const response = await quoteApi.chatWithAI(currentJob.jobId, newMessage, messages);
-      
+
       const botMessage = {
         id: `bot-${Date.now()}`,
         text: response.reply,
@@ -334,7 +345,7 @@ const CheckQuote = () => {
           "The timeline seems reasonable for this scope of work. Make sure they include cleanup in the quote."
         ];
         const randomResponse = mockResponses[Math.floor(Math.random() * mockResponses.length)];
-        
+
         const botMessage = {
           id: `bot-${Date.now()}`,
           text: randomResponse,
@@ -357,7 +368,7 @@ const CheckQuote = () => {
     setJobResult(null);
     setError(null);
     setSuccess(null);
-    
+
     // Stop any polling
     if (currentJob?.jobId) {
       jobPollingService.stopPolling(currentJob.jobId);
@@ -373,11 +384,11 @@ const CheckQuote = () => {
     try {
       setPhase('loading');
       setCurrentJob(item.jobData);
-      
+
       // Load job details
       const job = await quoteApi.getJob(item.jobData.jobId);
       setJobStatus(job);
-      
+
       if (job.status === 'completed' && job.result) {
         const result = await quoteApi.getJobResult(item.jobData.jobId);
         setJobResult(result);
@@ -523,12 +534,11 @@ WARRANTY: 6 years on workmanship`
                   )}
                 </div>
               </div>
-              <span className={`text-xs px-2 py-1 rounded-full ${
-                step.status === 'completed' ? 'bg-green-100 text-green-800' :
+              <span className={`text-xs px-2 py-1 rounded-full ${step.status === 'completed' ? 'bg-green-100 text-green-800' :
                 step.status === 'in_progress' ? 'bg-orange-100 text-orange-800' :
-                step.status === 'failed' ? 'bg-red-100 text-red-800' :
-                'bg-gray-100 text-gray-800'
-              }`}>
+                  step.status === 'failed' ? 'bg-red-100 text-red-800' :
+                    'bg-gray-100 text-gray-800'
+                }`}>
                 {step.status.replace('_', ' ')}
               </span>
             </div>
@@ -553,9 +563,8 @@ WARRANTY: 6 years on workmanship`
           <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] sm:w-[500px] sm:h-[500px] bg-amber-400 rounded-full blur-3xl animate-float-delayed"></div>
         </div>
 
-        <div className={`relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center transition-all duration-1000 ${
-          isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
-        }`}>
+        <div className={`relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center transition-all duration-1000 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
+          }`}>
           <div className="inline-flex items-center px-4 py-1.5 bg-orange-50 text-orange-600 rounded-full text-sm font-semibold mb-6 tracking-wide">
             <Brain className="w-4 h-4 mr-2" />
             AI-POWERED QUOTE ANALYSIS
@@ -567,7 +576,7 @@ WARRANTY: 6 years on workmanship`
           <p className="text-lg sm:text-xl lg:text-2xl text-gray-700 mb-6 sm:mb-8 max-w-3xl mx-auto">
             Upload your tradie quote and get instant AI analysis on pricing, fairness, and what to ask
           </p>
-          
+
           {!isAuthenticated && (
             <div className="mt-6">
               <button
@@ -618,9 +627,8 @@ WARRANTY: 6 years on workmanship`
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
             {/* Left Column - Chat History */}
             <div className="lg:col-span-1">
-              <div className={`bg-white border border-gray-200 rounded-2xl p-4 sm:p-6 transition-all duration-700 ${
-                isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
-              }`} style={{ transitionDelay: '200ms' }}>
+              <div className={`bg-white border border-gray-200 rounded-2xl p-4 sm:p-6 transition-all duration-700 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
+                }`} style={{ transitionDelay: '200ms' }}>
                 <div className="flex items-center gap-3 mb-6">
                   <div className="w-10 h-10 bg-gradient-to-r from-orange-500 to-amber-600 rounded-lg flex items-center justify-center">
                     <History className="w-5 h-5 text-white" />
@@ -731,10 +739,9 @@ WARRANTY: 6 years on workmanship`
 
             {/* Right Column - Main Box */}
             <div className="lg:col-span-3">
-              <div className={`bg-white border border-gray-200 rounded-2xl sm:rounded-3xl overflow-hidden transition-all duration-700 shadow-lg hover:shadow-xl ${
-                isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
-              }`} style={{ transitionDelay: '400ms' }}>
-                
+              <div className={`bg-white border border-gray-200 rounded-2xl sm:rounded-3xl overflow-hidden transition-all duration-700 shadow-lg hover:shadow-xl ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
+                }`} style={{ transitionDelay: '400ms' }}>
+
                 {/* Phase 1: Upload/Text Input */}
                 {phase === 'upload' && (
                   <div className="p-6 sm:p-8">
@@ -780,11 +787,10 @@ WARRANTY: 6 years on workmanship`
                       <button
                         onClick={() => setUploadMethod('file')}
                         disabled={!isAuthenticated}
-                        className={`flex items-center gap-2 px-4 py-3 rounded-lg transition-all flex-1 ${
-                          uploadMethod === 'file'
-                            ? 'bg-gradient-to-r from-orange-500 to-amber-600 text-white shadow-lg'
-                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed'
-                        }`}
+                        className={`flex items-center gap-2 px-4 py-3 rounded-lg transition-all flex-1 ${uploadMethod === 'file'
+                          ? 'bg-gradient-to-r from-orange-500 to-amber-600 text-white shadow-lg'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed'
+                          }`}
                       >
                         <Upload className="w-4 h-4" />
                         Upload PDF
@@ -792,11 +798,10 @@ WARRANTY: 6 years on workmanship`
                       <button
                         onClick={() => setUploadMethod('text')}
                         disabled={!isAuthenticated}
-                        className={`flex items-center gap-2 px-4 py-3 rounded-lg transition-all flex-1 ${
-                          uploadMethod === 'text'
-                            ? 'bg-gradient-to-r from-orange-500 to-amber-600 text-white shadow-lg'
-                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed'
-                        }`}
+                        className={`flex items-center gap-2 px-4 py-3 rounded-lg transition-all flex-1 ${uploadMethod === 'text'
+                          ? 'bg-gradient-to-r from-orange-500 to-amber-600 text-white shadow-lg'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed'
+                          }`}
                       >
                         <FileText className="w-4 h-4" />
                         Paste Text
@@ -883,7 +888,7 @@ WARRANTY: 6 years on workmanship`
                             </button>
                           </div>
                         </div>
-                        
+
                         <div className="relative">
                           <textarea
                             value={quoteText}
@@ -900,7 +905,7 @@ Warranty: 5 years"
                             className="w-full px-4 py-4 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-500 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 focus:outline-none transition-all resize-none font-mono text-sm"
                           />
                         </div>
-                        
+
                         {/* Sample Quotes */}
                         <div className="mt-4">
                           <p className="text-sm text-gray-600 mb-2">Try a sample quote:</p>
@@ -979,7 +984,7 @@ Warranty: 5 years"
                     <div className="mt-8 pt-6 border-t border-gray-200">
                       <div className="text-center">
                         <p className="text-sm text-gray-500">
-                          This analysis uses {user?.subscription?.plan === 'Professional' ? 'advanced' : 'basic'} AI processing
+                          This analysis uses {user?.subscription?.plan === 'Standard' ? 'advanced' : 'basic'} AI processing
                         </p>
                         <div className="flex justify-center gap-4 mt-4">
                           <div className="text-center">
@@ -1005,126 +1010,125 @@ Warranty: 5 years"
                   <div className="space-y-8">
                     {/* Chat Interface */}
                     <div className="flex flex-col h-[600px] bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-lg">
-                    {/* Chat Header */}
-                    <div className="bg-gradient-to-r from-orange-500 to-amber-600 p-4 sm:p-6">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <button
-                            onClick={resetToUpload}
-                            className="p-2 hover:bg-white/20 rounded-lg transition-colors"
-                            title="Back to upload"
-                          >
-                            <ArrowLeft className="w-5 h-5 text-white" />
-                          </button>
-                          <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-lg flex items-center justify-center">
-                            <MessageSquare className="w-5 h-5 text-white" />
-                          </div>
-                          <div>
-                            <h3 className="font-bold text-white">Quote Assistant</h3>
-                            <p className="text-white/90 text-sm">
-                              {jobResult ? 'Analysis complete! Ask me anything' : 'Analyzing your quote...'}
-                            </p>
-                          </div>
-                        </div>
-                        {currentJob && (
-                          <div className="flex items-center gap-2">
+                      {/* Chat Header */}
+                      <div className="bg-gradient-to-r from-orange-500 to-amber-600 p-4 sm:p-6">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
                             <button
-                              onClick={() => window.open(`/analysis/${currentJob.jobId}`, '_blank')}
-                              className="p-2 hover:bg-white/20 rounded-lg transition-colors flex items-center gap-1 text-white/90 text-sm"
-                              title="View full analysis"
+                              onClick={resetToUpload}
+                              className="p-2 hover:bg-white/20 rounded-lg transition-colors"
+                              title="Back to upload"
                             >
-                              <BarChart className="w-4 h-4" />
-                              <span className="hidden sm:inline">Analysis</span>
+                              <ArrowLeft className="w-5 h-5 text-white" />
                             </button>
-                            <div className="text-xs text-white/80 flex items-center gap-1">
-                              <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                              <span>Online</span>
+                            <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-lg flex items-center justify-center">
+                              <MessageSquare className="w-5 h-5 text-white" />
                             </div>
+                            <div>
+                              <h3 className="font-bold text-white">Quote Assistant</h3>
+                              <p className="text-white/90 text-sm">
+                                {jobResult ? 'Analysis complete! Ask me anything' : 'Analyzing your quote...'}
+                              </p>
+                            </div>
+                          </div>
+                          {currentJob && (
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => window.open(`/analysis/${currentJob.jobId}`, '_blank')}
+                                className="p-2 hover:bg-white/20 rounded-lg transition-colors flex items-center gap-1 text-white/90 text-sm"
+                                title="View full analysis"
+                              >
+                                <BarChart className="w-4 h-4" />
+                                <span className="hidden sm:inline">Analysis</span>
+                              </button>
+                              <div className="text-xs text-white/80 flex items-center gap-1">
+                                <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                                <span>Online</span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Chat Messages */}
+                      <div
+                        ref={chatContainerRef}
+                        className="flex-1 overflow-y-auto p-4 bg-gradient-to-b from-gray-50 to-gray-100"
+                      >
+                        {messages.length === 0 ? (
+                          <div className="h-full flex items-center justify-center">
+                            <div className="text-center">
+                              <Loader2 className="w-8 h-8 text-orange-500 animate-spin mx-auto mb-4" />
+                              <h3 className="text-lg font-semibold text-gray-900 mb-2">Starting Conversation</h3>
+                              <p className="text-gray-600">Loading analysis results...</p>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="space-y-4">
+                            {messages.map((msg) => (
+                              <div
+                                key={msg.id}
+                                className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+                              >
+                                <div
+                                  className={`max-w-[80%] rounded-2xl p-4 ${msg.sender === 'user'
+                                    ? 'bg-gradient-to-r from-orange-500 to-amber-600 text-white'
+                                    : 'bg-white border border-gray-200 text-gray-900 shadow-sm'
+                                    }`}
+                                >
+                                  <p className="text-sm sm:text-base whitespace-pre-wrap">{msg.text}</p>
+                                  <p className="text-xs mt-2 opacity-70">
+                                    {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                  </p>
+                                </div>
+                              </div>
+                            ))}
+                            <div ref={messagesEndRef} />
                           </div>
                         )}
                       </div>
-                    </div>
 
-                    {/* Chat Messages */}
-                    <div 
-                      ref={chatContainerRef}
-                      className="flex-1 overflow-y-auto p-4 bg-gradient-to-b from-gray-50 to-gray-100"
-                    >
-                      {messages.length === 0 ? (
-                        <div className="h-full flex items-center justify-center">
-                          <div className="text-center">
-                            <Loader2 className="w-8 h-8 text-orange-500 animate-spin mx-auto mb-4" />
-                            <h3 className="text-lg font-semibold text-gray-900 mb-2">Starting Conversation</h3>
-                            <p className="text-gray-600">Loading analysis results...</p>
-                          </div>
+                      {/* Chat Input */}
+                      <div className="border-t border-gray-200 p-4 bg-white">
+                        <form onSubmit={handleSendMessage} className="flex gap-2">
+                          <input
+                            type="text"
+                            value={newMessage}
+                            onChange={(e) => setNewMessage(e.target.value)}
+                            placeholder="Ask about pricing, red flags, or anything else..."
+                            className="flex-1 px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition-all"
+                            disabled={!jobResult}
+                          />
+                          <button
+                            type="submit"
+                            disabled={!newMessage.trim() || !jobResult}
+                            className="px-5 py-3 bg-gradient-to-r from-orange-500 to-amber-600 text-white rounded-lg hover:shadow-lg hover:shadow-orange-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                          >
+                            <Send className="w-4 h-4" />
+                            <span className="hidden sm:inline">Send</span>
+                          </button>
+                        </form>
+                        <div className="flex flex-wrap gap-2 mt-3">
+                          <button
+                            onClick={() => setNewMessage("Is this price fair?")}
+                            className="px-3 py-1.5 text-xs bg-orange-50 text-orange-600 rounded-full hover:bg-orange-100 transition-colors"
+                          >
+                            Is this price fair?
+                          </button>
+                          <button
+                            onClick={() => setNewMessage("What should I ask my tradie?")}
+                            className="px-3 py-1.5 text-xs bg-orange-50 text-orange-600 rounded-full hover:bg-orange-100 transition-colors"
+                          >
+                            What should I ask?
+                          </button>
+                          <button
+                            onClick={() => setNewMessage("Any hidden costs?")}
+                            className="px-3 py-1.5 text-xs bg-orange-50 text-orange-600 rounded-full hover:bg-orange-100 transition-colors"
+                          >
+                            Hidden costs?
+                          </button>
                         </div>
-                      ) : (
-                        <div className="space-y-4">
-                          {messages.map((msg) => (
-                            <div
-                              key={msg.id}
-                              className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
-                            >
-                              <div
-                                className={`max-w-[80%] rounded-2xl p-4 ${
-                                  msg.sender === 'user'
-                                    ? 'bg-gradient-to-r from-orange-500 to-amber-600 text-white'
-                                    : 'bg-white border border-gray-200 text-gray-900 shadow-sm'
-                                }`}
-                              >
-                                <p className="text-sm sm:text-base whitespace-pre-wrap">{msg.text}</p>
-                                <p className="text-xs mt-2 opacity-70">
-                                  {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                </p>
-                              </div>
-                            </div>
-                          ))}
-                          <div ref={messagesEndRef} />
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Chat Input */}
-                    <div className="border-t border-gray-200 p-4 bg-white">
-                      <form onSubmit={handleSendMessage} className="flex gap-2">
-                        <input
-                          type="text"
-                          value={newMessage}
-                          onChange={(e) => setNewMessage(e.target.value)}
-                          placeholder="Ask about pricing, red flags, or anything else..."
-                          className="flex-1 px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition-all"
-                          disabled={!jobResult}
-                        />
-                        <button
-                          type="submit"
-                          disabled={!newMessage.trim() || !jobResult}
-                          className="px-5 py-3 bg-gradient-to-r from-orange-500 to-amber-600 text-white rounded-lg hover:shadow-lg hover:shadow-orange-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                        >
-                          <Send className="w-4 h-4" />
-                          <span className="hidden sm:inline">Send</span>
-                        </button>
-                      </form>
-                      <div className="flex flex-wrap gap-2 mt-3">
-                        <button
-                          onClick={() => setNewMessage("Is this price fair?")}
-                          className="px-3 py-1.5 text-xs bg-orange-50 text-orange-600 rounded-full hover:bg-orange-100 transition-colors"
-                        >
-                          Is this price fair?
-                        </button>
-                        <button
-                          onClick={() => setNewMessage("What should I ask my tradie?")}
-                          className="px-3 py-1.5 text-xs bg-orange-50 text-orange-600 rounded-full hover:bg-orange-100 transition-colors"
-                        >
-                          What should I ask?
-                        </button>
-                        <button
-                          onClick={() => setNewMessage("Any hidden costs?")}
-                          className="px-3 py-1.5 text-xs bg-orange-50 text-orange-600 rounded-full hover:bg-orange-100 transition-colors"
-                        >
-                          Hidden costs?
-                        </button>
                       </div>
-                    </div>
                     </div>
                     {/* End Chat Interface */}
 
@@ -1135,14 +1139,14 @@ Warranty: 5 years"
                           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-2">
                             <h2 className="text-3xl font-bold text-gray-900">Detailed Analysis Report</h2>
                             <span className="px-4 py-2 bg-gradient-to-r from-orange-100 to-amber-100 text-orange-700 rounded-lg text-sm font-semibold whitespace-nowrap">
-                              {user?.subscription?.plan || 'Free'} Tier
+                              {user?.subscription?.tier || 'Free'} Tier
                             </span>
                           </div>
                           <p className="text-gray-600">Complete analysis of your quote with tier-specific insights</p>
                         </div>
-                        <AnalysisResults 
+                        <AnalysisResults
                           jobResult={jobResult}
-                          userTier={user?.subscription?.plan?.toLowerCase() || 'free'}
+                          userTier={user?.subscription?.tier?.toLowerCase() || 'free'}
                         />
                       </div>
                     )}
@@ -1162,9 +1166,8 @@ Warranty: 5 years"
               </div>
 
               {/* Tips Below Main Box */}
-              <div className={`mt-6 grid grid-cols-1 md:grid-cols-3 gap-4 transition-all duration-700 ${
-                isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
-              }`} style={{ transitionDelay: '600ms' }}>
+              <div className={`mt-6 grid grid-cols-1 md:grid-cols-3 gap-4 transition-all duration-700 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
+                }`} style={{ transitionDelay: '600ms' }}>
                 {[
                   {
                     icon: <Eye className="w-5 h-5" />,
@@ -1199,30 +1202,7 @@ Warranty: 5 years"
       </section>
 
       {/* Custom Animations */}
-      <style jsx>{`
-        @keyframes float {
-          0%, 100% {
-            transform: translateY(0px);
-          }
-          50% {
-            transform: translateY(-20px);
-          }
-        }
-        @keyframes float-delayed {
-          0%, 100% {
-            transform: translateY(0px);
-          }
-          50% {
-            transform: translateY(20px);
-          }
-        }
-        .animate-float {
-          animation: float 8s ease-in-out infinite;
-        }
-        .animate-float-delayed {
-          animation: float-delayed 10s ease-in-out infinite;
-        }
-      `}</style>
+
     </div>
   );
 };

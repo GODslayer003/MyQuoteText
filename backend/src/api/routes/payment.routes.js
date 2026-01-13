@@ -39,4 +39,11 @@ router.get(
   safe(PaymentController.getUserPayments, 'getUserPayments')
 );
 
+// Mock Upgrade (Dev only)
+router.post(
+  '/mock-upgrade',
+  safe(authMiddleware.authenticate, 'authenticate'),
+  safe(PaymentController.mockUpgrade, 'mockUpgrade')
+);
+
 module.exports = router;

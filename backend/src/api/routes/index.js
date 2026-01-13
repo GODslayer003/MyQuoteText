@@ -10,6 +10,7 @@ const uploadRoutes = require('./upload.routes');
 const adminRoutes = require('./admin.routes');
 const pricingRoutes = require('./pricing.routes');
 const discountRoutes = require('./discount.routes');
+const paymentRoutes = require('./payment.routes');
 
 // Mount routes
 router.use('/auth', authRoutes);
@@ -18,6 +19,7 @@ router.use('/users', userRoutes);
 router.use('/upload', uploadRoutes);
 router.use('/admin', adminRoutes);
 router.use('/pricing', pricingRoutes);
+router.use('/payments', paymentRoutes);
 router.use('/discounts', discountRoutes);
 
 // Test route

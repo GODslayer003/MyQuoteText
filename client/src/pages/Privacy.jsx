@@ -385,7 +385,7 @@ const Privacy = () => {
           <Lock className="w-8 h-8 text-orange-500" />
           <div>
             <h3 class="font-semibold text-gray-900">Bank-Level Security</h3>
-            <p class="text-sm text-gray-600">We implement enterprise-grade security measures to protect your data.</p>
+            <p class="text-sm text-gray-600">We implement Premium-grade security measures to protect your data.</p>
           </div>
         </div>
       </div>
@@ -728,9 +728,8 @@ const Privacy = () => {
           <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] sm:w-[500px] sm:h[500px] bg-amber-400 rounded-full blur-3xl animate-float-delayed"></div>
         </div>
 
-        <div className={`relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center transition-all duration-1000 ${
-          isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
-        }`}>
+        <div className={`relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center transition-all duration-1000 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
+          }`}>
           <div className="inline-flex items-center px-4 py-1.5 bg-orange-50 text-orange-600 rounded-full text-sm font-semibold mb-6 tracking-wide">
             <Shield className="w-4 h-4 mr-2" />
             YOUR PRIVACY MATTERS
@@ -742,7 +741,7 @@ const Privacy = () => {
           <p className="text-lg sm:text-xl lg:text-2xl text-gray-700 mb-6 sm:mb-8 max-w-3xl mx-auto">
             How we protect and handle your personal information at MyQuoteMate
           </p>
-          
+
           <div className="inline-flex items-center gap-2 px-4 py-2 bg-orange-50 border border-orange-200 rounded-lg">
             <Clock className="w-4 h-4 text-orange-500" />
             <span className="text-sm text-orange-700">Last Updated: 15 March 2024</span>
@@ -756,9 +755,8 @@ const Privacy = () => {
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
             {/* Sidebar Navigation */}
             <div className="lg:col-span-1">
-              <div className={`bg-white border border-gray-200 rounded-2xl p-6 sticky top-6 transition-all duration-700 ${
-                isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
-              }`} style={{ transitionDelay: '200ms' }}>
+              <div className={`bg-white border border-gray-200 rounded-2xl p-6 sticky top-6 transition-all duration-700 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
+                }`} style={{ transitionDelay: '200ms' }}>
                 <div className="flex items-center gap-3 mb-6">
                   <div className="w-10 h-10 bg-gradient-to-r from-orange-500 to-amber-600 rounded-lg flex items-center justify-center">
                     <Lock className="w-5 h-5 text-white" />
@@ -774,17 +772,15 @@ const Privacy = () => {
                     <button
                       key={section.id}
                       onClick={() => setActiveSection(section.id)}
-                      className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all text-left ${
-                        activeSection === section.id
+                      className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all text-left ${activeSection === section.id
                           ? 'bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-200 text-orange-600'
                           : 'text-gray-600 hover:bg-orange-50'
-                      }`}
+                        }`}
                     >
-                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                        activeSection === section.id
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${activeSection === section.id
                           ? 'bg-gradient-to-r from-orange-500 to-amber-600 text-white'
                           : 'bg-orange-100 text-orange-600'
-                      }`}>
+                        }`}>
                         {section.icon}
                       </div>
                       <span className="text-sm font-medium">{section.title}</span>
@@ -811,9 +807,8 @@ const Privacy = () => {
 
             {/* Main Content */}
             <div className="lg:col-span-3">
-              <div className={`bg-white border border-gray-200 rounded-2xl sm:rounded-3xl p-6 sm:p-8 transition-all duration-700 ${
-                isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
-              }`} style={{ transitionDelay: '300ms' }}>
+              <div className={`bg-white border border-gray-200 rounded-2xl sm:rounded-3xl p-6 sm:p-8 transition-all duration-700 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
+                }`} style={{ transitionDelay: '300ms' }}>
                 {/* Last Updated Banner */}
                 <div className="flex items-center justify-between mb-8 pb-6 border-b border-gray-200">
                   <div>
@@ -842,9 +837,9 @@ const Privacy = () => {
 
                 {/* Privacy Content */}
                 <div className="prose prose-lg max-w-none">
-                  <div 
-                    dangerouslySetInnerHTML={{ 
-                      __html: privacyContent[activeSection] 
+                  <div
+                    dangerouslySetInnerHTML={{
+                      __html: privacyContent[activeSection]
                     }}
                     className="text-gray-700 leading-relaxed"
                   />
@@ -878,9 +873,8 @@ const Privacy = () => {
               </div>
 
               {/* Contact Information */}
-              <div className={`mt-6 bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-200 rounded-2xl p-6 transition-all duration-700 ${
-                isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
-              }`} style={{ transitionDelay: '400ms' }}>
+              <div className={`mt-6 bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-200 rounded-2xl p-6 transition-all duration-700 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
+                }`} style={{ transitionDelay: '400ms' }}>
                 <h3 className="font-bold text-gray-900 mb-4">Contact Our Privacy Team</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
@@ -906,9 +900,8 @@ const Privacy = () => {
       {/* Data Protection Summary */}
       <section className="py-12 sm:py-16 lg:py-20 bg-white">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className={`text-center mb-12 transition-all duration-700 ${
-            isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
-          }`} style={{ transitionDelay: '500ms' }}>
+          <div className={`text-center mb-12 transition-all duration-700 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
+            }`} style={{ transitionDelay: '500ms' }}>
             <div className="inline-flex items-center px-4 py-1.5 bg-orange-50 text-orange-600 rounded-full text-sm font-semibold mb-4 tracking-wide">
               DATA PROTECTION SUMMARY
             </div>
@@ -942,9 +935,8 @@ const Privacy = () => {
             ].map((point, index) => (
               <div
                 key={index}
-                className={`bg-white border border-gray-200 rounded-xl p-6 text-center hover:border-orange-300 hover:shadow-lg transition-all duration-300 group ${
-                  isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
-                }`}
+                className={`bg-white border border-gray-200 rounded-xl p-6 text-center hover:border-orange-300 hover:shadow-lg transition-all duration-300 group ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
+                  }`}
                 style={{ transitionDelay: `${600 + index * 100}ms` }}
               >
                 <div className="w-12 h-12 bg-gradient-to-r from-orange-500 to-amber-600 rounded-xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">

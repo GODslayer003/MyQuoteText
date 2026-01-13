@@ -1,5 +1,6 @@
 // client/src/providers/AuthProvider.jsx
-import React, { createContext, useEffect, useState, useCallback, useContext } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import AuthModal from "../pages/AuthModel";
 
 export const AuthContext = createContext(null);
@@ -24,6 +25,7 @@ export const AuthProvider = ({ children }) => {
   const [error, setError] = useState(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [redirectPath, setRedirectPath] = useState(null);
+  const navigate = useNavigate();
 
   // ----------------------------------
   // Load user from localStorage and validate
@@ -32,11 +34,11 @@ export const AuthProvider = ({ children }) => {
     const loadUser = async () => {
       const saved = localStorage.getItem("auth_user");
       const token = localStorage.getItem("auth_token");
-      
+
       if (saved && token) {
         try {
           const parsedUser = JSON.parse(saved);
-          
+
           // Validate token by fetching profile
           try {
             const response = await fetch(`${API_URL}/users/me`, {
@@ -45,7 +47,7 @@ export const AuthProvider = ({ children }) => {
                 'Accept': 'application/json'
               }
             });
-            
+
             if (response.ok) {
               const data = await response.json();
               setUser(data.data);
@@ -73,6 +75,31 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   // ----------------------------------
+  // REFRESH USER
+  // ----------------------------------
+  const refreshUser = async () => {
+    const token = localStorage.getItem("auth_token");
+    if (!token) return;
+
+    try {
+      const response = await fetch(`${API_URL}/users/me`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setUser(data.data);
+        localStorage.setItem("auth_user", JSON.stringify(data.data));
+      }
+    } catch (error) {
+      console.error('Failed to refresh user:', error);
+    }
+  };
+
+  // ----------------------------------
   // UPDATE USER FUNCTION
   // ----------------------------------
   const updateUser = useCallback(async (updates) => {
@@ -82,7 +109,7 @@ export const AuthProvider = ({ children }) => {
 
       const response = await fetch(`${API_URL}/users/me`, {
         method: "PUT",
-        headers: { 
+        headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${token}`,
           "Accept": "application/json"
@@ -98,13 +125,13 @@ export const AuthProvider = ({ children }) => {
           ...prev,
           ...data.data.user
         }));
-        
+
         // Update localStorage
         localStorage.setItem("auth_user", JSON.stringify({
           ...user,
           ...data.data.user
         }));
-        
+
         return true;
       } else {
         throw new Error(data.error || "Failed to update user");
@@ -125,13 +152,13 @@ export const AuthProvider = ({ children }) => {
     try {
       const res = await fetch(`${API_URL}/auth/login`, {
         method: "POST",
-        headers: { 
+        headers: {
           "Content-Type": "application/json",
           "Accept": "application/json"
         },
         credentials: 'include',
-        body: JSON.stringify({ 
-          email: email.toLowerCase(), 
+        body: JSON.stringify({
+          email: email.toLowerCase(),
           password: password
         })
       });
@@ -157,7 +184,7 @@ export const AuthProvider = ({ children }) => {
 
       // Set user state
       setUser(userData);
-      
+
       // Store in localStorage
       localStorage.setItem("auth_user", JSON.stringify(userData));
       localStorage.setItem("auth_token", tokens.accessToken);
@@ -169,7 +196,7 @@ export const AuthProvider = ({ children }) => {
         window.location.href = redirectPath;
         setRedirectPath(null);
       }
-      
+
       return true;
     } catch (err) {
       console.error('Login error:', err);
@@ -198,7 +225,7 @@ export const AuthProvider = ({ children }) => {
 
       const res = await fetch(`${API_URL}/auth/register`, {
         method: "POST",
-        headers: { 
+        headers: {
           "Content-Type": "application/json",
           "Accept": "application/json"
         },
@@ -225,7 +252,7 @@ export const AuthProvider = ({ children }) => {
 
       // Set user state
       setUser(userDataResponse);
-      
+
       // Store in localStorage
       localStorage.setItem("auth_user", JSON.stringify(userDataResponse));
       localStorage.setItem("auth_token", accessToken);
@@ -255,12 +282,12 @@ export const AuthProvider = ({ children }) => {
   // ----------------------------------
   // REQUIRE LOGIN (FOR PROTECTED ROUTES)
   // ----------------------------------
-  const requestLogin = (path) => {
-    if (user) return; // Already logged in
-    
+  const requestLogin = useCallback((path) => {
+    if (user || showAuthModal) return; // Already logged in OR modal already showing
+
     setRedirectPath(path);
     setShowAuthModal(true);
-  };
+  }, [user, showAuthModal]);
 
   // ----------------------------------
   // CLEAR ERROR
@@ -304,13 +331,13 @@ export const AuthProvider = ({ children }) => {
           ...prev,
           ...data.data.user
         }));
-        
+
         // Update localStorage
         localStorage.setItem("auth_user", JSON.stringify({
           ...user,
           ...data.data.user
         }));
-        
+
         return data.data.avatarUrl;
       } else {
         throw new Error(data.error || "Failed to upload avatar");
@@ -345,13 +372,13 @@ export const AuthProvider = ({ children }) => {
           ...prev,
           avatarUrl: null
         }));
-        
+
         // Update localStorage
         localStorage.setItem("auth_user", JSON.stringify({
           ...user,
           avatarUrl: null
         }));
-        
+
         return true;
       } else {
         throw new Error(data.error || "Failed to remove avatar");
@@ -426,8 +453,8 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Context value
-  const contextValue = {
+  // Context value memoized to prevent unnecessary re-renders
+  const contextValue = useMemo(() => ({
     user,
     loading,
     error,
@@ -435,6 +462,7 @@ export const AuthProvider = ({ children }) => {
     signup,
     logout,
     updateUser,
+    refreshUser,
     uploadAvatar,
     removeAvatar,
     changePassword,
@@ -443,7 +471,11 @@ export const AuthProvider = ({ children }) => {
     requestLogin,
     clearError,
     showLogin: openAuthModal
-  };
+  }), [
+    user, loading, error, login, signup, logout,
+    updateUser, refreshUser, uploadAvatar, removeAvatar,
+    changePassword, deleteAccount, requestLogin
+  ]);
 
   if (loading) {
     return (
@@ -462,6 +494,12 @@ export const AuthProvider = ({ children }) => {
         onClose={() => {
           setShowAuthModal(false);
           clearError();
+          // If on a protected route and closing modal, redirect to home
+          const protectedRoutes = ['/pricing', '/check-quote', '/profile'];
+          if (protectedRoutes.some(route => window.location.pathname.startsWith(route)) && !user) {
+            navigate('/');
+          }
+          setRedirectPath(null);
         }}
       />
     </AuthContext.Provider>

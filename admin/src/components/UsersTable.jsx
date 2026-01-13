@@ -71,18 +71,18 @@ const UsersTable = ({ users, loading }) => {
                     </td>
                     <td className="py-4 px-4">
                       <span className={`px-3 py-1 rounded-full text-xs font-medium ${user.accountStatus === 'active'
-                          ? 'bg-green-100 text-green-800'
-                          : user.accountStatus === 'suspended'
-                            ? 'bg-yellow-100 text-yellow-800'
-                            : 'bg-gray-100 text-gray-800'
+                        ? 'bg-green-100 text-green-800'
+                        : user.accountStatus === 'suspended'
+                          ? 'bg-yellow-100 text-yellow-800'
+                          : 'bg-gray-100 text-gray-800'
                         }`}>
                         {user.accountStatus || 'active'}
                       </span>
                     </td>
                     <td className="py-4 px-4">
-                      <span className={`px-2 py-1 rounded-md text-xs font-semibold ${user.subscription?.plan === 'Professional' ? 'bg-blue-100 text-blue-700' :
-                          user.subscription?.plan === 'Enterprise' ? 'bg-purple-100 text-purple-700' :
-                            'bg-gray-100 text-gray-600'
+                      <span className={`px-2 py-1 rounded-md text-xs font-semibold ${user.subscription?.plan === 'Standard' ? 'bg-blue-100 text-blue-700' :
+                        user.subscription?.plan === 'Premium' ? 'bg-purple-100 text-purple-700' :
+                          'bg-gray-100 text-gray-600'
                         }`}>
                         {user.subscription?.plan || 'Free'}
                       </span>

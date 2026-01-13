@@ -25,7 +25,7 @@ class PaymentController {
 
       // Find job
       const job = await Job.findOne({ jobId });
-      
+
       if (!job) {
         return res.status(404).json({
           success: false,
@@ -181,6 +181,86 @@ class PaymentController {
 
     } catch (error) {
       logger.error('Failed to fetch user payments:', error);
+      next(error);
+    }
+  }
+
+  /**
+   * Mock Upgrade (DEV ONLY)
+   * POST /api/v1/payments/mock-upgrade
+   */
+  async mockUpgrade(req, res, next) {
+    try {
+      const { tier } = req.body;
+      const User = require('../../models/User'); // Lazy load to avoid circular deps if any
+
+      if (!['Free', 'Standard', 'Premium'].includes(tier)) {
+        return res.status(400).json({
+          success: false,
+          error: 'Invalid tier'
+        });
+      }
+
+      const user = await User.findById(req.user._id);
+
+      if (!user) {
+        return res.status(404).json({ success: false, error: 'User not found' });
+      }
+
+      // Update subscription / Credits
+      let creditsToAdd = 0;
+      if (tier === 'Standard') creditsToAdd = 1;
+      if (tier === 'Premium') creditsToAdd = 3; // "3 Reports per Buy"
+
+      user.subscription.credits = (user.subscription.credits || 0) + creditsToAdd;
+
+      // Update tier only if upgrading to a higher tier
+      const tierLevels = { 'Free': 0, 'Standard': 1, 'Premium': 2 };
+      const currentTier = user.subscription.plan || 'Free';
+
+      if (tierLevels[tier] > tierLevels[currentTier] || tier === 'Premium') {
+        user.subscription.plan = tier;
+      }
+
+      user.subscription.status = 'active';
+      user.subscription.currentPeriodStart = new Date();
+      // user.subscription.currentPeriodEnd = ... (No expiry for credits, usually)
+
+      await user.save();
+
+      // Log the mock payment
+      const payment = new Payment({
+        userId: user._id,
+        amount: tier === 'Standard' ? 799 : 999,
+        currency: 'usd',
+        status: 'succeeded',
+        provider: 'stripe', // Mocking stripe
+        stripePaymentIntentId: 'mock_pi_' + Date.now(),
+        tier: tier
+      });
+      await payment.save();
+
+      // Send receipt email
+      const EmailService = require('../../services/email/EmailService');
+      await EmailService.sendPaymentReceiptEmail(user, payment);
+
+      res.json({
+        success: true,
+        data: {
+          user: {
+            id: user._id,
+            email: user.email,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            role: user.role,
+            subscription: user.subscription,
+            isAdmin: user.isAdmin
+          }
+        }
+      });
+
+    } catch (error) {
+      logger.error('Mock upgrade failed:', error);
       next(error);
     }
   }

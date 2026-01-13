@@ -137,7 +137,7 @@ const FAQ = () => {
       },
       {
         question: 'Do you offer team/business plans?',
-        answer: 'We\'re launching team plans soon! Contact sales@myquotetext.com for early access or custom enterprise quotes for contractors and property managers.'
+        answer: 'We\'re launching team plans soon! Contact sales@myquotetext.com for early access or custom Premium quotes for contractors and property managers.'
       },
       {
         question: 'What\'s your refund policy?',
@@ -306,11 +306,10 @@ const FAQ = () => {
                   <button
                     key={cat.id}
                     onClick={() => setActiveCategory(cat.id)}
-                    className={`p-4 rounded-lg font-medium transition-all ${
-                      activeCategory === cat.id
+                    className={`p-4 rounded-lg font-medium transition-all ${activeCategory === cat.id
                         ? `bg-gradient-to-r ${cat.color} text-white shadow-lg`
                         : 'bg-white border border-gray-200 text-gray-900 hover:border-orange-300'
-                    }`}
+                      }`}
                   >
                     <div className="flex items-center gap-2 justify-center">
                       {cat.icon}
@@ -343,9 +342,8 @@ const FAQ = () => {
                     <span className="font-medium text-gray-900 text-lg">{faq.question}</span>
                   </div>
                   <ChevronDown
-                    className={`w-5 h-5 text-gray-400 flex-shrink-0 transition-transform ${
-                      expandedFAQ === index ? 'rotate-180' : ''
-                    }`}
+                    className={`w-5 h-5 text-gray-400 flex-shrink-0 transition-transform ${expandedFAQ === index ? 'rotate-180' : ''
+                      }`}
                   />
                 </button>
 

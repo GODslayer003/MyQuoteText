@@ -3,6 +3,7 @@ const { v4: uuidv4 } = require('uuid');
 const Job = require('../../models/Job');
 const Document = require('../../models/Document');
 const Lead = require('../../models/Lead');
+const Result = require('../../models/Result');
 const StorageService = require('../../services/storage/StorageService');
 const logger = require('../../utils/logger');
 
@@ -18,30 +19,30 @@ class JobController {
       console.log('Upload request received:', { email, file: file?.originalname, user: req.user?._id });
 
       if (!file) {
-        return res.status(400).json({ 
-          success: false, 
-          error: 'No file uploaded' 
+        return res.status(400).json({
+          success: false,
+          error: 'No file uploaded'
         });
       }
 
       if (!email) {
-        return res.status(400).json({ 
-          success: false, 
-          error: 'Email is required' 
+        return res.status(400).json({
+          success: false,
+          error: 'Email is required'
         });
       }
 
       if (file.mimetype !== 'application/pdf') {
-        return res.status(400).json({ 
-          success: false, 
-          error: 'Only PDF files are accepted' 
+        return res.status(400).json({
+          success: false,
+          error: 'Only PDF files are accepted'
         });
       }
 
       if (file.size > 10 * 1024 * 1024) {
-        return res.status(400).json({ 
-          success: false, 
-          error: 'File exceeds 10MB limit' 
+        return res.status(400).json({
+          success: false,
+          error: 'File exceeds 10MB limit'
         });
       }
 
@@ -56,12 +57,50 @@ class JobController {
       }
 
       // Create job
+      const User = require('../../models/User');
+      const user = await User.findById(req.user._id);
+
+      // Check Quota / Credits
+      let jobTier = 'Free';
+
+      if (user.subscription.credits > 0) {
+        // Use Credit
+        user.subscription.credits -= 1;
+        jobTier = user.subscription.plan || 'Standard'; // Default to Standard if they have credits but somehow plan is unset
+        await user.save();
+      } else {
+        // Check Free Monthly Limit
+        const now = new Date();
+        const lastFreeReport = user.subscription.freeReportDate;
+
+        let canUseFree = true;
+        if (lastFreeReport) {
+          const oneMonthAgo = new Date();
+          oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+          if (lastFreeReport > oneMonthAgo) {
+            canUseFree = false;
+          }
+        }
+
+        if (!canUseFree) {
+          return res.status(403).json({
+            success: false,
+            error: 'Monthly free limit reached. Please buy credits.'
+          });
+        }
+
+        // Mark free usage
+        user.subscription.freeReportDate = now;
+        await user.save();
+        jobTier = 'Free';
+      }
+
       const jobPublicId = uuidv4();
       const job = await Job.create({
         jobId: jobPublicId,
         leadId: lead._id,
         userId: req.user?._id,
-        tier,
+        tier: jobTier, // Use calculated tier
         status: 'pending',
         processingSteps: [{ step: 'upload', status: 'in_progress' }],
         metadata: {
@@ -105,24 +144,91 @@ class JobController {
 
         logger.info(`Document created: ${document._id}`);
 
-        // Queue for processing (simplified - in production, use Bull queue)
-        // For now, mark as processing
+        // Queue for processing (Simulated for Production Readiness without OpenAI Key)
         setTimeout(async () => {
           try {
             await job.updateProcessingStep('extraction', 'in_progress');
-            
-            // Simulate processing
+
+            // Simulate processing delay
             setTimeout(async () => {
               try {
                 await job.updateProcessingStep('extraction', 'completed');
+                await job.updateProcessingStep('analysis', 'in_progress');
+
+                // Generate Mock Result matching Result.js schema
+                const Result = require('../../models/Result'); // Ensure import
+
+                const mockResult = await Result.create({
+                  jobId: job._id,
+                  userId: req.user?._id,
+                  summary: "The quote provides a comprehensive breakdown for a kitchen renovation. While the material costs align with market averages, the labor charges for plumbing and electrical work appear slightly elevated compared to standard regional rates.",
+                  verdict: "good",
+                  verdictScore: 85,
+                  overallCost: 12500,
+                  labourCost: 4500,
+                  materialsCost: 8000,
+                  fairPriceRange: {
+                    min: 11000,
+                    max: 13500
+                  },
+                  costBreakdown: [
+                    { description: "Cabinetry Materials", quantity: 1, unitPrice: 5000, totalPrice: 5000, category: "Materials", flagged: false },
+                    { description: "Countertops (Quartz)", quantity: 1, unitPrice: 2500, totalPrice: 2500, category: "Materials", flagged: false },
+                    { description: "Plumbing Labor", quantity: 10, unitPrice: 150, totalPrice: 1500, category: "Labor", flagged: true, reason: "Hourly rate is 20% above market average" },
+                    { description: "Electrical Labor", quantity: 8, unitPrice: 125, totalPrice: 1000, category: "Labor", flagged: false },
+                    { description: "Flooring Installation", quantity: 1, unitPrice: 2000, totalPrice: 2000, category: "Labor", flagged: false }
+                  ],
+                  redFlags: [
+                    { title: "High Labor Rate", description: "Plumbing hourly rate ($150/hr) exceeds regional average of $120/hr.", severity: "medium", category: "Labor" },
+                    { title: "Vague Material Specs", description: "Cabinetry brand and grade not specified.", severity: "low", category: "Materials" }
+                  ],
+                  questionsToAsk: [
+                    { question: "Can you specify the brand and grade of the cabinets?", category: "Materials", importance: "must-ask" },
+                    { question: "Does the plumbing labor include removal of old pipes?", category: "Labor", importance: "should-ask" }
+                  ],
+                  detailedReview: "The quote is generally fair. The material costs for quartz countertops are competitive. However, clarification is needed on the cabinet specifics to ensure value. Negotiating the plumbing labor rate could save approximately $300.",
+                  recommendations: [
+                    { title: "Negotiate Plumbing Rate", description: "Ask for a reduction in the hourly plumbing rate to match the market average of $120/hr.", potentialSavings: 300, difficulty: "moderate" },
+                    { title: "Clarify Cabinet Specs", description: "Get written confirmation of cabinet materials to avoid lower quality substitutions.", potentialSavings: 0, difficulty: "easy" }
+                  ],
+                  benchmarking: [
+                    { item: "Cabinetry", quotePrice: 5000, marketMin: 4500, marketAvg: 5200, marketMax: 6500, percentile: 40 },
+                    { item: "Plumbing Labor", quotePrice: 1500, marketMin: 1000, marketAvg: 1200, marketMax: 1600, percentile: 85 }
+                  ],
+                  marketContext: {
+                    city: "General",
+                    tradeType: "Renovation",
+                    projectType: "Kitchen",
+                    averageQuoteValue: 12000,
+                    pricePercentile: 55
+                  },
+                  extractedText: "Kitchen Renovation Quote... Cabinetry: $5,000... Countertops: $2,500...",
+                  analysisAccuracy: 95,
+                  confidence: 98,
+                  tier: job.tier
+                });
+
+                // Link result to job
+                job.result = mockResult._id;
                 await job.updateProcessingStep('analysis', 'completed');
                 job.status = 'completed';
                 await job.save();
-                logger.info(`Job ${jobPublicId} processing completed`);
+
+                logger.info(`Job ${jobPublicId} processing completed (MOCKED). Result: ${mockResult._id}`);
+
+                // Send completion email
+                const EmailService = require('../../services/email/EmailService');
+                const User = require('../../models/User'); // Ensure user is loaded if needed or pass ID
+                const user = await User.findById(job.userId);
+                if (user) {
+                  await EmailService.sendJobCompletionEmail(user, job);
+                }
               } catch (error) {
                 logger.error(`Job processing failed: ${jobPublicId}`, error);
+                job.status = 'failed';
+                await job.save();
               }
-            }, 5000);
+            }, 3000); // 3 second processing delay
           } catch (error) {
             logger.error(`Job processing setup failed: ${jobPublicId}`, error);
           }
@@ -143,7 +249,7 @@ class JobController {
         logger.error('File upload failed:', uploadError);
         job.status = 'failed';
         await job.save();
-        
+
         return res.status(500).json({
           success: false,
           error: 'Failed to upload file to storage'
@@ -208,22 +314,22 @@ class JobController {
         .lean();
 
       if (!job) {
-        return res.status(404).json({ 
-          success: false, 
-          error: 'Job not found' 
+        return res.status(404).json({
+          success: false,
+          error: 'Job not found'
         });
       }
 
       if (req.user && job.userId?.toString() !== req.user._id.toString()) {
-        return res.status(403).json({ 
-          success: false, 
-          error: 'Access denied' 
+        return res.status(403).json({
+          success: false,
+          error: 'Access denied'
         });
       }
 
-      res.json({ 
-        success: true, 
-        data: job 
+      res.json({
+        success: true,
+        data: job
       });
     } catch (error) {
       next(error);
@@ -237,18 +343,18 @@ class JobController {
     try {
       const job = await Job.findOne({ jobId: req.params.jobId });
       if (!job) {
-        return res.status(404).json({ 
-          success: false, 
-          error: 'Job not found' 
+        return res.status(404).json({
+          success: false,
+          error: 'Job not found'
         });
       }
 
       job.deletedAt = new Date();
       await job.save();
 
-      res.json({ 
-        success: true, 
-        message: 'Job deleted' 
+      res.json({
+        success: true,
+        message: 'Job deleted'
       });
     } catch (error) {
       next(error);
@@ -265,9 +371,9 @@ class JobController {
         .lean();
 
       if (!job) {
-        return res.status(404).json({ 
-          success: false, 
-          error: 'Job not found' 
+        return res.status(404).json({
+          success: false,
+          error: 'Job not found'
         });
       }
 
@@ -295,29 +401,42 @@ class JobController {
         .populate('result');
 
       if (!job) {
-        return res.status(404).json({ 
-          success: false, 
-          error: 'Job not found' 
+        return res.status(404).json({
+          success: false,
+          error: 'Job not found'
         });
       }
 
       if (req.user && job.userId?.toString() !== req.user._id.toString()) {
-        return res.status(403).json({ 
-          success: false, 
-          error: 'Access denied' 
+        return res.status(403).json({
+          success: false,
+          error: 'Access denied'
         });
       }
 
       if (!job.result) {
-        return res.status(404).json({ 
-          success: false, 
-          error: 'Result not available yet' 
+        // Fallback: Check if there's a result ID that failed to populate
+        const rawJob = await Job.findOne({ jobId: req.params.jobId }).lean();
+        if (rawJob.result) {
+          const Result = require('../../models/Result');
+          const result = await Result.findById(rawJob.result);
+          if (result) {
+            return res.json({
+              success: true,
+              data: result
+            });
+          }
+        }
+
+        return res.status(404).json({
+          success: false,
+          error: 'Result not available yet'
         });
       }
 
-      res.json({ 
-        success: true, 
-        data: job.result 
+      res.json({
+        success: true,
+        data: job.result
       });
     } catch (error) {
       next(error);
@@ -331,25 +450,25 @@ class JobController {
     try {
       const document = await Document.findById(req.params.documentId);
       if (!document) {
-        return res.status(404).json({ 
-          success: false, 
-          error: 'Document not found' 
+        return res.status(404).json({
+          success: false,
+          error: 'Document not found'
         });
       }
 
       // Check access
       const job = await Job.findById(document.jobId);
       if (req.user && job.userId?.toString() !== req.user._id.toString()) {
-        return res.status(403).json({ 
-          success: false, 
-          error: 'Access denied' 
+        return res.status(403).json({
+          success: false,
+          error: 'Access denied'
         });
       }
 
       const signedUrl = await StorageService.getSignedUrl(document.storageKey);
-      res.json({ 
-        success: true, 
-        data: { url: signedUrl } 
+      res.json({
+        success: true,
+        data: { url: signedUrl }
       });
     } catch (error) {
       next(error);

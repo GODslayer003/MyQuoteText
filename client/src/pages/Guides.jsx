@@ -34,17 +34,17 @@ const Guides = () => {
 
   const guides = [
     {
-  id: 1,
-  category: "Red Flags",
-  readTime: "7 min read",
-  title: "10 Red Flags in Tradie Quotes You Should Never Ignore",
-  description: "Learn the warning signs that indicate a quote might be dodgy, from vague descriptions to suspiciously low prices.",
-  icon: <AlertTriangle className="w-5 h-5" />,
-  color: "from-orange-500 to-red-500",
-  bgColor: "bg-gradient-to-br from-orange-50 to-red-50",
-  difficulty: "Beginner",
-  rating: 4.9,
-  content: `
+      id: 1,
+      category: "Red Flags",
+      readTime: "7 min read",
+      title: "10 Red Flags in Tradie Quotes You Should Never Ignore",
+      description: "Learn the warning signs that indicate a quote might be dodgy, from vague descriptions to suspiciously low prices.",
+      icon: <AlertTriangle className="w-5 h-5" />,
+      color: "from-orange-500 to-red-500",
+      bgColor: "bg-gradient-to-br from-orange-50 to-red-50",
+      difficulty: "Beginner",
+      rating: 4.9,
+      content: `
     <div class="space-y-8">
       <div class="text-center mb-8">
         <h1 class="text-3xl sm:text-4xl font-bold mb-4 text-gray-900">10 Red Flags in Tradie Quotes You Should Never Ignore</h1>
@@ -174,7 +174,7 @@ const Guides = () => {
           <div class="flex-1">
             <h3 class="text-xl font-semibold text-gray-900 mb-3">No Detailed Cost Breakdown</h3>
             <p class="text-gray-600 mb-4">
-              A professional quote should separate labour, materials, and additional costs. Without this breakdown, you can't verify if you're being charged fairly or compare quotes accurately.
+              A Standard quote should separate labour, materials, and additional costs. Without this breakdown, you can't verify if you're being charged fairly or compare quotes accurately.
             </p>
             <div class="space-y-4">
               <div class="bg-gray-50 p-4 rounded-lg">
@@ -211,7 +211,7 @@ const Guides = () => {
             <span class="text-orange-600 font-bold">5</span>
           </div>
           <h4 class="font-semibold text-gray-900 mb-2">Pressure to Sign Immediately</h4>
-          <p class="text-gray-600 text-sm">High-pressure tactics prevent proper review. Professional tradies understand you need time to decide and compare quotes.</p>
+          <p class="text-gray-600 text-sm">High-pressure tactics prevent proper review. Standard tradies understand you need time to decide and compare quotes.</p>
         </div>
 
         <div class="bg-white border border-gray-200 rounded-xl p-6">
@@ -295,7 +295,7 @@ const Guides = () => {
       </div>
     </div>
   `
-},
+    },
     {
       id: 2,
       category: "Pricing",
@@ -863,7 +863,7 @@ const Guides = () => {
               </div>
               <div>
                 <h4 class="font-medium text-gray-900">Cash Only Payment</h4>
-                <p class="text-gray-600 text-sm">Professional electricians accept multiple payment methods</p>
+                <p class="text-gray-600 text-sm">Standard electricians accept multiple payment methods</p>
               </div>
             </div>
             <div class="flex items-start gap-3">
@@ -1276,7 +1276,7 @@ const Guides = () => {
 
         <div class="bg-gradient-to-r from-purple-50 to-pink-50 border-l-4 border-purple-500 p-6 rounded-lg mb-8">
           <p class="text-gray-700">
-            <strong class="text-gray-900">Pro Tip:</strong> The way a tradie responds to these questions can tell you as much as their actual answers. Confidence, transparency, and patience are signs of a professional.
+            <strong class="text-gray-900">Pro Tip:</strong> The way a tradie responds to these questions can tell you as much as their actual answers. Confidence, transparency, and patience are signs of a Standard.
           </p>
         </div>
 
@@ -1435,7 +1435,7 @@ const Guides = () => {
             </div>
             <h3 class="text-xl font-semibold text-gray-900 mb-3">How Do You Handle Clean-up?</h3>
             <p class="text-gray-600 text-sm mb-4">
-              A professional includes site clean-up in their quote. Don't assume it's included - many disputes arise from mess left behind.
+              A Standard includes site clean-up in their quote. Don't assume it's included - many disputes arise from mess left behind.
             </p>
             <div class="space-y-2">
               <div class="flex items-center gap-2">
@@ -1448,7 +1448,7 @@ const Guides = () => {
               </div>
               <div class="flex items-center gap-2">
                 <span class="w-2 h-2 bg-purple-500 rounded-full"></span>
-                <span class="text-xs text-gray-700">Final professional clean</span>
+                <span class="text-xs text-gray-700">Final Standard clean</span>
               </div>
             </div>
           </div>
@@ -1755,7 +1755,7 @@ const Guides = () => {
                         <td class="py-3 px-4 font-medium text-gray-900">HIA</td>
                         <td class="py-3 px-4 text-gray-700">Housing Industry Association</td>
                         <td class="py-3 px-4 text-sm text-gray-600">Australia's largest residential building industry association, providing resources and support for builders and homeowners.</td>
-                        <td class="py-3 px-4 text-sm text-gray-600">Membership indicates professionalism; they offer dispute resolution services.</td>
+                        <td class="py-3 px-4 text-sm text-gray-600">Membership indicates Standardism; they offer dispute resolution services.</td>
                     </tr>
                     <tr>
                         <td class="py-3 px-4 font-medium text-gray-900">MBA</td>
@@ -2128,8 +2128,8 @@ const Guides = () => {
                 key={index}
                 onClick={() => setActiveCategory(category.name)}
                 className={`group flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg transition-all duration-300 ${activeCategory === category.name
-                    ? 'bg-gradient-to-r from-orange-500 to-amber-600 text-white shadow-lg shadow-orange-500/30'
-                    : 'bg-white border border-gray-200 hover:border-orange-300 hover:shadow-md'
+                  ? 'bg-gradient-to-r from-orange-500 to-amber-600 text-white shadow-lg shadow-orange-500/30'
+                  : 'bg-white border border-gray-200 hover:border-orange-300 hover:shadow-md'
                   }`}
               >
                 <div className={activeCategory === category.name ? 'text-white' : 'text-orange-500'}>
@@ -2137,8 +2137,8 @@ const Guides = () => {
                 </div>
                 <span className="text-sm sm:text-base font-medium">{category.name}</span>
                 <span className={`text-xs px-2 py-0.5 rounded-full ${activeCategory === category.name
-                    ? 'bg-white/20 text-white'
-                    : 'bg-gray-100 text-gray-600'
+                  ? 'bg-white/20 text-white'
+                  : 'bg-gray-100 text-gray-600'
                   }`}>
                   {category.count}
                 </span>

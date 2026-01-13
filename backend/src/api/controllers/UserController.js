@@ -10,7 +10,7 @@ class UserController {
     try {
       // Fetch user with all necessary fields
       const user = await User.findById(req.user._id).select('-passwordHash');
-      
+
       if (!user) {
         return res.status(404).json({
           success: false,
@@ -62,7 +62,7 @@ class UserController {
         }
         updates.firstName = firstName.trim();
       }
-      
+
       if (lastName !== undefined) {
         if (lastName.trim().length < 2) {
           return res.status(400).json({
@@ -72,7 +72,7 @@ class UserController {
         }
         updates.lastName = lastName.trim();
       }
-      
+
       if (phone !== undefined) updates.phone = phone.trim();
       if (address !== undefined) updates.address = address.trim();
 
@@ -134,7 +134,7 @@ class UserController {
 
       // Get user with password hash
       const user = await User.findById(req.user._id).select('+passwordHash');
-      
+
       if (!user) {
         return res.status(404).json({
           success: false,
@@ -146,7 +146,7 @@ class UserController {
       const isValid = await user.comparePassword(currentPassword);
       if (!isValid) {
         await user.incLoginAttempts();
-        
+
         return res.status(400).json({
           success: false,
           error: 'Current password is incorrect'
@@ -218,7 +218,7 @@ class UserController {
 
       // Get user with password hash for verification
       const user = await User.findById(req.user._id).select('+passwordHash');
-      
+
       // Verify password
       const isValid = await user.comparePassword(confirmPassword);
       if (!isValid) {
@@ -328,7 +328,7 @@ class UserController {
   async removeAvatar(req, res, next) {
     try {
       const user = await User.findById(req.user._id);
-      
+
       if (!user.avatarUrl) {
         return res.status(400).json({
           success: false,
@@ -416,7 +416,7 @@ class UserController {
   async getSecuritySettings(req, res, next) {
     try {
       const user = await User.findById(req.user._id).select('security loginAttempts lockUntil');
-      
+
       res.json({
         success: true,
         data: {
@@ -477,7 +477,7 @@ class UserController {
     try {
       const { plan } = req.body;
 
-      if (!['Free', 'Professional', 'Enterprise'].includes(plan)) {
+      if (!['Free', 'Standard', 'Premium'].includes(plan)) {
         return res.status(400).json({
           success: false,
           error: 'Invalid plan selected'
@@ -486,7 +486,7 @@ class UserController {
 
       const subscriptionUpdate = {
         'subscription.plan': plan,
-        'subscription.reportsTotal': plan === 'Free' ? 3 : plan === 'Professional' ? 10 : 50
+        'subscription.reportsTotal': plan === 'Free' ? 3 : plan === 'Standard' ? 10 : 50
       };
 
       // Set expiration for paid plans
@@ -527,7 +527,7 @@ class UserController {
   async getSubscription(req, res, next) {
     try {
       const user = await User.findById(req.user._id).select('subscription');
-      
+
       res.json({
         success: true,
         data: user.subscription

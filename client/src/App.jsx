@@ -1,6 +1,6 @@
 // client/src/App.jsx
 import React, { useEffect } from "react";
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 
 import HeaderFooter from "./Layout/HeaderFooter";
 import { useAuth } from "./hooks/useAuth";
@@ -34,9 +34,14 @@ const ProtectedRoute = ({ children }) => {
   return children;
 };
 
+import ScrollToTop from "./components/ScrollToTop";
+import Snowfall from "./components/Snowfall";
+
 export default function App() {
   return (
-    <Router>
+    <>
+      <ScrollToTop />
+      <Snowfall />
       <HeaderFooter>
         <Routes>
           {/* Public routes */}
@@ -81,6 +86,6 @@ export default function App() {
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </HeaderFooter>
-    </Router>
+    </>
   );
 }

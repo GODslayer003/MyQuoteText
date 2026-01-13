@@ -71,8 +71,8 @@ const jobSchema = new mongoose.Schema(
     // Pricing / Access
     tier: {
       type: String,
-      enum: ['free', 'standard', 'premium'],
-      default: 'free'
+      enum: ['Free', 'Standard', 'Premium'],
+      default: 'Free'
     },
 
     unlocked: {
