@@ -1,6 +1,6 @@
 // admin/src/components/PaymentsTable.jsx
 import React, { useState } from 'react';
-import { CreditCard, ChevronRight, Loader2, DollarSign, Calendar, MoreVertical } from 'lucide-react';
+import { CreditCard, ChevronRight, Loader2, DollarSign, Calendar, MoreVertical, User } from 'lucide-react';
 
 const PaymentsTable = ({ payments, loading }) => {
   const [expandedId, setExpandedId] = useState(null);
@@ -71,6 +71,7 @@ const PaymentsTable = ({ payments, loading }) => {
             <thead>
               <tr className="border-b border-gray-200">
                 <th className="text-left py-4 px-4 font-semibold text-gray-700">Transaction ID</th>
+                <th className="text-left py-4 px-4 font-semibold text-gray-700">User</th>
                 <th className="text-left py-4 px-4 font-semibold text-gray-700">Amount</th>
                 <th className="text-left py-4 px-4 font-semibold text-gray-700">Tier</th>
                 <th className="text-left py-4 px-4 font-semibold text-gray-700">Status</th>
@@ -83,7 +84,22 @@ const PaymentsTable = ({ payments, loading }) => {
                 <React.Fragment key={payment._id}>
                   <tr className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
                     <td className="py-4 px-4">
-                      <p className="font-mono text-sm text-gray-900">{payment.stripePaymentId || payment._id}</p>
+                      <p className="font-mono text-xs text-gray-500">{payment.stripePaymentId || payment._id}</p>
+                    </td>
+                    <td className="py-4 px-4">
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center">
+                          <User className="w-3 h-3 text-gray-500" />
+                        </div>
+                        <div className="text-sm">
+                          <p className="font-medium text-gray-900">
+                            {payment.userId?.firstName
+                              ? `${payment.userId.firstName} ${payment.userId.lastName || ''}`
+                              : 'Unknown User'}
+                          </p>
+                          <p className="text-xs text-gray-500">{payment.userId?.email || 'No email'}</p>
+                        </div>
+                      </div>
                     </td>
                     <td className="py-4 px-4">
                       <div className="flex items-center gap-2">
@@ -122,8 +138,13 @@ const PaymentsTable = ({ payments, loading }) => {
                         <div className="space-y-3">
                           <div className="grid grid-cols-3 gap-4">
                             <div>
-                              <p className="text-xs text-gray-600 uppercase font-semibold">User</p>
-                              <p className="text-gray-900 mt-1">{payment.userId}</p>
+                              <p className="text-xs text-gray-600 uppercase font-semibold">User Details</p>
+                              <p className="text-gray-900 mt-1 font-medium">
+                                {payment.userId?.firstName
+                                  ? `${payment.userId.firstName} ${payment.userId.lastName || ''}`
+                                  : 'N/A'}
+                              </p>
+                              <p className="text-sm text-gray-500">{payment.userId?.email}</p>
                             </div>
                             <div>
                               <p className="text-xs text-gray-600 uppercase font-semibold">Currency</p>
@@ -159,8 +180,9 @@ const PaymentsTable = ({ payments, loading }) => {
             </tbody>
           </table>
         </div>
-      )}
-    </div>
+      )
+      }
+    </div >
   );
 };
 

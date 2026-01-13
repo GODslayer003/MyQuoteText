@@ -2,7 +2,7 @@
 import React, { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchAdminStats, fetchUsers, fetchPayments } from '../store/dashboardThunks';
-import { Users, CreditCard, TrendingUp, Loader2, RefreshCw } from 'lucide-react';
+import { Users, CreditCard, TrendingUp, Loader2, RefreshCw, FileText } from 'lucide-react';
 import StatCard from '../components/StatCard';
 import UsersTable from '../components/UsersTable';
 import PaymentsTable from '../components/PaymentsTable';
@@ -58,13 +58,20 @@ const DashboardPage = () => {
       )}
 
       {/* Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard
           title="Total Users"
           value={stats.totalUsers || 0}
           icon={<Users className="w-8 h-8" />}
           color="orange"
           trend="+12% this month"
+        />
+        <StatCard
+          title="Total Jobs"
+          value={stats.totalJobs || 0}
+          icon={<FileText className="w-8 h-8" />}
+          color="indigo"
+          trend="Active now"
         />
         <StatCard
           title="Standard Purchases"

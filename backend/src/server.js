@@ -136,7 +136,7 @@ app.get('/health/detailed', async (req, res) => {
     const dbStatus = dbHealthy.status === 'fulfilled' ? dbHealthy.value : false;
     const queueStatus = queueHealth.status === 'fulfilled' ? queueHealth.value : { status: 'error' };
 
-    const overallStatus = dbStatus && 
+    const overallStatus = dbStatus &&
       Object.values(queueStatus).every(q => q.status === 'healthy');
 
     res.status(overallStatus ? 200 : 503).json({
@@ -209,9 +209,9 @@ app.use(errorMiddleware.handler.bind(errorMiddleware));
 
 const gracefulShutdown = async (signal) => {
   logger.info(`${signal} received. Starting graceful shutdown...`);
-  
+
   let shutdownTimer;
-  
+
   const forceShutdown = () => {
     logger.error('Graceful shutdown timeout - forcing exit');
     process.exit(1);
@@ -219,21 +219,21 @@ const gracefulShutdown = async (signal) => {
 
   // Set force shutdown timer
   shutdownTimer = setTimeout(forceShutdown, 30000);
-  
+
   // Stop accepting new connections
   if (server) {
     server.close(async () => {
       logger.info('HTTP server closed');
-      
+
       try {
         logger.info('Closing MongoDB connection...');
         await disconnectDB();
         logger.info('MongoDB connection closed');
-        
+
         logger.info('Closing job queue connections...');
         await shutdownQueues();
         logger.info('Job queues closed');
-        
+
         clearTimeout(shutdownTimer);
         logger.info('Graceful shutdown completed');
         process.exit(0);
@@ -258,7 +258,7 @@ process.on('unhandledRejection', (reason, promise) => {
     reason: reason instanceof Error ? reason.message : reason,
     stack: reason instanceof Error ? reason.stack : undefined
   });
-  
+
   if (process.env.NODE_ENV === 'production') {
     logger.error('Unhandled rejection in production');
   }
@@ -276,7 +276,7 @@ process.on('uncaughtException', (error) => {
 // SERVER STARTUP
 // ============================================
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3002;
 let server;
 
 const startServer = async () => {

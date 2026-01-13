@@ -43,6 +43,8 @@ const UsersTable = ({ users, loading }) => {
                 <th className="text-left py-4 px-4 font-semibold text-gray-700">Name</th>
                 <th className="text-left py-4 px-4 font-semibold text-gray-700">Email</th>
                 <th className="text-left py-4 px-4 font-semibold text-gray-700">Status</th>
+                <th className="text-left py-4 px-4 font-semibold text-gray-700">Plan</th>
+                <th className="text-center py-4 px-4 font-semibold text-gray-700">Jobs</th>
                 <th className="text-left py-4 px-4 font-semibold text-gray-700">Joined</th>
                 <th className="text-center py-4 px-4 font-semibold text-gray-700">Action</th>
               </tr>
@@ -68,15 +70,25 @@ const UsersTable = ({ users, loading }) => {
                       <p className="text-gray-900">{user.email}</p>
                     </td>
                     <td className="py-4 px-4">
-                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                        user.accountStatus === 'active'
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${user.accountStatus === 'active'
                           ? 'bg-green-100 text-green-800'
                           : user.accountStatus === 'suspended'
-                          ? 'bg-yellow-100 text-yellow-800'
-                          : 'bg-gray-100 text-gray-800'
-                      }`}>
+                            ? 'bg-yellow-100 text-yellow-800'
+                            : 'bg-gray-100 text-gray-800'
+                        }`}>
                         {user.accountStatus || 'active'}
                       </span>
+                    </td>
+                    <td className="py-4 px-4">
+                      <span className={`px-2 py-1 rounded-md text-xs font-semibold ${user.subscription?.plan === 'Professional' ? 'bg-blue-100 text-blue-700' :
+                          user.subscription?.plan === 'Enterprise' ? 'bg-purple-100 text-purple-700' :
+                            'bg-gray-100 text-gray-600'
+                        }`}>
+                        {user.subscription?.plan || 'Free'}
+                      </span>
+                    </td>
+                    <td className="py-4 px-4 text-center">
+                      <span className="font-mono text-gray-700 font-medium">{user.jobCount || 0}</span>
                     </td>
                     <td className="py-4 px-4 text-gray-600">
                       <div className="flex items-center gap-2">
@@ -95,7 +107,7 @@ const UsersTable = ({ users, loading }) => {
                   </tr>
                   {expandedId === user._id && (
                     <tr className="bg-gray-50 border-b border-gray-100">
-                      <td colSpan="5" className="py-4 px-4">
+                      <td colSpan="7" className="py-4 px-4">
                         <div className="space-y-3">
                           <div className="grid grid-cols-2 gap-4">
                             <div>

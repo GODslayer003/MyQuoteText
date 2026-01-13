@@ -75,7 +75,7 @@ const LoginPage = () => {
               name="email"
               value={credentials.email}
               onChange={handleChange}
-              placeholder="rohan@gmail.com"
+              placeholder="rohan@admin.com"
               className="input-field"
               disabled={loading}
             />
