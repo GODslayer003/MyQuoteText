@@ -13,19 +13,18 @@ const logger = require("../../utils/logger");
 
 const STORAGE_PROVIDER = process.env.STORAGE_PROVIDER || "local";
 
-// --------------------------------------------------
-// Cloudinary Configuration (CLOUDINARY_URL only)
-// --------------------------------------------------
-if (STORAGE_PROVIDER === "cloudinary") {
-  if (!process.env.CLOUDINARY_URL) {
-    throw new Error("CLOUDINARY_URL is not defined");
-  }
+const CLOUDINARY_URL = process.env.CLOUDINARY_URL;
 
+// --------------------------------------------------
+// Cloudinary Configuration
+// --------------------------------------------------
+if (CLOUDINARY_URL) {
   cloudinary.config({
     secure: true
   });
-
-  logger.info("Cloudinary initialized using CLOUDINARY_URL");
+  logger.info("Cloudinary storage service initialized");
+} else if (STORAGE_PROVIDER === "cloudinary") {
+  throw new Error("STORAGE_PROVIDER is set to cloudinary but CLOUDINARY_URL is missing");
 }
 
 class StorageService {
@@ -97,71 +96,75 @@ class StorageService {
   }
 
   // backend/src/services/storage/StorageService.js (partial update)
-// Add avatar-specific upload method
-async uploadAvatar(fileBuffer, metadata) {
-  try {
-    // Use a different folder for avatars
-    const publicId = `avatars/${metadata.userId}_${Date.now()}`;
-    
-    const bufferStream = new stream.PassThrough();
-    bufferStream.end(fileBuffer);
+  // Add avatar-specific upload method
+  async uploadAvatar(fileBuffer, metadata) {
+    if (!CLOUDINARY_URL) {
+      logger.warn("Cloudinary not configured, falling back to local storage for avatar");
+      return this.uploadToLocal(fileBuffer, metadata);
+    }
 
-    const result = await new Promise((resolve, reject) => {
-      const uploadStream = cloudinary.uploader.upload_stream(
-        {
-          folder: this.cloudinaryFolder,
-          public_id: publicId,
-          resource_type: 'image',
-          overwrite: true, // Allow overwriting avatars
-          transformation: [
-            { width: 500, height: 500, crop: 'fill' }, // Resize and crop
-            { quality: 'auto:good' } // Optimize quality
-          ],
-          context: {
-            type: 'avatar',
-            userId: metadata.userId
+    try {
+      const publicId = `avatars/${metadata.userId || 'guest'}_${Date.now()}`;
+
+      const bufferStream = new stream.PassThrough();
+      bufferStream.end(fileBuffer);
+
+      const result = await new Promise((resolve, reject) => {
+        const uploadStream = cloudinary.uploader.upload_stream(
+          {
+            folder: this.cloudinaryFolder,
+            public_id: publicId,
+            resource_type: 'image',
+            overwrite: true,
+            transformation: [
+              { width: 500, height: 500, crop: 'fill' },
+              { quality: 'auto:good' }
+            ],
+            context: {
+              type: 'avatar',
+              userId: metadata.userId
+            }
+          },
+          (error, result) => {
+            if (error) return reject(error);
+            resolve(result);
           }
-        },
-        (error, result) => {
-          if (error) return reject(error);
-          resolve(result);
-        }
-      );
+        );
 
-      bufferStream.pipe(uploadStream);
-    });
+        bufferStream.pipe(uploadStream);
+      });
 
-    logger.info(`Avatar uploaded to Cloudinary: ${result.public_id}`);
+      logger.info(`Avatar uploaded to Cloudinary: ${result.public_id}`);
 
-    return {
-      storageKey: result.public_id,
-      publicId: result.public_id,
-      location: result.secure_url,
-      resourceType: result.resource_type
-    };
-  } catch (error) {
-    logger.error('Cloudinary avatar upload failed:', error);
-    throw error;
-  }
-}
-
-// Add to existing uploadFile method
-async uploadFile(fileBuffer, metadata) {
-  if (!fileBuffer) {
-    throw new Error("No file buffer provided");
+      return {
+        storageKey: result.public_id,
+        publicId: result.public_id,
+        location: result.secure_url,
+        resourceType: result.resource_type
+      };
+    } catch (error) {
+      logger.error('Cloudinary avatar upload failed:', error);
+      throw error;
+    }
   }
 
-  // Check if this is an avatar upload
-  if (metadata.mimeType?.startsWith('image/') && metadata.jobId?.startsWith('avatar_')) {
-    return this.uploadAvatar(fileBuffer, metadata);
-  }
+  // Add to existing uploadFile method
+  async uploadFile(fileBuffer, metadata) {
+    if (!fileBuffer) {
+      throw new Error("No file buffer provided");
+    }
 
-  if (STORAGE_PROVIDER === "cloudinary") {
-    return this.uploadToCloudinary(fileBuffer, metadata);
-  }
+    // Check if this is an avatar upload
+    if (metadata.mimeType?.startsWith('image/') && metadata.jobId?.startsWith('avatar_')) {
+      return this.uploadAvatar(fileBuffer, metadata);
+    }
 
-  return this.uploadToLocal(fileBuffer, metadata);
-}
+    if (STORAGE_PROVIDER === "cloudinary") {
+      return this.uploadToCloudinary(fileBuffer, metadata);
+    }
+
+    return this.uploadToLocal(fileBuffer, metadata);
+  }
   // ------------------ LOCAL ------------------
   uploadToLocal(fileBuffer, metadata) {
     try {
@@ -193,17 +196,17 @@ async uploadFile(fileBuffer, metadata) {
   // =====================================================
   // ACCESS (PUBLIC URL)
   // =====================================================
-async getSignedUrl(storageKey) {
-  if (STORAGE_PROVIDER === "cloudinary") {
-    if (storageKey.includes(":\\") || storageKey.startsWith("/")) {
-      throw new Error("Invalid Cloudinary public_id (local path detected)");
+  async getSignedUrl(storageKey) {
+    if (STORAGE_PROVIDER === "cloudinary") {
+      if (storageKey.includes(":\\") || storageKey.startsWith("/")) {
+        throw new Error("Invalid Cloudinary public_id (local path detected)");
+      }
+
+      return cloudinary.url(storageKey, { secure: true });
     }
 
-    return cloudinary.url(storageKey, { secure: true });
+    return storageKey;
   }
-
-  return storageKey;
-}
 
 
   // =====================================================

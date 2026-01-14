@@ -65,7 +65,8 @@ class AuthController {
             id: user._id,
             email: user.email,
             firstName: user.firstName,
-            lastName: user.lastName
+            lastName: user.lastName,
+            avatarUrl: user.avatarUrl
           },
           tokens: {
             accessToken,
@@ -151,6 +152,7 @@ class AuthController {
             email: user.email,
             firstName: user.firstName,
             lastName: user.lastName,
+            avatarUrl: user.avatarUrl,
             emailVerified: user.emailVerified
           },
           tokens: {
