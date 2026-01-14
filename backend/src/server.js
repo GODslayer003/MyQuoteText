@@ -53,19 +53,25 @@ const allowedOrigins = [
 
 app.use(cors({
   origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
 
-    // Check if origin is in allowedOrigins or is a vercel.app subdomain
+    // In production, we'll be more permissive for now to resolve deployment blockers
+    if (process.env.NODE_ENV === 'production') {
+      return callback(null, true);
+    }
+
+    // Check if origin is in allowedOrigins or is a vercel subdomain
     const isAllowed = allowedOrigins.includes(origin) ||
       origin.endsWith('.vercel.app') ||
-      origin.includes('vercel.app') ||
-      process.env.NODE_ENV === 'production'; // Allow all in production for now to fix CORS blocker
+      origin.includes('localhost');
 
     if (isAllowed) {
       callback(null, true);
     } else {
-      logger.warn(`CORS blocked: ${origin}`);
-      callback(null, true); // Still allow while debugging deployment
+      logger.warn(`CORS blocked for origin: ${origin}`);
+      // In production we still allow but log it, to avoid breaking the app during transition
+      callback(null, true);
     }
   },
   credentials: true,
@@ -74,9 +80,6 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With', 'X-Request-Id'],
   exposedHeaders: ['Content-Range', 'X-Content-Range']
 }));
-
-// Trust proxy
-app.set('trust proxy', 1);
 
 // ============================================
 // REQUEST PARSING MIDDLEWARE
