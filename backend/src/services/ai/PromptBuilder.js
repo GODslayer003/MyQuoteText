@@ -24,12 +24,17 @@ Return ONLY valid JSON matching the specified schema.`;
 
 For FREE tier: Provide only a brief summary (3-4 sentences) highlighting the main scope and total amount. No detailed analysis.
 
-JSON Schema:
 {
   "freeSummary": {
     "overview": "string (2-3 sentences)",
-    "mainPoints": ["string", "string", "string"],
-    "generatedAt": "ISO date"
+    "mainPoints": ["string", "string", "string"]
+  },
+  "contractorProfile": {
+    "name": "string",
+    "abn": "string or null",
+    "email": "string or null",
+    "phone": "string or null",
+    "address": "string or null"
   }
 }`;
     }
@@ -90,6 +95,9 @@ JSON Schema:
     "contractorProfile": {
       "name": "string",
       "abn": "string or null",
+      "email": "string or null",
+      "phone": "string or null",
+      "address": "string or null",
       "licenseNumber": "string or null",
       "insuranceMentioned": boolean,
       "warrantyOffered": boolean,

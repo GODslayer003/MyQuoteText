@@ -16,6 +16,7 @@ import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
 import FAQ from "./pages/FAQ";
 import Profile from "./pages/Profile";
+import AnalysisPage from "./pages/AnalysisPage";
 
 // ------------------------------------
 // Protected Route (modal-based auth)
@@ -53,24 +54,25 @@ export default function App() {
           <Route path="/faq" element={<FAQ />} />
           <Route path="/terms" element={<Terms />} />
           <Route path="/privacy" element={<Privacy />} />
+          <Route path="/check-quote" element={<CheckQuote />} />
 
           {/* Protected routes */}
           <Route path="/pricing" element={<Pricing />} />
-
-          <Route
-            path="/check-quote"
-            element={
-              <ProtectedRoute>
-                <CheckQuote />
-              </ProtectedRoute>
-            }
-          />
 
           <Route
             path="/profile"
             element={
               <ProtectedRoute>
                 <Profile />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/analysis/:jobId"
+            element={
+              <ProtectedRoute>
+                <AnalysisPage />
               </ProtectedRoute>
             }
           />

@@ -141,6 +141,14 @@ const resultSchema = new mongoose.Schema(
       pricePercentile: Number
     },
 
+    supplierInfo: {
+      name: String,
+      abn: String,
+      email: String,
+      phone: String,
+      address: String
+    },
+
     quoteComparison: {
       quotes: [
         {

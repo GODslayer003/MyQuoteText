@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import { Lock, Unlock, ChevronDown, ChevronUp, Zap, Crown } from 'lucide-react';
+import { Lock, Unlock, ChevronDown, ChevronUp, Zap, Crown, Star, Download, FileText } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import quoteApi from '../services/quoteApi';
+import { toast } from 'react-hot-toast';
 
 const AnalysisResults = ({ jobResult, userTier = 'free' }) => {
   const [expandedSections, setExpandedSections] = useState({
@@ -12,6 +14,27 @@ const AnalysisResults = ({ jobResult, userTier = 'free' }) => {
     benchmarking: false,
     recommendations: false
   });
+  const [rating, setRating] = useState(0);
+  const [hoveredRating, setHoveredRating] = useState(0);
+  const [isSubmittingRating, setIsSubmittingRating] = useState(false);
+  const [ratingSubmitted, setRatingSubmitted] = useState(false);
+
+  const handleRatingSubmit = async (value) => {
+    if (!jobResult?.jobId || ratingSubmitted) return;
+
+    try {
+      setIsSubmittingRating(true);
+      await quoteApi.submitRating(jobResult.jobId, value);
+      setRating(value);
+      setRatingSubmitted(true);
+      toast.success('Thank you for your feedback!');
+    } catch (err) {
+      console.error('Failed to submit rating:', err);
+      toast.error('Failed to submit rating. Please try again.');
+    } finally {
+      setIsSubmittingRating(false);
+    }
+  };
 
   // Sample/mock data for demonstration
   const mockJobResult = {
@@ -518,6 +541,66 @@ const AnalysisResults = ({ jobResult, userTier = 'free' }) => {
         {renderFeatureCard('comparison', features.comparison)}
         {renderFeatureCard('benchmarking', features.benchmarking)}
         {renderFeatureCard('recommendations', features.recommendations)}
+      </div>
+
+      {/* Rating Section */}
+      <div className="mt-12 p-8 bg-white border border-gray-200 rounded-2xl text-center shadow-sm">
+        <h3 className="text-xl font-bold text-gray-900 mb-2">How helpful was this analysis?</h3>
+        <p className="text-gray-600 mb-6 font-normal">Your feedback helps us improve our AI insights.</p>
+
+        <div className="flex items-center justify-center gap-2 mb-4">
+          {[1, 2, 3, 4, 5].map((star) => (
+            <button
+              key={star}
+              disabled={ratingSubmitted || isSubmittingRating}
+              onMouseEnter={() => setHoveredRating(star)}
+              onMouseLeave={() => setHoveredRating(0)}
+              onClick={() => handleRatingSubmit(star)}
+              className={`p-1 transition-all transform hover:scale-110 ${(hoveredRating || rating) >= star ? 'text-orange-500' : 'text-gray-300'
+                } ${(ratingSubmitted || isSubmittingRating) ? 'cursor-default' : 'cursor-pointer'}`}
+            >
+              <Star className={`w-10 h-10 ${((hoveredRating || rating) >= star) ? 'fill-current' : ''}`} />
+            </button>
+          ))}
+        </div>
+
+        {ratingSubmitted && (
+          <p className="text-green-600 font-medium">Feedback received! Thank you.</p>
+        )}
+      </div>
+
+      {/* Action Bar */}
+      <div className="mt-8 flex flex-wrap gap-4 items-center justify-between p-6 bg-white border border-gray-100 rounded-2xl shadow-sm">
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
+            <Download className="w-6 h-6 text-orange-600" />
+          </div>
+          <div>
+            <h4 className="font-bold text-gray-900">Original Document</h4>
+            <p className="text-sm text-gray-600">Download the original quote for your records</p>
+          </div>
+        </div>
+        <button
+          onClick={async () => {
+            if (!jobResult?.jobId) return;
+            try {
+              const job = await quoteApi.getJob(jobResult.jobId);
+              if (job && job.documents?.length > 0) {
+                const docId = job.documents[0]._id || job.documents[0];
+                const data = await quoteApi.downloadDocument(jobResult.jobId, docId);
+                if (data.url) window.open(data.url, '_blank');
+              } else {
+                toast.error('No document found for this analysis');
+              }
+            } catch (err) {
+              console.error('Download error:', err);
+              toast.error('Failed to download document');
+            }
+          }}
+          className="px-6 py-2.5 bg-orange-500 text-white rounded-xl font-bold hover:bg-orange-600 transition-all shadow-md active:scale-95"
+        >
+          Download PDF
+        </button>
       </div>
 
       {/* Footer CTA */}

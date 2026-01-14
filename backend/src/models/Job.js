@@ -48,6 +48,11 @@ const jobSchema = new mongoose.Schema(
       ref: 'User',
       index: true
     },
+    supplierId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Supplier',
+      index: true
+    },
 
     leadId: {
       type: mongoose.Schema.Types.ObjectId,
@@ -95,9 +100,15 @@ const jobSchema = new mongoose.Schema(
       default: []
     },
 
-    // Metadata
+    // Metadata & Feedback
     metadata: {
       type: Object
+    },
+    rating: {
+      type: Number,
+      min: 1,
+      max: 5,
+      default: null
     },
 
     // Soft delete

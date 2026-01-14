@@ -139,14 +139,12 @@ const HowItWorks = () => {
           {steps.map((step, index) => (
             <div
               key={step.id}
-              className={`mb-16 sm:mb-20 last:mb-0 transition-all duration-700 ${
-                isVisible ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-10'
-              }`}
+              className={`mb-16 sm:mb-20 last:mb-0 transition-all duration-700 ${isVisible ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-10'
+                }`}
               style={{ transitionDelay: `${index * 200}ms` }}
             >
-              <div className={`grid grid-cols-1 lg:grid-cols-2 gap-8 sm:gap-12 items-center ${
-                index % 2 === 1 ? 'lg:flex-row-reverse' : ''
-              }`}>
+              <div className={`grid grid-cols-1 lg:grid-cols-2 gap-8 sm:gap-12 items-center ${index % 2 === 1 ? 'lg:flex-row-reverse' : ''
+                }`}>
                 {/* Content Side */}
                 <div className={`${index % 2 === 1 ? 'lg:order-2' : ''}`}>
                   {/* Step Badge */}
@@ -196,7 +194,7 @@ const HowItWorks = () => {
                   <div className="relative group">
                     {/* Decorative background */}
                     <div className={`absolute inset-0 bg-gradient-to-br ${step.gradient} opacity-10 rounded-3xl blur-2xl group-hover:opacity-20 transition-opacity`}></div>
-                    
+
                     {/* Main Card */}
                     <div className="relative bg-gradient-to-br from-white to-gray-50 border border-gray-200 rounded-3xl p-6 sm:p-8 hover:border-orange-300 transition-all duration-300 shadow-xl hover:shadow-2xl hover:shadow-orange-100/50">
                       <div className="aspect-video bg-gradient-to-br from-orange-50/50 to-amber-50/50 rounded-2xl flex items-center justify-center">
@@ -257,7 +255,7 @@ const HowItWorks = () => {
       </section>
 
       {/* Add custom animations */}
-      <style jsx>{`
+      <style>{`
         @keyframes float {
           0%, 100% {
             transform: translateY(0px);

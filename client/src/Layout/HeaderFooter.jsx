@@ -91,13 +91,6 @@ const HeaderFooter = ({ children }) => {
     }
   };
 
-  const handleCheckQuoteClick = (e) => {
-    if (!isAuthenticated) {
-      e.preventDefault();
-      showLogin(); // Show login modal first
-    }
-    // If authenticated, Link will handle navigation
-  };
 
   // ---------------------------
   // Render
@@ -138,7 +131,6 @@ const HeaderFooter = ({ children }) => {
 
             <Link
               to="/check-quote"
-              onClick={handleCheckQuoteClick}
               className="ml-2 px-6 py-2.5 bg-gradient-to-r from-orange-500 to-amber-700 text-white rounded-lg font-semibold hover:shadow-lg transition-shadow"
             >
               Check Your Quote
@@ -243,10 +235,7 @@ const HeaderFooter = ({ children }) => {
             <div className="pt-2 border-t">
               <Link
                 to="/check-quote"
-                onClick={(e) => {
-                  handleCheckQuoteClick(e);
-                  setMobileMenuOpen(false);
-                }}
+                onClick={() => setMobileMenuOpen(false)}
                 className="block px-4 py-3 bg-gradient-to-r from-orange-500 to-amber-700 text-white rounded-lg font-semibold text-center"
               >
                 Check Your Quote

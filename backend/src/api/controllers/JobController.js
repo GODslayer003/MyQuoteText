@@ -4,7 +4,11 @@ const Job = require('../../models/Job');
 const Document = require('../../models/Document');
 const Lead = require('../../models/Lead');
 const Result = require('../../models/Result');
+const Supplier = require('../../models/Supplier');
 const StorageService = require('../../services/storage/StorageService');
+const OCRService = require('../../services/ocr/OCRService');
+const AIOrchestrator = require('../../services/ai/AIOrchestrator');
+const User = require('../../models/User');
 const logger = require('../../utils/logger');
 
 class JobController {
@@ -32,10 +36,11 @@ class JobController {
         });
       }
 
-      if (file.mimetype !== 'application/pdf') {
+      const allowedMimes = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
+      if (!allowedMimes.includes(file.mimetype)) {
         return res.status(400).json({
           success: false,
-          error: 'Only PDF files are accepted'
+          error: 'Only PDF and image files (JPG, PNG, WEBP) are accepted'
         });
       }
 
@@ -57,42 +62,53 @@ class JobController {
       }
 
       // Create job
-      const User = require('../../models/User');
-      const user = await User.findById(req.user._id);
-
-      // Check Quota / Credits
       let jobTier = 'Free';
+      let userId = req.user?._id;
 
-      if (user.subscription.credits > 0) {
-        // Use Credit
-        user.subscription.credits -= 1;
-        jobTier = user.subscription.plan || 'Standard'; // Default to Standard if they have credits but somehow plan is unset
-        await user.save();
-      } else {
-        // Check Free Monthly Limit
-        const now = new Date();
-        const lastFreeReport = user.subscription.freeReportDate;
+      if (userId) {
+        const user = await User.findById(userId);
+        if (!user) {
+          return res.status(401).json({ success: false, error: 'User not found' });
+        }
 
-        let canUseFree = true;
-        if (lastFreeReport) {
-          const oneMonthAgo = new Date();
-          oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
-          if (lastFreeReport > oneMonthAgo) {
-            canUseFree = false;
+        // Check Quota / Credits
+        if (user.subscription.credits > 0) {
+          // Use Credit
+          user.subscription.credits -= 1;
+          jobTier = user.subscription.plan || 'Standard';
+          await user.save();
+        } else {
+          // Check Free Monthly Limit
+          const now = new Date();
+          const lastFreeReport = user.subscription.freeReportDate;
+
+          let canUseFree = true;
+          if (lastFreeReport) {
+            const oneMonthAgo = new Date();
+            oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+            if (lastFreeReport > oneMonthAgo) {
+              canUseFree = false;
+            }
           }
-        }
 
-        if (!canUseFree) {
-          return res.status(403).json({
-            success: false,
-            error: 'Monthly free limit reached. Please buy credits.'
-          });
-        }
+          if (!canUseFree) {
+            return res.status(403).json({
+              success: false,
+              error: 'Monthly free limit reached. Please buy credits.',
+              nextAvailableDate: lastFreeReport ? new Date(new Date(lastFreeReport).setMonth(new Date(lastFreeReport).getMonth() + 1)) : null
+            });
+          }
 
-        // Mark free usage
-        user.subscription.freeReportDate = now;
-        await user.save();
+          // Mark free usage
+          user.subscription.freeReportDate = now;
+          await user.save();
+          jobTier = 'Free';
+        }
+      } else {
+        // Guest User - Allow Free Tier for now
+        // In a real app, we might check IP rate limits here
         jobTier = 'Free';
+        logger.info(`Guest upload using email: ${email}`);
       }
 
       const jobPublicId = uuidv4();
@@ -144,95 +160,132 @@ class JobController {
 
         logger.info(`Document created: ${document._id}`);
 
-        // Queue for processing (Simulated for Production Readiness without OpenAI Key)
+        // Queue for production processing
         setTimeout(async () => {
           try {
+            // 1. Extraction Phase
             await job.updateProcessingStep('extraction', 'in_progress');
+            await job.save();
 
-            // Simulate processing delay
-            setTimeout(async () => {
+            let extractedText = '';
+            let ocrMetadata = {};
+
+            if (file.mimetype === 'text/plain') {
+              extractedText = file.buffer.toString('utf8');
+              ocrMetadata = { method: 'text_direct' };
+            } else {
               try {
-                await job.updateProcessingStep('extraction', 'completed');
-                await job.updateProcessingStep('analysis', 'in_progress');
-
-                // Generate Mock Result matching Result.js schema
-                const Result = require('../../models/Result'); // Ensure import
-
-                const mockResult = await Result.create({
-                  jobId: job._id,
-                  userId: req.user?._id,
-                  summary: "The quote provides a comprehensive breakdown for a kitchen renovation. While the material costs align with market averages, the labor charges for plumbing and electrical work appear slightly elevated compared to standard regional rates.",
-                  verdict: "good",
-                  verdictScore: 85,
-                  overallCost: 12500,
-                  labourCost: 4500,
-                  materialsCost: 8000,
-                  fairPriceRange: {
-                    min: 11000,
-                    max: 13500
-                  },
-                  costBreakdown: [
-                    { description: "Cabinetry Materials", quantity: 1, unitPrice: 5000, totalPrice: 5000, category: "Materials", flagged: false },
-                    { description: "Countertops (Quartz)", quantity: 1, unitPrice: 2500, totalPrice: 2500, category: "Materials", flagged: false },
-                    { description: "Plumbing Labor", quantity: 10, unitPrice: 150, totalPrice: 1500, category: "Labor", flagged: true, reason: "Hourly rate is 20% above market average" },
-                    { description: "Electrical Labor", quantity: 8, unitPrice: 125, totalPrice: 1000, category: "Labor", flagged: false },
-                    { description: "Flooring Installation", quantity: 1, unitPrice: 2000, totalPrice: 2000, category: "Labor", flagged: false }
-                  ],
-                  redFlags: [
-                    { title: "High Labor Rate", description: "Plumbing hourly rate ($150/hr) exceeds regional average of $120/hr.", severity: "medium", category: "Labor" },
-                    { title: "Vague Material Specs", description: "Cabinetry brand and grade not specified.", severity: "low", category: "Materials" }
-                  ],
-                  questionsToAsk: [
-                    { question: "Can you specify the brand and grade of the cabinets?", category: "Materials", importance: "must-ask" },
-                    { question: "Does the plumbing labor include removal of old pipes?", category: "Labor", importance: "should-ask" }
-                  ],
-                  detailedReview: "The quote is generally fair. The material costs for quartz countertops are competitive. However, clarification is needed on the cabinet specifics to ensure value. Negotiating the plumbing labor rate could save approximately $300.",
-                  recommendations: [
-                    { title: "Negotiate Plumbing Rate", description: "Ask for a reduction in the hourly plumbing rate to match the market average of $120/hr.", potentialSavings: 300, difficulty: "moderate" },
-                    { title: "Clarify Cabinet Specs", description: "Get written confirmation of cabinet materials to avoid lower quality substitutions.", potentialSavings: 0, difficulty: "easy" }
-                  ],
-                  benchmarking: [
-                    { item: "Cabinetry", quotePrice: 5000, marketMin: 4500, marketAvg: 5200, marketMax: 6500, percentile: 40 },
-                    { item: "Plumbing Labor", quotePrice: 1500, marketMin: 1000, marketAvg: 1200, marketMax: 1600, percentile: 85 }
-                  ],
-                  marketContext: {
-                    city: "General",
-                    tradeType: "Renovation",
-                    projectType: "Kitchen",
-                    averageQuoteValue: 12000,
-                    pricePercentile: 55
-                  },
-                  extractedText: "Kitchen Renovation Quote... Cabinetry: $5,000... Countertops: $2,500...",
-                  analysisAccuracy: 95,
-                  confidence: 98,
-                  tier: job.tier
-                });
-
-                // Link result to job
-                job.result = mockResult._id;
-                await job.updateProcessingStep('analysis', 'completed');
-                job.status = 'completed';
-                await job.save();
-
-                logger.info(`Job ${jobPublicId} processing completed (MOCKED). Result: ${mockResult._id}`);
-
-                // Send completion email
-                const EmailService = require('../../services/email/EmailService');
-                const User = require('../../models/User'); // Ensure user is loaded if needed or pass ID
-                const user = await User.findById(job.userId);
-                if (user) {
-                  await EmailService.sendJobCompletionEmail(user, job);
-                }
-              } catch (error) {
-                logger.error(`Job processing failed: ${jobPublicId}`, error);
-                job.status = 'failed';
-                await job.save();
+                const ocrResult = await OCRService.extractTextFromPDF(file.buffer);
+                extractedText = ocrResult.text;
+                ocrMetadata = {
+                  method: ocrResult.method,
+                  ocrConfidence: ocrResult.ocrConfidence,
+                  processingTime: ocrResult.processingTime
+                };
+              } catch (ocrErr) {
+                logger.error('OCR failed, falling back to basic extraction', ocrErr);
+                extractedText = file.buffer.toString('binary').replace(/[^\x20-\x7E\n]/g, ''); // Crude fallback
+                ocrMetadata = { method: 'fallback_binary' };
               }
-            }, 3000); // 3 second processing delay
+            }
+
+            if (!extractedText || extractedText.length < 10) {
+              throw new Error('No readable text found in document');
+            }
+
+            await job.updateProcessingStep('extraction', 'completed');
+            await job.save();
+
+            // 2. Analysis Phase
+            await job.updateProcessingStep('analysis', 'in_progress');
+            await job.save();
+
+            // Call real AI
+            const aiOutcome = await AIOrchestrator.analyzeQuote(
+              extractedText,
+              job.tier.toLowerCase(),
+              { ...job.metadata, ...ocrMetadata }
+            );
+
+            // 3. Map result based on tier
+            let resultData = {
+              jobId: job._id,
+              userId: job.userId,
+              tier: job.tier,
+              extractedText: extractedText.substring(0, 10000), // Cap it
+              analysisAccuracy: aiOutcome.confidenceLevel === 'high' ? 95 : 80,
+              confidence: 90
+            };
+
+            if (job.tier.toLowerCase() === 'free') {
+              resultData = {
+                ...resultData,
+                summary: aiOutcome.freeSummary?.overview || 'Quote overview generated.',
+                verdict: 'good',
+                verdictScore: 70,
+                supplierInfo: aiOutcome.contractorProfile,
+                detailedReview: aiOutcome.freeSummary?.mainPoints?.join('\n') || ''
+              };
+            } else {
+              // Standard/Premium
+              const analysis = aiOutcome.analysis;
+              resultData = {
+                ...resultData,
+                summary: analysis.pricingAnalysis?.comparableWork?.substring(0, 200) || 'Detailed quote analysis completed.',
+                verdict: analysis.pricingAnalysis?.assessment === 'appears_high' ? 'overpriced' : 'good',
+                verdictScore: analysis.confidenceLevel === 'very_high' ? 90 : 80,
+                overallCost: analysis.pricingAnalysis?.totalAmount,
+                fairPriceRange: {
+                  min: analysis.pricingAnalysis?.priceRange?.low,
+                  max: analysis.pricingAnalysis?.priceRange?.high
+                },
+                costBreakdown: analysis.costBreakdown?.map(item => ({
+                  description: item.item,
+                  totalPrice: item.amount,
+                  category: item.category,
+                  flagged: item.notes?.toLowerCase().includes('red flag')
+                })),
+                redFlags: analysis.redFlags?.map(flag => ({
+                  title: flag.category.replace('_', ' ').toUpperCase(),
+                  description: flag.description,
+                  severity: flag.severity === 'critical' ? 'high' : flag.severity,
+                  category: flag.category
+                })),
+                questionsToAsk: analysis.questionsToAsk?.map(q => ({
+                  question: q,
+                  importance: 'should-ask'
+                })),
+                detailedReview: analysis.pricingAnalysis?.disclaimer || '',
+                supplierInfo: analysis.contractorProfile
+              };
+            }
+
+            const finalResult = await Result.create(resultData);
+
+            // 4. Linkage & Completion
+            job.result = finalResult._id;
+            await job.updateProcessingStep('analysis', 'completed');
+            job.status = 'completed';
+            await job.save();
+
+            logger.info(`Job ${jobPublicId} processing completed. Result: ${finalResult._id}`);
+
+            // Send completion email
+            try {
+              const EmailService = require('../../services/email/EmailService');
+              const user = await User.findById(job.userId);
+              if (user && user.email) {
+                await EmailService.sendJobCompletionEmail(user, job);
+              }
+            } catch (emailErr) {
+              logger.error('Failed to send completion email', emailErr);
+            }
           } catch (error) {
-            logger.error(`Job processing setup failed: ${jobPublicId}`, error);
+            logger.error(`Job processing failed: ${jobPublicId}`, error);
+            job.status = 'failed';
+            await job.save();
           }
-        }, 1000);
+        }, 500);
 
         return res.status(201).json({
           success: true,
@@ -415,17 +468,20 @@ class JobController {
       }
 
       if (!job.result) {
-        // Fallback: Check if there's a result ID that failed to populate
-        const rawJob = await Job.findOne({ jobId: req.params.jobId }).lean();
-        if (rawJob.result) {
-          const Result = require('../../models/Result');
-          const result = await Result.findById(rawJob.result);
-          if (result) {
-            return res.json({
-              success: true,
-              data: result
-            });
-          }
+        // Fallback: Check if there's a result ID that failed to populate OR a result that exists but isn't linked
+        const Result = require('../../models/Result');
+        const fallbackResult = await Result.findOne({ jobId: job._id });
+
+        if (fallbackResult) {
+          // Auto-repair linkage
+          job.result = fallbackResult._id;
+          if (job.status !== 'completed') job.status = 'completed';
+          await job.save();
+
+          return res.json({
+            success: true,
+            data: fallbackResult
+          });
         }
 
         return res.status(404).json({
@@ -469,6 +525,41 @@ class JobController {
       res.json({
         success: true,
         data: { url: signedUrl }
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Submit job rating
+   */
+  async submitRating(req, res, next) {
+    try {
+      const { rating } = req.body;
+      const job = await Job.findOne({ jobId: req.params.jobId });
+
+      if (!job) {
+        return res.status(404).json({
+          success: false,
+          error: 'Job not found'
+        });
+      }
+
+      // If job has a userId, check it
+      if (job.userId && req.user && job.userId.toString() !== req.user._id.toString()) {
+        return res.status(403).json({
+          success: false,
+          error: 'Access denied'
+        });
+      }
+
+      job.rating = rating;
+      await job.save();
+
+      res.json({
+        success: true,
+        message: 'Rating submitted successfully'
       });
     } catch (error) {
       next(error);

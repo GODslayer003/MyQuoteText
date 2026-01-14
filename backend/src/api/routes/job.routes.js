@@ -8,14 +8,15 @@ const authMiddleware = require('../middleware/auth.middleware');
 // Multer configuration
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { 
+  limits: {
     fileSize: 10 * 1024 * 1024 // 10MB
   },
   fileFilter: (req, file, cb) => {
-    if (file.mimetype === 'application/pdf') {
+    const allowedMimes = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
+    if (allowedMimes.includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error('Only PDF files are allowed'));
+      cb(new Error('Only PDF and image files (JPG, PNG, WEBP) are allowed'));
     }
   }
 });
@@ -23,7 +24,7 @@ const upload = multer({
 // Create job (upload PDF)
 router.post(
   '/',
-  authMiddleware.authenticate,
+  authMiddleware.optionalAuth,
   upload.single('document'),
   JobController.createJob
 );
@@ -68,6 +69,13 @@ router.get(
   '/:jobId/documents/:documentId/download',
   authMiddleware.optionalAuth,
   JobController.downloadDocument
+);
+
+// Submit rating
+router.patch(
+  '/:jobId/rating',
+  authMiddleware.optionalAuth,
+  JobController.submitRating
 );
 
 module.exports = router;

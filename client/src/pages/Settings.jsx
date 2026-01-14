@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import api from '../services/api';
+import profileApi from '../services/profileApi';
 
 const Settings = () => {
   const { user, logout } = useAuth();
@@ -146,7 +147,7 @@ const Settings = () => {
     setError(null);
 
     try {
-      await api.put('/user/change-password', {
+      await profileApi.changePassword({
         currentPassword: passwordData.currentPassword,
         newPassword: passwordData.newPassword
       });
@@ -196,14 +197,12 @@ const Settings = () => {
       </div>
       <button
         onClick={() => onChange(!checked)}
-        className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors ${
-          checked ? 'bg-orange-600' : 'bg-gray-300'
-        }`}
+        className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors ${checked ? 'bg-orange-600' : 'bg-gray-300'
+          }`}
       >
         <span
-          className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${
-            checked ? 'translate-x-7' : 'translate-x-1'
-          }`}
+          className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${checked ? 'translate-x-7' : 'translate-x-1'
+            }`}
         />
       </button>
     </div>
@@ -258,11 +257,10 @@ const Settings = () => {
                   <button
                     key={section.id}
                     onClick={() => setActiveSection(section.id)}
-                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
-                      activeSection === section.id
+                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${activeSection === section.id
                         ? 'bg-orange-50 text-orange-600'
                         : 'text-gray-600 hover:bg-gray-50'
-                    }`}
+                      }`}
                   >
                     {section.icon}
                     <span className="font-medium">{section.label}</span>

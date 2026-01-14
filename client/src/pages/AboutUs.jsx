@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { 
-  Sparkles, 
-  Users, 
-  Target, 
-  Award, 
-  Shield, 
+import {
+  Sparkles,
+  Users,
+  Target,
+  Award,
+  Shield,
   Heart,
   TrendingUp,
   Clock,
@@ -174,9 +174,8 @@ const AboutUs = () => {
           <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] sm:w-[500px] sm:h-[500px] bg-amber-400 rounded-full blur-3xl animate-float-delayed"></div>
         </div>
 
-        <div className={`relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 transition-all duration-1000 ${
-          isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
-        }`}>
+        <div className={`relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 transition-all duration-1000 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
+          }`}>
           <div className="text-center mb-8 sm:mb-12">
             <div className="inline-flex items-center px-4 py-1.5 bg-orange-50 text-orange-600 rounded-full text-sm font-semibold mb-6 tracking-wide">
               <Sparkles className="w-4 h-4 mr-2" />
@@ -192,9 +191,8 @@ const AboutUs = () => {
           </div>
 
           {/* Mission Card */}
-          <div className={`bg-gradient-to-r from-orange-500 to-amber-600 rounded-2xl sm:rounded-3xl p-8 sm:p-10 lg:p-12 text-white transition-all duration-700 mb-12 sm:mb-16 ${
-            isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
-          }`} style={{ transitionDelay: '200ms' }}>
+          <div className={`bg-gradient-to-r from-orange-500 to-amber-600 rounded-2xl sm:rounded-3xl p-8 sm:p-10 lg:p-12 text-white transition-all duration-700 mb-12 sm:mb-16 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
+            }`} style={{ transitionDelay: '200ms' }}>
             <div className="max-w-4xl mx-auto text-center">
               <div className="inline-flex items-center justify-center w-16 h-16 bg-white/20 backdrop-blur-sm rounded-2xl mb-6">
                 <Target className="w-8 h-8 text-white" />
@@ -215,9 +213,8 @@ const AboutUs = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6">
             {stats.map((stat, index) => (
-              <div key={index} className={`text-center transition-all duration-700 ${
-                isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
-              }`} style={{ transitionDelay: `${300 + index * 100}ms` }}>
+              <div key={index} className={`text-center transition-all duration-700 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
+                }`} style={{ transitionDelay: `${300 + index * 100}ms` }}>
                 <div className="flex items-center justify-center gap-2 mb-1 sm:mb-2">
                   <div className="text-orange-500 bg-orange-50 p-1.5 rounded-lg">
                     {stat.icon}
@@ -241,9 +238,8 @@ const AboutUs = () => {
       {/* Our Story */}
       <section className="py-12 sm:py-16 lg:py-20 bg-gradient-to-b from-white to-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className={`text-center mb-12 sm:mb-16 transition-all duration-700 ${
-            isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
-          }`} style={{ transitionDelay: '400ms' }}>
+          <div className={`text-center mb-12 sm:mb-16 transition-all duration-700 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
+            }`} style={{ transitionDelay: '400ms' }}>
             <div className="inline-flex items-center px-4 py-1.5 bg-orange-50 text-orange-600 rounded-full text-sm font-semibold mb-4 tracking-wide">
               <Building className="w-4 h-4 mr-2" />
               HOW WE STARTED
@@ -257,9 +253,8 @@ const AboutUs = () => {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 sm:gap-12 items-center mb-16 sm:mb-20">
-            <div className={`transition-all duration-700 ${
-              isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
-            }`} style={{ transitionDelay: '500ms' }}>
+            <div className={`transition-all duration-700 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
+              }`} style={{ transitionDelay: '500ms' }}>
               <div className="bg-white border border-gray-200 rounded-2xl sm:rounded-3xl p-6 sm:p-8 shadow-lg">
                 <div className="aspect-video bg-gradient-to-br from-orange-50 to-amber-50 rounded-xl mb-6 flex items-center justify-center">
                   <div className="relative">
@@ -281,9 +276,8 @@ const AboutUs = () => {
               </div>
             </div>
 
-            <div className={`transition-all duration-700 ${
-              isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
-            }`} style={{ transitionDelay: '600ms' }}>
+            <div className={`transition-all duration-700 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
+              }`} style={{ transitionDelay: '600ms' }}>
               <div className="bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-200 rounded-2xl sm:rounded-3xl p-6 sm:p-8">
                 <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-6">
                   Our Solution
@@ -322,9 +316,8 @@ const AboutUs = () => {
           </div>
 
           {/* Our Values */}
-          <div className={`mb-16 sm:mb-20 transition-all duration-700 ${
-            isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
-          }`} style={{ transitionDelay: '700ms' }}>
+          <div className={`mb-16 sm:mb-20 transition-all duration-700 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
+            }`} style={{ transitionDelay: '700ms' }}>
             <div className="text-center mb-8 sm:mb-12">
               <div className="inline-flex items-center px-4 py-1.5 bg-orange-50 text-orange-600 rounded-full text-sm font-semibold mb-4 tracking-wide">
                 <Heart className="w-4 h-4 mr-2" />
@@ -339,9 +332,8 @@ const AboutUs = () => {
               {values.map((value, index) => (
                 <div
                   key={index}
-                  className={`bg-white border border-gray-200 rounded-xl sm:rounded-2xl p-6 hover:border-orange-300 hover:shadow-lg hover:shadow-orange-100/30 transition-all duration-300 group ${
-                    isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
-                  }`}
+                  className={`bg-white border border-gray-200 rounded-xl sm:rounded-2xl p-6 hover:border-orange-300 hover:shadow-lg hover:shadow-orange-100/30 transition-all duration-300 group ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
+                    }`}
                   style={{ transitionDelay: `${800 + index * 100}ms` }}
                 >
                   <div className="w-12 h-12 bg-gradient-to-br from-orange-50 to-amber-50 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
@@ -365,9 +357,8 @@ const AboutUs = () => {
       {/* Team Section */}
       <section className="py-12 sm:py-16 lg:py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className={`text-center mb-12 sm:mb-16 transition-all duration-700 ${
-            isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
-          }`} style={{ transitionDelay: '900ms' }}>
+          <div className={`text-center mb-12 sm:mb-16 transition-all duration-700 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
+            }`} style={{ transitionDelay: '900ms' }}>
             <div className="inline-flex items-center px-4 py-1.5 bg-orange-50 text-orange-600 rounded-full text-sm font-semibold mb-4 tracking-wide">
               <Users className="w-4 h-4 mr-2" />
               MEET THE TEAM
@@ -384,9 +375,8 @@ const AboutUs = () => {
             {team.map((member, index) => (
               <div
                 key={index}
-                className={`bg-gradient-to-b from-white to-gray-50 border border-gray-200 rounded-xl sm:rounded-2xl p-6 hover:border-orange-300 hover:shadow-xl hover:shadow-orange-100/20 transition-all duration-300 group ${
-                  isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
-                }`}
+                className={`bg-gradient-to-b from-white to-gray-50 border border-gray-200 rounded-xl sm:rounded-2xl p-6 hover:border-orange-300 hover:shadow-xl hover:shadow-orange-100/20 transition-all duration-300 group ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
+                  }`}
                 style={{ transitionDelay: `${1000 + index * 100}ms` }}
               >
                 {/* Avatar Placeholder */}
@@ -395,7 +385,7 @@ const AboutUs = () => {
                     {member.name.split(' ').map(n => n[0]).join('')}
                   </span>
                 </div>
-                
+
                 <h3 className="text-lg font-bold text-gray-900 text-center mb-1 group-hover:text-orange-600 transition-colors">
                   {member.name}
                 </h3>
@@ -405,7 +395,7 @@ const AboutUs = () => {
                 <p className="text-gray-600 text-sm mb-4 text-center">
                   {member.bio}
                 </p>
-                
+
                 <div className="space-y-2">
                   {member.expertise.map((skill, skillIndex) => (
                     <div
@@ -485,9 +475,8 @@ const AboutUs = () => {
       {/* Partnerships */}
       <section className="py-12 sm:py-16 lg:py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className={`text-center mb-12 sm:mb-16 transition-all duration-700 ${
-            isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
-          }`} style={{ transitionDelay: '1300ms' }}>
+          <div className={`text-center mb-12 sm:mb-16 transition-all duration-700 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
+            }`} style={{ transitionDelay: '1300ms' }}>
             <div className="inline-flex items-center px-4 py-1.5 bg-orange-50 text-orange-600 rounded-full text-sm font-semibold mb-4 tracking-wide">
               <Globe className="w-4 h-4 mr-2" />
               PARTNERSHIPS
@@ -504,9 +493,8 @@ const AboutUs = () => {
             {partnerships.map((partner, index) => (
               <div
                 key={index}
-                className={`bg-gradient-to-b from-white to-gray-50 border border-gray-200 rounded-xl sm:rounded-2xl p-6 hover:border-orange-300 hover:shadow-lg transition-all duration-300 group ${
-                  isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
-                }`}
+                className={`bg-gradient-to-b from-white to-gray-50 border border-gray-200 rounded-xl sm:rounded-2xl p-6 hover:border-orange-300 hover:shadow-lg transition-all duration-300 group ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
+                  }`}
                 style={{ transitionDelay: `${1400 + index * 100}ms` }}
               >
                 <div className="w-12 h-12 bg-gradient-to-br from-orange-50 to-amber-50 rounded-xl flex items-center justify-center mb-4">
@@ -530,25 +518,21 @@ const AboutUs = () => {
       {/* CTA Section */}
       <section className="py-12 sm:py-16 lg:py-20 bg-gradient-to-b from-gray-50 to-white">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <div className={`inline-flex items-center px-4 py-1.5 bg-orange-50 text-orange-600 rounded-full text-sm font-semibold mb-4 sm:mb-6 tracking-wide transition-all duration-700 ${
-            isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
-          }`} style={{ transitionDelay: '1500ms' }}>
+          <div className={`inline-flex items-center px-4 py-1.5 bg-orange-50 text-orange-600 rounded-full text-sm font-semibold mb-4 sm:mb-6 tracking-wide transition-all duration-700 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
+            }`} style={{ transitionDelay: '1500ms' }}>
             READY TO GET STARTED?
           </div>
-          <h2 className={`text-2xl sm:text-3xl lg:text-4xl font-bold mb-4 sm:mb-6 tracking-tight transition-all duration-700 ${
-            isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
-          }`} style={{ transitionDelay: '1600ms' }}>
+          <h2 className={`text-2xl sm:text-3xl lg:text-4xl font-bold mb-4 sm:mb-6 tracking-tight transition-all duration-700 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
+            }`} style={{ transitionDelay: '1600ms' }}>
             Join Thousands of Confident Homeowners
           </h2>
-          <p className={`text-lg sm:text-xl text-gray-700 mb-8 sm:mb-10 max-w-2xl mx-auto transition-all duration-700 ${
-            isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
-          }`} style={{ transitionDelay: '1700ms' }}>
+          <p className={`text-lg sm:text-xl text-gray-700 mb-8 sm:mb-10 max-w-2xl mx-auto transition-all duration-700 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
+            }`} style={{ transitionDelay: '1700ms' }}>
             Experience the peace of mind that comes with knowing your tradie quote is fair and complete.
           </p>
 
-          <div className={`flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center transition-all duration-700 ${
-            isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
-          }`} style={{ transitionDelay: '1800ms' }}>
+          <div className={`flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center transition-all duration-700 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
+            }`} style={{ transitionDelay: '1800ms' }}>
             <Link
               to="/check-quote"
               className="group relative px-6 sm:px-8 py-3 sm:py-4 bg-gradient-to-r from-orange-500 to-amber-600 text-white rounded-xl sm:rounded-2xl font-bold text-base sm:text-lg hover:shadow-xl hover:shadow-orange-500/30 transition-all duration-300 transform hover:scale-105 w-full sm:w-auto"
@@ -568,7 +552,7 @@ const AboutUs = () => {
       </section>
 
       {/* Custom Animations */}
-      <style jsx>{`
+      <style>{`
         @keyframes float {
           0%, 100% {
             transform: translateY(0px);

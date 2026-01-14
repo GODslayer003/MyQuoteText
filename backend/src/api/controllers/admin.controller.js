@@ -2,8 +2,10 @@
 const jwt = require('jsonwebtoken');
 const User = require('../../models/User');
 const Payment = require('../../models/Payment');
+const Pricing = require('../../models/Pricing');
 const AuditLog = require('../../models/AuditLog');
 const Job = require('../../models/Job');
+const Supplier = require('../../models/Supplier');
 
 class AdminController {
     // Admin login
@@ -104,6 +106,39 @@ class AdminController {
         } catch (e) {
             console.error('Stats error:', e);
             return res.status(500).json({ success: false, error: 'Failed to fetch stats' });
+        }
+    }
+
+    // Get Revenue Analytics
+    static async getRevenueStats(req, res) {
+        try {
+            const result = await Payment.aggregate([
+                {
+                    $match: {
+                        status: { $in: ['succeeded', 'partially_refunded'] }
+                    }
+                },
+                {
+                    $group: {
+                        _id: null,
+                        totalRevenue: { $sum: '$amount' },
+                        count: { $sum: 1 }
+                    }
+                }
+            ]);
+
+            const stats = result[0] || { totalRevenue: 0, count: 0 };
+
+            return res.json({
+                success: true,
+                data: {
+                    totalRevenue: stats.totalRevenue,
+                    transactionCount: stats.count
+                }
+            });
+        } catch (e) {
+            console.error('Revenue stats error:', e);
+            return res.status(500).json({ success: false, error: 'Failed to fetch revenue stats' });
         }
     }
 
@@ -240,6 +275,80 @@ class AdminController {
             });
         } catch (e) {
             return res.status(500).json({ success: false, error: 'Failed to fetch payments' });
+        }
+    }
+
+    // Get Suppliers
+    static async getSuppliers(req, res) {
+        try {
+            const suppliers = await Supplier.find().sort({ 'intelligence.riskScore': -1 });
+            return res.json({ success: true, data: suppliers });
+        } catch (e) {
+            console.error('Suppliers fetch error:', e);
+            return res.status(500).json({ success: false, error: 'Failed to fetch suppliers' });
+        }
+    }
+
+    // Pricing Management
+    static async getAdminPricing(req, res) {
+        try {
+            const pricing = await Pricing.find().sort({ price: 1 });
+            return res.json({ success: true, data: pricing });
+        } catch (e) {
+            return res.status(500).json({ success: false, error: 'Failed to fetch pricing' });
+        }
+    }
+
+    static async createPricing(req, res) {
+        try {
+            const { name, tier, price, description, features } = req.body;
+            const pricing = new Pricing({
+                name,
+                tier,
+                price: parseFloat(price),
+                description,
+                features: features || []
+            });
+            await pricing.save();
+            return res.status(201).json({ success: true, data: pricing });
+        } catch (e) {
+            return res.status(500).json({ success: false, error: 'Failed to create pricing' });
+        }
+    }
+
+    static async updatePricing(req, res) {
+        try {
+            const { id } = req.params;
+            const pricing = await Pricing.findByIdAndUpdate(id, req.body, { new: true });
+            if (!pricing) return res.status(404).json({ success: false, error: 'Pricing not found' });
+            return res.json({ success: true, data: pricing });
+        } catch (e) {
+            return res.status(500).json({ success: false, error: 'Failed to update pricing' });
+        }
+    }
+
+    static async deletePricing(req, res) {
+        try {
+            const { id } = req.params;
+            const pricing = await Pricing.findByIdAndDelete(id);
+            if (!pricing) return res.status(404).json({ success: false, error: 'Pricing not found' });
+            return res.json({ success: true, message: 'Pricing deleted' });
+        } catch (e) {
+            return res.status(500).json({ success: false, error: 'Failed to delete pricing' });
+        }
+    }
+
+    // Get Discount History
+    static async getDiscountHistory(req, res) {
+        try {
+            const DiscountUsage = require('../../models/DiscountUsage');
+            const history = await DiscountUsage.find()
+                .populate('userId', 'email')
+                .sort({ usedAt: -1 });
+            return res.json({ success: true, data: history });
+        } catch (e) {
+            console.error('History fetch error:', e);
+            return res.status(500).json({ success: false, error: 'Failed to fetch history' });
         }
     }
 

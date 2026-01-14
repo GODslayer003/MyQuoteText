@@ -54,9 +54,9 @@ class AuthController {
 
       logger.info(`User registered: ${user.email}`);
 
-      // Send welcome email
+      // Send welcome email (non-blocking)
       const EmailService = require('../../services/email/EmailService');
-      await EmailService.sendWelcomeEmail(user);
+      EmailService.sendWelcomeEmail(user).catch(err => logger.error('Failed to send welcome email:', err));
 
       res.status(201).json({
         success: true,

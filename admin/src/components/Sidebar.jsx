@@ -11,7 +11,8 @@ import {
   X,
   Home,
   DollarSign,
-  Ticket
+  Ticket,
+  Users
 } from 'lucide-react';
 
 const Sidebar = ({ isOpen, setIsOpen }) => {
@@ -27,8 +28,9 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
 
   const menuItems = [
     { path: '/dashboard', label: 'Dashboard', icon: <LayoutDashboard className="w-5 h-5" /> },
-    { path: '/pricing', label: 'Pricing', icon: <DollarSign className="w-5 h-5" /> },
+    { path: '/payment', label: 'Payment', icon: <DollarSign className="w-5 h-5" /> },
     { path: '/discounts', label: 'Discounts', icon: <Ticket className="w-5 h-5" /> },
+    { path: '/suppliers', label: 'Suppliers', icon: <Users className="w-5 h-5" /> },
     { path: '/settings', label: 'Settings', icon: <Settings className="w-5 h-5" /> }
   ];
 
@@ -75,8 +77,8 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                 to={item.path}
                 onClick={() => setIsOpen(false)}
                 className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${location.pathname === item.path
-                    ? 'bg-orange-600 text-white'
-                    : 'text-gray-400 hover:bg-gray-700 hover:text-white'
+                  ? 'bg-orange-600 text-white'
+                  : 'text-gray-400 hover:bg-gray-700 hover:text-white'
                   }`}
               >
                 {item.icon}

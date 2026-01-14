@@ -51,10 +51,142 @@ const Pricing = () => {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [selectedPlanForPayment, setSelectedPlanForPayment] = useState(null);
 
+  const [plans, setPlans] = useState([]);
+  const [loading, setLoading] = useState(true);
+
   useEffect(() => {
     setIsVisible(true);
+    fetchPlans();
   }, []);
 
+  // Static fallback data with all visual metadata
+  const staticPlans = [
+    {
+      name: "Free",
+      tier: "free",
+      tagline: "Start with confidence",
+      price: "0",
+      period: "forever",
+      popular: false,
+      color: "from-gray-800 to-black",
+      textColor: "text-gray-800",
+      border: "border-gray-300",
+      button: "bg-black hover:bg-gray-900 text-white",
+      cta: "Get Started Free",
+      icon: <Eye className="w-6 h-6" />,
+      features: [
+        { included: true, text: "Basic AI summary analysis" },
+        { included: true, text: "Fair price verdict" },
+        { included: true, text: "Essential questions to ask" },
+        { included: false, text: "Red flag detection", premium: false },
+        { included: false, text: "Detailed cost breakdown", premium: false },
+        { included: false, text: "Standard PDF reports", premium: false },
+        { included: false, text: "Market benchmarking", premium: true },
+        { included: false, text: "Multiple quote comparison", premium: true },
+        { included: false, text: "Priority 24h processing", premium: true },
+      ],
+      limitations: [
+        "Summary-only reports",
+        "No detailed analysis",
+        "No PDF downloads"
+      ],
+      bestFor: "Quick checks, basic validation"
+    },
+    {
+      name: "Standard",
+      tier: "standard",
+      tagline: "For confident decisions",
+      price: "7.99",
+      period: "per report",
+      popular: true,
+      color: "from-orange-500 to-amber-600",
+      textColor: "text-orange-600",
+      border: "border-orange-300",
+      button: "from-orange-500 to-amber-600 hover:shadow-orange-500/30 text-white",
+      cta: "Buy 1 Report",
+      icon: <Zap className="w-6 h-6" />,
+      features: [
+        { included: true, text: "Complete AI analysis" },
+        { included: true, text: "Detailed cost breakdown" },
+        { included: true, text: "Item-by-item assessment" },
+        { included: true, text: "Standard PDF export" },
+        { included: true, text: "Save & organize quotes" },
+        { included: true, text: "Red Flag detection" },
+        { included: false, text: "Multiple quote comparison", premium: true },
+        { included: false, text: "Market benchmarking", premium: true },
+        { included: false, text: "Priority 24h processing", premium: true },
+      ],
+      savings: "One-time payment",
+      included: "Everything in Free, plus:",
+      bestFor: "Single quotes, detailed analysis"
+    },
+    {
+      name: "Premium",
+      tier: "premium",
+      tagline: "Master complex projects",
+      price: "9.99",
+      period: "per report",
+      popular: false,
+      color: "from-black to-gray-900",
+      textColor: "text-black",
+      border: "border-gray-800",
+      button: "bg-black hover:bg-gray-900 text-white",
+      cta: "Get Premium Report",
+      icon: <Crown className="w-6 h-6" />,
+      features: [
+        { included: true, text: "Everything in Standard" },
+        { included: true, text: "Compare 2-3 quotes side-by-side" },
+        { included: true, text: "Market rate benchmarking" },
+        { included: true, text: "Advanced recommendations" },
+        { included: true, text: "Priority 24h processing" },
+        { included: true, text: "Bulk upload (up to 3 quotes)" },
+        { included: true, text: "Trend analysis reports" },
+        { included: true, text: "Dedicated support channel" },
+        { included: true, text: "Export to spreadsheet" },
+      ],
+      savings: "One-time payment",
+      included: "Everything in Standard, plus:",
+      bestFor: "Multiple quotes, complex projects"
+    }
+  ];
+
+  const fetchPlans = async () => {
+    try {
+      setLoading(true);
+      const apiUrl = `${import.meta.env.VITE_API_BASE}/api/v1/pricing`;
+      const response = await fetch(apiUrl);
+      if (!response.ok) throw new Error('Network response was not ok');
+      const result = await response.json();
+
+      if (result.success && result.data && result.data.length > 0) {
+        // Merge API data with static visual metadata
+        const mergedPlans = staticPlans.map(staticPlan => {
+          const apiPlan = result.data.find(p => p.tier === staticPlan.tier);
+          if (apiPlan) {
+            return {
+              ...staticPlan,
+              name: apiPlan.name,
+              price: apiPlan.price.toString(),
+              description: apiPlan.description || staticPlan.tagline,
+              // If API has features, maybe use them, but static ones are more detailed for UI
+              features: apiPlan.features && apiPlan.features.length > 0
+                ? staticPlan.features // keep static ones for icons, or merge if needed
+                : staticPlan.features
+            };
+          }
+          return staticPlan;
+        });
+        setPlans(mergedPlans);
+      } else {
+        setPlans(staticPlans);
+      }
+    } catch (err) {
+      console.error('Failed to fetch pricing:', err);
+      setPlans(staticPlans);
+    } finally {
+      setLoading(false);
+    }
+  };
   const handlePlanSelect = (plan) => {
     if (plan.name === "Free") {
       // Free plan - redirect to upload or dashboard
@@ -89,92 +221,7 @@ const Pricing = () => {
     }
   };
 
-  const plans = [
-    {
-      name: "Free",
-      tagline: "Start with confidence",
-      price: "$0",
-      period: "forever",
-      popular: false,
-      color: "from-gray-800 to-black",
-      textColor: "text-gray-800",
-      border: "border-gray-300",
-      button: "bg-black hover:bg-gray-900 text-white",
-      cta: "Get Started Free",
-      icon: <Eye className="w-6 h-6" />,
-      features: [
-        { included: true, text: "Basic AI summary analysis" },
-        { included: true, text: "Fair price verdict" },
-        { included: true, text: "Essential questions to ask" },
-        { included: false, text: "Red flag detection", premium: false },
-        { included: false, text: "Detailed cost breakdown", premium: false },
-        { included: false, text: "Standard PDF reports", premium: false },
-        { included: false, text: "Market benchmarking", premium: true },
-        { included: false, text: "Multiple quote comparison", premium: true },
-        { included: false, text: "Priority 24h processing", premium: true },
-      ],
-      limitations: [
-        "Summary-only reports",
-        "No detailed analysis",
-        "No PDF downloads"
-      ],
-      bestFor: "Quick checks, basic validation"
-    },
-    {
-      name: "Standard",
-      tagline: "For confident decisions",
-      price: "$7.99",
-      period: "per report",
-      popular: true,
-      color: "from-orange-500 to-amber-600",
-      textColor: "text-orange-600",
-      border: "border-orange-300",
-      button: "from-orange-500 to-amber-600 hover:shadow-orange-500/30 text-white",
-      cta: "Buy 1 Report",
-      icon: <Zap className="w-6 h-6" />,
-      features: [
-        { included: true, text: "Complete AI analysis" },
-        { included: true, text: "Detailed cost breakdown" },
-        { included: true, text: "Item-by-item assessment" },
-        { included: true, text: "Standard PDF export" },
-        { included: true, text: "Save & organize quotes" },
-        { included: true, text: "Red Flag detection" },
-        { included: false, text: "Multiple quote comparison", premium: true },
-        { included: false, text: "Market benchmarking", premium: true },
-        { included: false, text: "Priority 24h processing", premium: true },
-      ],
-      savings: "One-time payment",
-      included: "Everything in Free, plus:",
-      bestFor: "Single quotes, detailed analysis"
-    },
-    {
-      name: "Premium",
-      tagline: "Master complex projects",
-      price: "$9.99",
-      period: "per report",
-      popular: false,
-      color: "from-black to-gray-900",
-      textColor: "text-black",
-      border: "border-gray-800",
-      button: "bg-black hover:bg-gray-900 text-white",
-      cta: "Get Premium Report",
-      icon: <Crown className="w-6 h-6" />,
-      features: [
-        { included: true, text: "Everything in Standard" },
-        { included: true, text: "Compare 2-3 quotes side-by-side" },
-        { included: true, text: "Market rate benchmarking" },
-        { included: true, text: "Advanced recommendations" },
-        { included: true, text: "Priority 24h processing" },
-        { included: true, text: "Bulk upload (up to 3 quotes)" },
-        { included: true, text: "Trend analysis reports" },
-        { included: true, text: "Dedicated support channel" },
-        { included: true, text: "Export to spreadsheet" },
-      ],
-      savings: "One-time payment",
-      included: "Everything in Standard, plus:",
-      bestFor: "Multiple quotes, complex projects"
-    }
-  ];
+
 
   const tableData = [
     { feature: "AI Summary Analysis", Free: "✓", Standard: "✓", Premium: "✓" },
@@ -312,7 +359,7 @@ const Pricing = () => {
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
             <Link
-              to="/upload"
+              to="/check-quote"
               className="group px-8 py-4 bg-black text-white rounded-xl font-bold text-lg hover:shadow-2xl transition-all duration-300 transform hover:scale-105 shadow-lg flex items-center"
             >
               Check a Quote Free
@@ -374,7 +421,8 @@ const Pricing = () => {
 
                   <div className="my-6">
                     <div className="flex items-baseline justify-center">
-                      <span className="text-5xl font-sm text-gray-900">{plan.price}</span>
+                      <span className="text-3xl font-bold text-gray-900">$</span>
+                      <span className="text-5xl font-bold text-gray-900">{plan.price}</span>
                     </div>
                     <div className="text-gray-600 mt-2 text-sm">{plan.period}</div>
                     {plan.savings && (
@@ -387,7 +435,7 @@ const Pricing = () => {
                   {/* CTA Button */}
                   {plan.name === "Free" ? (
                     <Link
-                      to="/upload"
+                      to="/check-quote"
                       className={`w-full py-4 px-6 rounded-xl font-bold text-lg transition-all duration-300 flex items-center justify-center gap-2 bg-black hover:bg-gray-900 text-white`}
                     >
                       {plan.cta}
@@ -395,7 +443,7 @@ const Pricing = () => {
                     </Link>
                   ) : (
                     <button
-                      onClick={() => handlePlanSelect(plan.name.toLowerCase())}
+                      onClick={() => handlePlanSelect(plan)}
                       className={`w-full py-4 px-6 rounded-xl font-bold text-lg transition-all duration-300 flex items-center justify-center gap-2 ${plan.name === "Standard"
                         ? 'bg-gradient-to-r from-orange-500 to-amber-600 hover:shadow-xl hover:shadow-orange-500/30 text-white'
                         : 'bg-black hover:bg-gray-900 text-white'
@@ -602,7 +650,7 @@ const Pricing = () => {
               {/* Mobile CTA Buttons */}
               <div className="mt-6 grid grid-cols-3 gap-3">
                 <Link
-                  to="/upload"
+                  to="/check-quote"
                   className="bg-gray-800 hover:bg-gray-900 text-white text-sm font-bold py-3 px-2 rounded-lg text-center transition-colors"
                 >
                   Start Free
@@ -649,7 +697,7 @@ const Pricing = () => {
                 <p className="text-gray-600 mb-4">{useCase.description}</p>
                 {useCase.plan === "Free" ? (
                   <Link
-                    to="/upload"
+                    to="/check-quote"
                     className="inline-flex items-center text-sm font-medium text-gray-700"
                   >
                     Get started <ChevronRight className="w-4 h-4 ml-1" />

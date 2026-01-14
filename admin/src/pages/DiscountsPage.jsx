@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, Ticket, Loader2 } from 'lucide-react';
+import { Plus, Edit2, Trash2, Ticket, Loader2, History } from 'lucide-react';
 import api from '../services/api';
 
 const DiscountsPage = () => {
@@ -19,9 +19,25 @@ const DiscountsPage = () => {
     applicableTiers: []
   });
 
+  const [usageHistory, setUsageHistory] = useState([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+
   useEffect(() => {
     fetchDiscounts();
+    fetchUsageHistory();
   }, []);
+
+  const fetchUsageHistory = async () => {
+    try {
+      setLoadingHistory(true);
+      const response = await api.get('/admin/discounts/history');
+      setUsageHistory(response.data.data);
+    } catch (err) {
+      console.error('Failed to fetch usage history:', err);
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
 
   const fetchDiscounts = async () => {
     try {
@@ -173,7 +189,7 @@ const DiscountsPage = () => {
               <h2 className="text-2xl font-bold text-gray-900 mb-4">
                 {editingId ? 'Edit Discount' : 'Create Discount'}
               </h2>
-              
+
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <input

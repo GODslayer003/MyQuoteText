@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { 
-  MessageSquare, 
-  Mail, 
-  Clock, 
-  HelpCircle, 
-  Send, 
-  Phone, 
-  MapPin, 
+import {
+  MessageSquare,
+  Mail,
+  Clock,
+  HelpCircle,
+  Send,
+  Phone,
+  MapPin,
   Shield,
   CheckCircle2,
   Users,
@@ -127,9 +127,8 @@ const Contact = () => {
           <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] sm:w-[500px] sm:h-[500px] bg-amber-400 rounded-full blur-3xl animate-float-delayed"></div>
         </div>
 
-        <div className={`relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center transition-all duration-1000 ${
-          isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
-        }`}>
+        <div className={`relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center transition-all duration-1000 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
+          }`}>
           <div className="inline-flex items-center px-4 py-1.5 bg-orange-50 text-orange-600 rounded-full text-sm font-semibold mb-6 tracking-wide">
             <MessageSquare className="w-4 h-4 mr-2" />
             WE'RE HERE TO HELP
@@ -150,9 +149,8 @@ const Contact = () => {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
             {/* Contact Form - Left Column */}
             <div className="lg:col-span-2">
-              <div className={`bg-white border border-gray-200 rounded-2xl sm:rounded-3xl p-6 sm:p-8 transition-all duration-700 hover:shadow-xl hover:shadow-orange-100/50 ${
-                isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
-              }`} style={{ transitionDelay: '200ms' }}>
+              <div className={`bg-white border border-gray-200 rounded-2xl sm:rounded-3xl p-6 sm:p-8 transition-all duration-700 hover:shadow-xl hover:shadow-orange-100/50 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
+                }`} style={{ transitionDelay: '200ms' }}>
                 <div className="flex items-center gap-4 mb-6">
                   <div className="w-12 h-12 bg-gradient-to-r from-orange-500 to-amber-600 rounded-xl flex items-center justify-center">
                     <Send className="w-6 h-6 text-white" />
@@ -270,13 +268,12 @@ const Contact = () => {
               {/* Contact Methods */}
               <div className="space-y-4 sm:space-y-6">
                 <h3 className="text-xl font-bold text-gray-900">Other Ways to Reach Us</h3>
-                
+
                 {contactMethods.map((method, index) => (
                   <div
                     key={index}
-                    className={`bg-white border border-gray-200 rounded-xl sm:rounded-2xl p-5 sm:p-6 hover:border-orange-300 transition-all duration-700 group cursor-pointer hover:shadow-lg hover:shadow-orange-100/30 ${
-                      isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
-                    }`}
+                    className={`bg-white border border-gray-200 rounded-xl sm:rounded-2xl p-5 sm:p-6 hover:border-orange-300 transition-all duration-700 group cursor-pointer hover:shadow-lg hover:shadow-orange-100/30 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
+                      }`}
                     style={{ transitionDelay: method.delay }}
                   >
                     <div className="flex items-start gap-4">
@@ -296,9 +293,8 @@ const Contact = () => {
               </div>
 
               {/* Trust Indicators */}
-              <div className={`bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-200 rounded-xl sm:rounded-2xl p-5 sm:p-6 transition-all duration-700 ${
-                isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
-              }`} style={{ transitionDelay: '800ms' }}>
+              <div className={`bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-200 rounded-xl sm:rounded-2xl p-5 sm:p-6 transition-all duration-700 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
+                }`} style={{ transitionDelay: '800ms' }}>
                 <h3 className="text-xl font-bold text-gray-900 mb-4">Why Trust MyQuoteMate?</h3>
                 <div className="space-y-4">
                   <div className="flex items-start gap-3">
@@ -338,9 +334,8 @@ const Contact = () => {
       {/* FAQ Section */}
       <section className="py-12 sm:py-16 lg:py-20 bg-white">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className={`text-center mb-8 sm:mb-12 transition-all duration-700 ${
-            isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
-          }`} style={{ transitionDelay: '900ms' }}>
+          <div className={`text-center mb-8 sm:mb-12 transition-all duration-700 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
+            }`} style={{ transitionDelay: '900ms' }}>
             <div className="inline-flex items-center px-4 py-1.5 bg-orange-50 text-orange-600 rounded-full text-sm font-semibold mb-4 tracking-wide">
               <HelpCircle className="w-4 h-4 mr-2" />
               QUICK ANSWERS
@@ -357,9 +352,8 @@ const Contact = () => {
             {faqs.map((faq, index) => (
               <div
                 key={index}
-                className={`bg-white border border-gray-200 rounded-xl p-5 sm:p-6 hover:border-orange-300 transition-all duration-700 cursor-pointer group hover:shadow-lg hover:shadow-orange-100/30 ${
-                  isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
-                }`}
+                className={`bg-white border border-gray-200 rounded-xl p-5 sm:p-6 hover:border-orange-300 transition-all duration-700 cursor-pointer group hover:shadow-lg hover:shadow-orange-100/30 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
+                  }`}
                 style={{ transitionDelay: `${1000 + (index * 100)}ms` }}
               >
                 <div className="flex items-start gap-4">
@@ -380,7 +374,7 @@ const Contact = () => {
       </section>
 
       {/* Custom Animations */}
-      <style jsx>{`
+      <style>{`
         @keyframes float {
           0%, 100% {
             transform: translateY(0px);

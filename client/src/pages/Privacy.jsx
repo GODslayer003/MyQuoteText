@@ -773,13 +773,13 @@ const Privacy = () => {
                       key={section.id}
                       onClick={() => setActiveSection(section.id)}
                       className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all text-left ${activeSection === section.id
-                          ? 'bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-200 text-orange-600'
-                          : 'text-gray-600 hover:bg-orange-50'
+                        ? 'bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-200 text-orange-600'
+                        : 'text-gray-600 hover:bg-orange-50'
                         }`}
                     >
                       <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${activeSection === section.id
-                          ? 'bg-gradient-to-r from-orange-500 to-amber-600 text-white'
-                          : 'bg-orange-100 text-orange-600'
+                        ? 'bg-gradient-to-r from-orange-500 to-amber-600 text-white'
+                        : 'bg-orange-100 text-orange-600'
                         }`}>
                         {section.icon}
                       </div>
@@ -953,7 +953,7 @@ const Privacy = () => {
       </section>
 
       {/* Custom Animations */}
-      <style jsx>{`
+      <style>{`
         @keyframes float {
           0%, 100% {
             transform: translateY(0px);

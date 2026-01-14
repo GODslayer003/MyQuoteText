@@ -248,14 +248,16 @@ export const AuthProvider = ({ children }) => {
         throw new Error("Invalid response from server");
       }
 
-      const { user: userDataResponse, accessToken } = data.data;
+      const { user: userDataResponse, tokens } = data.data;
+      const { accessToken, refreshToken } = tokens || {};
 
       // Set user state
       setUser(userDataResponse);
 
       // Store in localStorage
       localStorage.setItem("auth_user", JSON.stringify(userDataResponse));
-      localStorage.setItem("auth_token", accessToken);
+      if (accessToken) localStorage.setItem("auth_token", accessToken);
+      if (refreshToken) localStorage.setItem("refresh_token", refreshToken);
 
       setShowAuthModal(false);
       return true;
@@ -495,7 +497,7 @@ export const AuthProvider = ({ children }) => {
           setShowAuthModal(false);
           clearError();
           // If on a protected route and closing modal, redirect to home
-          const protectedRoutes = ['/check-quote', '/profile'];
+          const protectedRoutes = ['/profile'];
           if (protectedRoutes.some(route => window.location.pathname.startsWith(route)) && !user) {
             navigate('/');
           }

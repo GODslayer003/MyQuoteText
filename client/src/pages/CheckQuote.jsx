@@ -1,33 +1,31 @@
 // client/src/pages/CheckQuote.jsx
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
-  Upload,
-  FileText,
-  X,
-  Send,
-  Loader2,
-  Brain,
-  Shield,
-  CheckCircle2,
-  MessageSquare,
-  ChevronRight,
-  Sparkles,
-  FileIcon,
-  Trash2,
-  History,
-  Clock,
-  Eye,
-  Download,
-  FileUp,
-  Copy,
-  AlertCircle,
-  ArrowLeft,
   Search,
   Star,
   AlertTriangle,
   ExternalLink,
   BarChart,
-  RefreshCw
+  RefreshCw,
+  Copy,
+  ArrowLeft,
+  X,
+  Clock,
+  Trash2,
+  FileIcon,
+  CheckCircle2,
+  Brain,
+  Shield,
+  Loader2,
+  ChevronRight,
+  Upload,
+  FileText,
+  Sparkles,
+  History,
+  Eye,
+  Download,
+  FileUp,
+  AlertCircle
 } from 'lucide-react';
 import { useAuth } from '../providers/AuthProvider';
 import quoteApi from '../services/quoteApi';
@@ -42,9 +40,7 @@ const CheckQuote = () => {
   const [quoteText, setQuoteText] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [phase, setPhase] = useState('upload'); // 'upload', 'processing', 'chat'
-  const [messages, setMessages] = useState([]);
-  const [newMessage, setNewMessage] = useState('');
+  const [phase, setPhase] = useState('upload'); // 'upload', 'processing', 'result'
   const [chatHistory, setChatHistory] = useState([]);
   const [extractedText, setExtractedText] = useState('');
   const [error, setError] = useState(null);
@@ -54,8 +50,6 @@ const CheckQuote = () => {
   const [jobResult, setJobResult] = useState(null);
 
   const fileInputRef = useRef(null);
-  const messagesEndRef = useRef(null);
-  const chatContainerRef = useRef(null);
 
   // Initialize component
   useEffect(() => {
@@ -63,10 +57,12 @@ const CheckQuote = () => {
     loadUserJobs();
   }, []);
 
-  // Scroll to bottom of chat
+  // Scroll to bottom
   useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+    if (phase === 'result') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [phase]);
 
   // Clean up polling on unmount
   useEffect(() => {
@@ -79,11 +75,6 @@ const CheckQuote = () => {
   const loadUserJobs = async () => {
     if (!isAuthenticated) {
       // Show sample history for non-authenticated users
-      setChatHistory([
-        { id: 1, name: 'Plumbing Quote Analysis', date: 'Today', quote: 'Kitchen renovation plumbing work', status: 'completed' },
-        { id: 2, name: 'Electrical Quote Review', date: 'Yesterday', quote: 'House rewiring estimate', status: 'completed' },
-        { id: 3, name: 'Building Quote Check', date: 'Dec 10', quote: 'Deck construction proposal', status: 'completed' },
-      ]);
       return;
     }
 
@@ -104,13 +95,9 @@ const CheckQuote = () => {
     }
   };
 
-  const scrollToBottom = () => {
-    if (chatContainerRef.current) {
-      chatContainerRef.current.scrollTo({
-        top: chatContainerRef.current.scrollHeight,
-        behavior: 'smooth'
-      });
-    }
+
+  const handleSignIn = () => {
+    requestLogin('/check-quote');
   };
 
   const formatRelativeTime = (dateString) => {
@@ -162,11 +149,6 @@ const CheckQuote = () => {
   };
 
   const validateForm = () => {
-    if (!isAuthenticated) {
-      setError('Please sign in to analyze quotes');
-      return false;
-    }
-
     if (!quoteText.trim() && !file) {
       setError('Please upload a PDF file or enter quote text to analyze.');
       return false;
@@ -181,6 +163,7 @@ const CheckQuote = () => {
   };
 
   const handleAnalyzeQuote = async () => {
+    if (!isAuthenticated) return handleSignIn();
     if (!validateForm()) return;
 
     setError(null);
@@ -193,9 +176,9 @@ const CheckQuote = () => {
       if (uploadMethod === 'file' && file) {
         // Upload PDF file
         jobData = await quoteApi.createJob({
-          email: user.email,
+          email: user?.email,
           file,
-          tier: user.subscription?.plan?.toLowerCase() || 'free',
+          tier: user?.subscription?.plan?.toLowerCase() || 'free',
           metadata: {
             source: 'web_upload',
             title: file.name.replace('.pdf', ''),
@@ -208,9 +191,9 @@ const CheckQuote = () => {
         const textFile = new File([textBlob], 'quote-text.txt', { type: 'text/plain' });
 
         jobData = await quoteApi.createJob({
-          email: user.email,
+          email: user?.email,
           file: textFile,
-          tier: user.subscription?.plan?.toLowerCase() || 'free',
+          tier: user?.subscription?.plan?.toLowerCase() || 'free',
           metadata: {
             source: 'web_upload',
             title: 'Text Quote Analysis',
@@ -234,13 +217,13 @@ const CheckQuote = () => {
           async (result) => {
             setJobResult(result);
             setSuccess('Analysis completed successfully!');
-
-            // Start chat phase
-            await startChatPhase(jobData.jobId);
+            setPhase('result');
+            setIsAnalyzing(false);
           },
           (error) => {
             setError(`Analysis failed: ${error.message}`);
             setPhase('upload');
+            setIsAnalyzing(false);
           }
         );
 
@@ -268,98 +251,8 @@ const CheckQuote = () => {
     }
   };
 
-  const startChatPhase = async (jobId) => {
-    try {
-      setPhase('chat');
-      setIsAnalyzing(false);
-
-      // Load chat history for this job
-      const chatHistory = await quoteApi.getChatHistory(jobId);
-      if (chatHistory.length > 0) {
-        setMessages(chatHistory.map(msg => ({
-          id: msg._id,
-          text: msg.message,
-          sender: msg.sender,
-          timestamp: new Date(msg.createdAt)
-        })));
-      } else {
-        // Add initial message
-        const initialMessage = {
-          id: Date.now(),
-          text: "Hi! I'm your Quote Assistant. I've analyzed your quote and found some interesting insights. Feel free to ask me any questions about pricing, scope, or anything else that needs clarification.",
-          sender: 'bot',
-          timestamp: new Date()
-        };
-        setMessages([initialMessage]);
-      }
-    } catch (err) {
-      console.error('Failed to load chat history:', err);
-      // Fallback to basic chat
-      setPhase('chat');
-      setIsAnalyzing(false);
-
-      const initialMessage = {
-        id: Date.now(),
-        text: "Hi! I'm your Quote Assistant. I've analyzed your quote and found some interesting insights. Feel free to ask me any questions about pricing, scope, or anything else that needs clarification.",
-        sender: 'bot',
-        timestamp: new Date()
-      };
-      setMessages([initialMessage]);
-    }
-  };
-
-  const handleSendMessage = async (e) => {
-    e.preventDefault();
-    if (!newMessage.trim() || !currentJob?.jobId) return;
-
-    const userMessage = {
-      id: `user-${Date.now()}`,
-      text: newMessage,
-      sender: 'user',
-      timestamp: new Date()
-    };
-    setMessages(prev => [...prev, userMessage]);
-    setNewMessage('');
-
-    try {
-      // Send message to AI
-      const response = await quoteApi.chatWithAI(currentJob.jobId, newMessage, messages);
-
-      const botMessage = {
-        id: `bot-${Date.now()}`,
-        text: response.reply,
-        sender: 'bot',
-        timestamp: new Date()
-      };
-      setMessages(prev => [...prev, botMessage]);
-    } catch (err) {
-      console.error('Chat error:', err);
-      // Fallback to mock response if API fails
-      setTimeout(() => {
-        const mockResponses = [
-          "The labour rate in your quote appears reasonable at approximately $85/hour, which is standard for licensed tradies in most Australian cities.",
-          "I notice some items aren't broken down in detail. You might want to ask for specific brand names and quantities to ensure quality.",
-          "The warranty terms look good if they're backed by proper insurance and documentation.",
-          "For comparison, similar work typically ranges from $3,200 to $4,500 in major cities, so this quote is quite competitive.",
-          "Consider asking about their public liability insurance certificate and license number for verification.",
-          "The timeline seems reasonable for this scope of work. Make sure they include cleanup in the quote."
-        ];
-        const randomResponse = mockResponses[Math.floor(Math.random() * mockResponses.length)];
-
-        const botMessage = {
-          id: `bot-${Date.now()}`,
-          text: randomResponse,
-          sender: 'bot',
-          timestamp: new Date()
-        };
-        setMessages(prev => [...prev, botMessage]);
-      }, 1000);
-    }
-  };
-
   const resetToUpload = () => {
     setPhase('upload');
-    setMessages([]);
     setFile(null);
     setQuoteText('');
     setExtractedText('');
@@ -392,7 +285,7 @@ const CheckQuote = () => {
       if (job.status === 'completed' && job.result) {
         const result = await quoteApi.getJobResult(item.jobData.jobId);
         setJobResult(result);
-        await startChatPhase(item.jobData.jobId);
+        setPhase('result');
       } else if (job.status === 'processing') {
         setPhase('processing');
         // Resume polling
@@ -401,12 +294,12 @@ const CheckQuote = () => {
           (status) => setJobStatus(status),
           async (result) => {
             setJobResult(result);
-            await startChatPhase(item.jobData.jobId);
+            setPhase('result');
           },
           (error) => setError(`Analysis failed: ${error.message}`)
         );
       } else {
-        setPhase('chat');
+        setPhase('result');
         // Show error or message
         if (job.status === 'failed') {
           setError('This analysis failed. Please try again.');
@@ -417,10 +310,6 @@ const CheckQuote = () => {
       setError('Failed to load this analysis. Please try again.');
       setPhase('upload');
     }
-  };
-
-  const handleSignIn = () => {
-    requestLogin('/check-quote');
   };
 
   const sampleQuotes = [
@@ -625,8 +514,8 @@ WARRANTY: 6 years on workmanship`
       <section className="py-8 sm:py-12 bg-gradient-to-b from-white to-gray-50">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-            {/* Left Column - Chat History */}
-            <div className="lg:col-span-1">
+            {/* Left Column - Chat History (Order 2 on mobile, 1 on desktop) */}
+            <div className="lg:col-span-1 order-2 lg:order-1">
               <div className={`bg-white border border-gray-200 rounded-2xl p-4 sm:p-6 transition-all duration-700 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
                 }`} style={{ transitionDelay: '200ms' }}>
                 <div className="flex items-center gap-3 mb-6">
@@ -639,7 +528,23 @@ WARRANTY: 6 years on workmanship`
                   </div>
                 </div>
 
-                <div className="h-[400px] flex flex-col">
+                <div className="h-[400px] flex flex-col relative">
+                  {!isAuthenticated && (
+                    <div className="absolute inset-x-[-8px] inset-y-[-8px] z-10 bg-white/60 backdrop-blur-[2px] rounded-2xl flex flex-col items-center justify-center text-center p-4">
+                      <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mb-3">
+                        <Shield className="w-6 h-6 text-orange-600" />
+                      </div>
+                      <h4 className="font-bold text-gray-900 mb-1">History Locked</h4>
+                      <p className="text-xs text-gray-600 mb-4">Sign in to save and view your analysis history</p>
+                      <button
+                        onClick={handleSignIn}
+                        className="px-4 py-2 bg-orange-500 text-white text-sm font-semibold rounded-lg hover:bg-orange-600 transition-colors shadow-sm"
+                      >
+                        Sign In / Sign Up
+                      </button>
+                    </div>
+                  )}
+
                   {/* Search Bar */}
                   <div className="mb-4">
                     <div className="relative">
@@ -696,7 +601,9 @@ WARRANTY: 6 years on workmanship`
                                   {item.date}
                                 </span>
                               </div>
-                              <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-orange-500 transition-colors" />
+                              <div className="flex items-center gap-2">
+                                <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-orange-500 transition-colors" />
+                              </div>
                             </div>
                           </button>
                         ))
@@ -737,8 +644,8 @@ WARRANTY: 6 years on workmanship`
               </div>
             </div>
 
-            {/* Right Column - Main Box */}
-            <div className="lg:col-span-3">
+            {/* Right Column - Main Box (Order 1 on mobile, 2 on desktop) */}
+            <div className="lg:col-span-3 order-1 lg:order-2">
               <div className={`bg-white border border-gray-200 rounded-2xl sm:rounded-3xl overflow-hidden transition-all duration-700 shadow-lg hover:shadow-xl ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
                 }`} style={{ transitionDelay: '400ms' }}>
 
@@ -761,35 +668,13 @@ WARRANTY: 6 years on workmanship`
                       </div>
                     </div>
 
-                    {/* Authentication Required Notice */}
-                    {!isAuthenticated && (
-                      <div className="mb-6 p-4 bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-200 rounded-xl">
-                        <div className="flex items-start gap-3">
-                          <Shield className="w-5 h-5 text-orange-500 mt-0.5" />
-                          <div className="flex-1">
-                            <p className="font-medium text-gray-900 mb-1">Sign In Required</p>
-                            <p className="text-sm text-gray-600 mb-3">
-                              Please sign in to analyze quotes. Your first analysis is free!
-                            </p>
-                            <button
-                              onClick={handleSignIn}
-                              className="px-4 py-2 bg-gradient-to-r from-orange-500 to-amber-600 text-white rounded-lg font-medium hover:shadow-lg hover:shadow-orange-500/30 transition-all"
-                            >
-                              Sign In / Sign Up
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
                     {/* Method Tabs */}
                     <div className="flex gap-2 mb-8">
                       <button
                         onClick={() => setUploadMethod('file')}
-                        disabled={!isAuthenticated}
                         className={`flex items-center gap-2 px-4 py-3 rounded-lg transition-all flex-1 ${uploadMethod === 'file'
                           ? 'bg-gradient-to-r from-orange-500 to-amber-600 text-white shadow-lg'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                           }`}
                       >
                         <Upload className="w-4 h-4" />
@@ -797,10 +682,9 @@ WARRANTY: 6 years on workmanship`
                       </button>
                       <button
                         onClick={() => setUploadMethod('text')}
-                        disabled={!isAuthenticated}
                         className={`flex items-center gap-2 px-4 py-3 rounded-lg transition-all flex-1 ${uploadMethod === 'text'
                           ? 'bg-gradient-to-r from-orange-500 to-amber-600 text-white shadow-lg'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                           }`}
                       >
                         <FileText className="w-4 h-4" />
@@ -809,9 +693,14 @@ WARRANTY: 6 years on workmanship`
                     </div>
 
                     {/* File Upload Section */}
-                    {uploadMethod === 'file' && isAuthenticated && (
+                    {uploadMethod === 'file' && (
                       <div className="mb-8">
-                        <div className="border-2 border-dashed border-gray-300 rounded-2xl p-6 sm:p-8 text-center hover:border-orange-400 transition-colors">
+                        <div
+                          className="border-2 border-dashed border-gray-300 rounded-2xl p-6 sm:p-8 text-center hover:border-orange-400 transition-colors cursor-pointer"
+                          onClick={() => {
+                            if (!isAuthenticated) handleSignIn();
+                          }}
+                        >
                           {file ? (
                             <div className="space-y-4">
                               <div className="flex items-center justify-between bg-orange-50 rounded-xl p-4">
@@ -844,7 +733,10 @@ WARRANTY: 6 years on workmanship`
                                 PDF format only • Max 10MB
                               </p>
                               <button
-                                onClick={() => fileInputRef.current.click()}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  fileInputRef.current.click();
+                                }}
                                 className="px-6 py-3 bg-gradient-to-r from-orange-500 to-amber-600 text-white rounded-lg font-semibold hover:shadow-lg hover:shadow-orange-500/30 transition-all"
                               >
                                 Choose PDF File
@@ -866,7 +758,7 @@ WARRANTY: 6 years on workmanship`
                     )}
 
                     {/* Text Input Section */}
-                    {uploadMethod === 'text' && isAuthenticated && (
+                    {uploadMethod === 'text' && (
                       <div className="mb-8">
                         <div className="flex items-center justify-between mb-4">
                           <h3 className="text-lg font-semibold text-gray-900">Quote Details</h3>
@@ -893,14 +785,7 @@ WARRANTY: 6 years on workmanship`
                           <textarea
                             value={quoteText}
                             onChange={(e) => setQuoteText(e.target.value)}
-                            placeholder="Paste your quote details here...
-
-Example:
-Plumbing Quote - Bathroom Renovation
-Labour: $2,500
-Materials: $1,200
-Total: $3,700
-Warranty: 5 years"
+                            placeholder="Paste your quote details here..."
                             rows="8"
                             className="w-full px-4 py-4 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-500 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 focus:outline-none transition-all resize-none font-mono text-sm"
                           />
@@ -938,7 +823,7 @@ Warranty: 5 years"
                     {/* Analyze Button */}
                     <button
                       onClick={handleAnalyzeQuote}
-                      disabled={isAnalyzing || (!quoteText.trim() && !file) || !isAuthenticated}
+                      disabled={isAnalyzing || (!quoteText.trim() && !file)}
                       className="group relative w-full py-4 bg-gradient-to-r from-orange-500 to-amber-600 text-white rounded-xl font-bold text-lg hover:shadow-xl hover:shadow-orange-500/30 transition-all duration-300 transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
                     >
                       {isAnalyzing ? (
@@ -1005,149 +890,63 @@ Warranty: 5 years"
                   </div>
                 )}
 
-                {/* Phase 3: Chat Interface */}
-                {phase === 'chat' && (
-                  <div className="space-y-8">
-                    {/* Chat Interface */}
-                    <div className="flex flex-col h-[600px] bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-lg">
-                      {/* Chat Header */}
-                      <div className="bg-gradient-to-r from-orange-500 to-amber-600 p-4 sm:p-6">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <button
-                              onClick={resetToUpload}
-                              className="p-2 hover:bg-white/20 rounded-lg transition-colors"
-                              title="Back to upload"
-                            >
-                              <ArrowLeft className="w-5 h-5 text-white" />
-                            </button>
-                            <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-lg flex items-center justify-center">
-                              <MessageSquare className="w-5 h-5 text-white" />
-                            </div>
-                            <div>
-                              <h3 className="font-bold text-white">Quote Assistant</h3>
-                              <p className="text-white/90 text-sm">
-                                {jobResult ? 'Analysis complete! Ask me anything' : 'Analyzing your quote...'}
-                              </p>
-                            </div>
-                          </div>
-                          {currentJob && (
-                            <div className="flex items-center gap-2">
-                              <button
-                                onClick={() => window.open(`/analysis/${currentJob.jobId}`, '_blank')}
-                                className="p-2 hover:bg-white/20 rounded-lg transition-colors flex items-center gap-1 text-white/90 text-sm"
-                                title="View full analysis"
-                              >
-                                <BarChart className="w-4 h-4" />
-                                <span className="hidden sm:inline">Analysis</span>
-                              </button>
-                              <div className="text-xs text-white/80 flex items-center gap-1">
-                                <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                                <span>Online</span>
-                              </div>
-                            </div>
-                          )}
+                {/* Phase 3: Results Section */}
+                {phase === 'result' && (
+                  <div className="p-6 sm:p-8">
+                    <div className="flex items-center justify-between mb-8">
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 bg-gradient-to-r from-orange-500 to-amber-600 rounded-xl flex items-center justify-center">
+                          <BarChart className="w-6 h-6 text-white" />
+                        </div>
+                        <div>
+                          <h2 className="text-2xl font-bold text-gray-900">Analysis Results</h2>
+                          <p className="text-gray-600">Review your quote insights below</p>
                         </div>
                       </div>
-
-                      {/* Chat Messages */}
-                      <div
-                        ref={chatContainerRef}
-                        className="flex-1 overflow-y-auto p-4 bg-gradient-to-b from-gray-50 to-gray-100"
-                      >
-                        {messages.length === 0 ? (
-                          <div className="h-full flex items-center justify-center">
-                            <div className="text-center">
-                              <Loader2 className="w-8 h-8 text-orange-500 animate-spin mx-auto mb-4" />
-                              <h3 className="text-lg font-semibold text-gray-900 mb-2">Starting Conversation</h3>
-                              <p className="text-gray-600">Loading analysis results...</p>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="space-y-4">
-                            {messages.map((msg) => (
-                              <div
-                                key={msg.id}
-                                className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
-                              >
-                                <div
-                                  className={`max-w-[80%] rounded-2xl p-4 ${msg.sender === 'user'
-                                    ? 'bg-gradient-to-r from-orange-500 to-amber-600 text-white'
-                                    : 'bg-white border border-gray-200 text-gray-900 shadow-sm'
-                                    }`}
-                                >
-                                  <p className="text-sm sm:text-base whitespace-pre-wrap">{msg.text}</p>
-                                  <p className="text-xs mt-2 opacity-70">
-                                    {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                  </p>
-                                </div>
-                              </div>
-                            ))}
-                            <div ref={messagesEndRef} />
-                          </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={resetToUpload}
+                          className="px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors flex items-center gap-2"
+                        >
+                          <ArrowLeft className="w-4 h-4" />
+                          Back to Upload
+                        </button>
+                        {isAuthenticated && (
+                          <button
+                            onClick={() => window.open(`/analysis/${currentJob?.jobId}`, '_blank')}
+                            className="px-4 py-2 bg-gradient-to-r from-orange-500 to-amber-600 text-white rounded-lg text-sm font-medium hover:shadow-lg transition-all flex items-center gap-2"
+                          >
+                            <ExternalLink className="w-4 h-4" />
+                            Full Report
+                          </button>
                         )}
                       </div>
-
-                      {/* Chat Input */}
-                      <div className="border-t border-gray-200 p-4 bg-white">
-                        <form onSubmit={handleSendMessage} className="flex gap-2">
-                          <input
-                            type="text"
-                            value={newMessage}
-                            onChange={(e) => setNewMessage(e.target.value)}
-                            placeholder="Ask about pricing, red flags, or anything else..."
-                            className="flex-1 px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition-all"
-                            disabled={!jobResult}
-                          />
-                          <button
-                            type="submit"
-                            disabled={!newMessage.trim() || !jobResult}
-                            className="px-5 py-3 bg-gradient-to-r from-orange-500 to-amber-600 text-white rounded-lg hover:shadow-lg hover:shadow-orange-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                          >
-                            <Send className="w-4 h-4" />
-                            <span className="hidden sm:inline">Send</span>
-                          </button>
-                        </form>
-                        <div className="flex flex-wrap gap-2 mt-3">
-                          <button
-                            onClick={() => setNewMessage("Is this price fair?")}
-                            className="px-3 py-1.5 text-xs bg-orange-50 text-orange-600 rounded-full hover:bg-orange-100 transition-colors"
-                          >
-                            Is this price fair?
-                          </button>
-                          <button
-                            onClick={() => setNewMessage("What should I ask my tradie?")}
-                            className="px-3 py-1.5 text-xs bg-orange-50 text-orange-600 rounded-full hover:bg-orange-100 transition-colors"
-                          >
-                            What should I ask?
-                          </button>
-                          <button
-                            onClick={() => setNewMessage("Any hidden costs?")}
-                            className="px-3 py-1.5 text-xs bg-orange-50 text-orange-600 rounded-full hover:bg-orange-100 transition-colors"
-                          >
-                            Hidden costs?
-                          </button>
-                        </div>
-                      </div>
                     </div>
-                    {/* End Chat Interface */}
 
-                    {/* Analysis Results Section - Below Chat */}
                     {jobResult && (
-                      <div className="bg-gradient-to-br from-gray-50 to-white rounded-2xl p-4 sm:p-8 border border-gray-200 shadow-md">
-                        <div className="mb-8">
-                          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-2">
-                            <h2 className="text-3xl font-bold text-gray-900">Detailed Analysis Report</h2>
-                            <span className="px-4 py-2 bg-gradient-to-r from-orange-100 to-amber-100 text-orange-700 rounded-lg text-sm font-semibold whitespace-nowrap">
-                              {user?.subscription?.tier || 'Free'} Tier
-                            </span>
-                          </div>
-                          <p className="text-gray-600">Complete analysis of your quote with tier-specific insights</p>
-                        </div>
+                      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm">
                         <AnalysisResults
                           jobResult={jobResult}
-                          userTier={user?.subscription?.tier?.toLowerCase() || 'free'}
+                          userTier={user?.subscription?.plan?.toLowerCase() || 'free'}
                         />
+                      </div>
+                    )}
+
+                    {!isAuthenticated && (
+                      <div className="mt-8 p-6 bg-orange-50 border border-orange-200 rounded-2xl text-center">
+                        <Shield className="w-10 h-10 text-orange-500 mx-auto mb-3" />
+                        <h3 className="text-lg font-bold text-gray-900 mb-2">Want to save this analysis?</h3>
+                        <p className="text-gray-600 mb-6 max-w-lg mx-auto">
+                          Sign up for a free account to save your analysis history, download PDF reports, and unlock more features.
+                        </p>
+                        <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+                          <button
+                            onClick={handleSignIn}
+                            className="px-8 py-3 bg-orange-500 text-white font-bold rounded-xl hover:bg-orange-600 transition-all shadow-lg shadow-orange-500/20"
+                          >
+                            Sign Up Now
+                          </button>
+                        </div>
                       </div>
                     )}
                   </div>

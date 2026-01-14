@@ -1,3 +1,5 @@
+const mongoose = require('mongoose');
+
 // Supplier.js - INTERNAL ONLY intelligence system
 const supplierSchema = new mongoose.Schema({
   name: {
@@ -75,13 +77,13 @@ supplierSchema.index({ name: 1 });
 supplierSchema.index({ 'intelligence.riskScore': -1 });
 
 // Method to update intelligence
-supplierSchema.methods.updateIntelligence = function(quoteData) {
+supplierSchema.methods.updateIntelligence = function (quoteData) {
   this.intelligence.totalQuotesSeen += 1;
   this.intelligence.lastSeenDate = new Date();
-  
+
   if (quoteData.redFlags && quoteData.redFlags.length > 0) {
     this.intelligence.redFlagCount += quoteData.redFlags.length;
-    
+
     // Update risk score based on red flags
     const criticalFlags = quoteData.redFlags.filter(f => f.severity === 'critical').length;
     this.intelligence.riskScore = Math.min(
@@ -89,10 +91,10 @@ supplierSchema.methods.updateIntelligence = function(quoteData) {
       this.intelligence.riskScore + (criticalFlags * 10)
     );
   }
-  
+
   return this.save();
 };
 
 const Supplier = mongoose.model('Supplier', supplierSchema);
 
-module.exports = { Lead, Supplier };
+module.exports = Supplier;

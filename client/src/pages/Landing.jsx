@@ -136,7 +136,7 @@ const Landing = () => {
             </p>
 
             <p className="text-base sm:text-lg text-gray-600 mb-8 sm:mb-10 max-w-2xl mx-auto px-4 leading-relaxed">
-              Get instant AI-powered analysis of your plumbing, electrical, building, or renovation quote. 
+              Get instant AI-powered analysis of your plumbing, electrical, building, or renovation quote.
               Know exactly what you're paying for and what questions to ask.
             </p>
 
@@ -150,7 +150,7 @@ const Landing = () => {
                 <ArrowRight className="w-5 h-5 relative z-10 group-hover:translate-x-1 transition-transform" />
                 <div className="absolute inset-0 bg-gradient-to-r from-orange-600 to-amber-700 rounded-xl sm:rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
               </Link>
-              
+
               <Link
                 to="/how-it-works"
                 className="px-6 sm:px-8 py-3 sm:py-4 bg-white text-gray-700 border-2 border-gray-200 rounded-xl sm:rounded-2xl font-medium text-base sm:text-lg hover:border-orange-300 hover:text-orange-600 transition-all duration-300 w-full sm:w-auto text-center"
@@ -162,8 +162,8 @@ const Landing = () => {
             {/* Trust Indicators */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 max-w-2xl mx-auto px-4">
               {trustIndicators.map((indicator, index) => (
-                <div 
-                  key={index} 
+                <div
+                  key={index}
                   className="flex items-center gap-2 sm:gap-3 bg-white/80 backdrop-blur-sm px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg border border-gray-200 hover:border-orange-300 transition-all duration-200 hover:shadow-sm"
                 >
                   <div className="text-orange-500 bg-orange-50 p-1.5 sm:p-2 rounded-lg">
@@ -289,9 +289,8 @@ const Landing = () => {
               <button
                 key={index}
                 onClick={() => setActiveFeature(index)}
-                className={`w-2 h-2 rounded-full transition-all duration-300 ${
-                  activeFeature === index ? 'bg-orange-500 w-8' : 'bg-gray-300'
-                }`}
+                className={`w-2 h-2 rounded-full transition-all duration-300 ${activeFeature === index ? 'bg-orange-500 w-8' : 'bg-gray-300'
+                  }`}
               />
             ))}
           </div>
@@ -342,7 +341,7 @@ const Landing = () => {
                 </div>
               </div>
             </div>
-            
+
             <div className="flex justify-between">
               <button
                 onClick={() => setActiveFeature((prev) => (prev - 1 + features.length) % features.length)}
@@ -401,7 +400,7 @@ const Landing = () => {
       </section>
 
       {/* Add custom animations */}
-      <style jsx>{`
+      <style>{`
         @keyframes float {
           0%, 100% {
             transform: translateY(0px);

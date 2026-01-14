@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, DollarSign, Loader2 } from 'lucide-react';
 import api from '../services/api';
 
-const PricingPage = () => {
+const PaymentPage = () => {
   const [pricing, setPricing] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -15,11 +15,22 @@ const PricingPage = () => {
     description: '',
     features: []
   });
+  const [revenueStats, setRevenueStats] = useState({ totalRevenue: 0, transactionCount: 0 });
   const [newFeature, setNewFeature] = useState('');
 
   useEffect(() => {
     fetchPricing();
+    fetchRevenueStats();
   }, []);
+
+  const fetchRevenueStats = async () => {
+    try {
+      const response = await api.get('/admin/revenue');
+      setRevenueStats(response.data.data);
+    } catch (err) {
+      console.error('Failed to fetch revenue stats:', err);
+    }
+  };
 
   const fetchPricing = async () => {
     try {
@@ -117,9 +128,22 @@ const PricingPage = () => {
         <div>
           <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
             <DollarSign className="w-8 h-8 text-orange-500" />
-            Pricing Management
+            Payment & Pricing Management
           </h1>
-          <p className="text-gray-600 mt-2">Manage your service pricing tiers and features.</p>
+          <div className="flex flex-wrap gap-4 mt-4">
+            <div className="bg-orange-50 border border-orange-100 rounded-xl p-4 min-w-[200px] shadow-sm">
+              <p className="text-orange-600 text-sm font-semibold uppercase">Total Revenue</p>
+              <h2 className="text-2xl font-bold text-gray-900 mt-1">
+                ${revenueStats.totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+              </h2>
+            </div>
+            <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 min-w-[200px] shadow-sm">
+              <p className="text-blue-600 text-sm font-semibold uppercase">Total Transactions</p>
+              <h2 className="text-2xl font-bold text-gray-900 mt-1">
+                {revenueStats.transactionCount}
+              </h2>
+            </div>
+          </div>
         </div>
         <button
           onClick={() => setShowForm(true)}
@@ -145,7 +169,7 @@ const PricingPage = () => {
               <h2 className="text-2xl font-bold text-gray-900 mb-4">
                 {editingId ? 'Edit Pricing Tier' : 'Add Pricing Tier'}
               </h2>
-              
+
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <input
@@ -263,7 +287,7 @@ const PricingPage = () => {
                 <span className="text-4xl font-bold text-orange-600">${parseFloat(tier.price).toFixed(2)}</span>
               </div>
               <p className="text-gray-700 text-sm mb-4 h-12 overflow-hidden">{tier.description}</p>
-              
+
               <div className="mb-6">
                 <h4 className="font-semibold text-gray-900 mb-2 text-sm">Features:</h4>
                 <ul className="space-y-2">
@@ -300,4 +324,4 @@ const PricingPage = () => {
   );
 };
 
-export default PricingPage;
+export default PaymentPage;

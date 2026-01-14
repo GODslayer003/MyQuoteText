@@ -16,7 +16,7 @@ class JobPollingService {
     }
 
     const startTime = Date.now();
-    
+
     const poll = async () => {
       try {
         // Check if polling should stop
@@ -27,14 +27,32 @@ class JobPollingService {
         }
 
         const status = await quoteApi.getJobStatus(jobId);
-        
+
         // Notify update
         onUpdate?.(status);
 
         // Check if job is complete
         if (status.status === 'completed') {
           this.stopPolling(jobId);
-          const result = await quoteApi.getJobResult(jobId);
+
+          // Retry fetching result a few times with small delays
+          // This handles database propagation delays in production
+          let result = null;
+          let retries = 3;
+          let delay = 1000;
+
+          while (retries > 0) {
+            try {
+              result = await quoteApi.getJobResult(jobId);
+              if (result) break;
+            } catch (err) {
+              retries--;
+              if (retries === 0) throw err;
+              await new Promise(resolve => setTimeout(resolve, delay));
+              delay *= 2; // Exponential backoff
+            }
+          }
+
           onComplete?.(result);
           return;
         }

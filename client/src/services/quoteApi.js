@@ -36,21 +36,6 @@ class QuoteApi {
     return response.data.data;
   }
 
-  // Chat with AI about a specific job
-  async chatWithAI(jobId, message, history = []) {
-    const response = await api.post(`/jobs/${jobId}/chat`, {
-      message,
-      history
-    });
-    return response.data.data;
-  }
-
-  // Get chat history for a job
-  async getChatHistory(jobId) {
-    const response = await api.get(`/jobs/${jobId}/chat`);
-    return response.data.data;
-  }
-
   // Delete a job
   async deleteJob(jobId) {
     const response = await api.delete(`/jobs/${jobId}`);
@@ -72,12 +57,12 @@ class QuoteApi {
   // Poll job status (for real-time updates)
   async pollJobStatus(jobId, interval = 2000, timeout = 120000) {
     const startTime = Date.now();
-    
+
     return new Promise((resolve, reject) => {
       const checkStatus = async () => {
         try {
           const status = await this.getJobStatus(jobId);
-          
+
           if (status.status === 'completed' || status.status === 'failed') {
             resolve(status);
             return;
@@ -108,6 +93,12 @@ class QuoteApi {
   async getSubscription() {
     const response = await api.get('/users/me/subscription');
     return response.data.data;
+  }
+
+  // Submit rating for a job
+  async submitRating(jobId, rating) {
+    const response = await api.patch(`/jobs/${jobId}/rating`, { rating });
+    return response.data;
   }
 }
 

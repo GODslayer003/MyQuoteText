@@ -34,6 +34,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth'; // or use your AuthContext
 import api from '../services/api';
+import profileApi from '../services/profileApi';
 
 const Profile = () => {
   const { user, logout, updateUser } = useAuth(); // Assuming your auth hook provides these
@@ -47,6 +48,7 @@ const Profile = () => {
   const [error, setError] = useState(null);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [imagePreview, setImagePreview] = useState(null);
+  const [deletePassword, setDeletePassword] = useState('');
   const fileInputRef = useRef(null);
 
   // Dynamic user data - initially populated from auth context
@@ -276,12 +278,12 @@ const Profile = () => {
     setError(null);
 
     try {
-      const response = await api.put('/user/change-password', {
+      const data = await profileApi.changePassword({
         currentPassword: passwordData.currentPassword,
         newPassword: passwordData.newPassword
       });
 
-      if (response.data.success) {
+      if (data) {
         setShowChangePassword(false);
         setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
         setShowSuccess(true);
@@ -300,7 +302,8 @@ const Profile = () => {
   };
 
   const handleDeleteAccount = async () => {
-    if (!window.confirm('Are you absolutely sure? This cannot be undone!')) {
+    if (!deletePassword) {
+      setError('Please enter your password to confirm deletion');
       return;
     }
 
@@ -308,16 +311,26 @@ const Profile = () => {
     setError(null);
 
     try {
-      const response = await api.delete('/user/account');
+      const response = await api.delete('/users/me', {
+        data: { confirmPassword: deletePassword }
+      });
 
       if (response.data.success) {
+        // Clear local storage and state immediately
+        localStorage.removeItem('auth_user');
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('refresh_token');
+
+        // Finalize logout (clears state) and redirect
         logout();
-        navigate('/');
+        navigate('/', { replace: true });
+
+        // Use window.location as backup for full cleanup if needed, 
+        // but navigate + logout should be enough
       }
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to delete account');
+      setError(err.message || 'Failed to delete account');
       setLoading(false);
-      setShowDeleteModal(false);
     }
   };
 
@@ -974,6 +987,20 @@ const Profile = () => {
               <p className="text-sm text-red-600 mb-6 font-medium">
                 Warning: This will delete all your reports and data permanently!
               </p>
+
+              <div className="text-left mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Confirm Password to Delete
+                </label>
+                <input
+                  type="password"
+                  value={deletePassword}
+                  onChange={(e) => setDeletePassword(e.target.value)}
+                  placeholder="Enter your password"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all"
+                  disabled={loading}
+                />
+              </div>
             </div>
 
             {error && (
