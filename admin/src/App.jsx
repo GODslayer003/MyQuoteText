@@ -6,6 +6,7 @@ import { getAdminProfile } from './store/authThunks';
 import Sidebar from './components/Sidebar';
 import ProtectedRoute from './components/ProtectedRoute';
 import LoginPage from './pages/LoginPage';
+import RegisterPage from './pages/RegisterPage';
 import DashboardPage from './pages/DashboardPage';
 import SettingsPage from './pages/SettingsPage';
 import PaymentPage from './pages/PaymentPage';
@@ -31,26 +32,28 @@ function App() {
     setSidebarOpen(false);
   }, [location.pathname]);
 
-  const isLoginPage = location.pathname === '/login';
+  const authPages = ['/login', '/register'];
+  const isAuthPage = authPages.includes(location.pathname);
 
   return (
     <div className="flex bg-gray-50 min-h-screen w-full overflow-x-hidden">
       {/* Sidebar - Fixed on desktop, mobile overlay on small screens */}
-      {isAuthenticated && !isLoginPage && (
+      {isAuthenticated && !isAuthPage && (
         <Sidebar isOpen={sidebarOpen} setIsOpen={setSidebarOpen} />
       )}
 
       {/* Main Content Wrapper */}
-      <main className={`flex-1 w-full h-screen flex flex-col overflow-hidden ${!isLoginPage ? 'lg:ml-64' : ''}`}>
+      <main className={`flex-1 w-full h-screen flex flex-col overflow-hidden ${!isAuthPage ? 'lg:ml-64' : ''}`}>
         {/* Top Padding for Mobile Menu */}
-        {!isLoginPage && <div className="h-12 lg:h-0" />}
+        {!isAuthPage && <div className="h-12 lg:h-0" />}
 
         {/* Scrollable Content Area */}
-        <div className={`flex-1 overflow-y-auto ${!isLoginPage ? 'p-4 lg:p-8' : ''}`}>
+        <div className={`flex-1 overflow-y-auto ${!isAuthPage ? 'p-4 lg:p-8' : ''}`}>
           {/* Page Content */}
-          <div className={!isLoginPage ? 'max-w-7xl mx-auto w-full' : 'w-full'}>
+          <div className={!isAuthPage ? 'max-w-7xl mx-auto w-full' : 'w-full'}>
             <Routes>
               <Route path="/login" element={<LoginPage />} />
+              <Route path="/register" element={<RegisterPage />} />
               <Route
                 path="/dashboard"
                 element={

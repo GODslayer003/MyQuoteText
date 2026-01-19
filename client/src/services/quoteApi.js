@@ -100,6 +100,20 @@ class QuoteApi {
     const response = await api.patch(`/jobs/${jobId}/rating`, { rating });
     return response.data;
   }
+
+  // Upgrade Tier (Mock Payment)
+  async upgradeTier(tier) {
+    const response = await api.post('/payments/mock-upgrade', { tier });
+    return response.data;
+  }
+
+  // Generate Professional PDF Report
+  async generateReport(jobId) {
+    const response = await api.get(`/jobs/${jobId}/report`, {
+      responseType: 'blob'
+    });
+    return response.data;
+  }
 }
 
 export default new QuoteApi();

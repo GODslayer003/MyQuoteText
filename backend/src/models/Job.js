@@ -167,8 +167,15 @@ jobSchema.methods.updateProcessingStep = function (
     const allCompleted = this.processingSteps.every(
       (s) => s.status === 'completed'
     );
-    if (allCompleted) {
+    // CRITICAL FIX: Don't mark job as completed if only 'upload' is done.
+    // We expect at least 'analysis' or 'extraction' to occur.
+    const hasAnalysis = this.processingSteps.some(s => s.step === 'analysis');
+
+    if (allCompleted && hasAnalysis) {
       this.status = 'completed';
+    } else if (allCompleted && this.processingSteps.length === 1 && this.processingSteps[0].step === 'upload') {
+      // Do NOT complete yet, wait for next steps
+      this.status = 'processing';
     }
   } else {
     this.status = 'processing';

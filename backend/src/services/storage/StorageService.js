@@ -7,6 +7,7 @@ const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
 const stream = require("stream");
+const axios = require("axios"); // Added for Cloudinary downloads
 
 const cloudinary = require("cloudinary").v2;
 const logger = require("../../utils/logger");
@@ -93,6 +94,49 @@ class StorageService {
       logger.error("Cloudinary upload failed:", error);
       throw error;
     }
+  }
+
+  // =====================================================
+  // DOWNLOAD
+  // =====================================================
+  async downloadFile(storageKey) {
+    if (!storageKey) {
+      throw new Error("Storage key is required for download");
+    }
+
+    if (STORAGE_PROVIDER === "cloudinary") {
+      try {
+        // storageKey is the public_id
+        const url = cloudinary.url(storageKey, { secure: true });
+        const response = await axios.get(url, {
+          responseType: 'arraybuffer'
+        });
+        return Buffer.from(response.data);
+      } catch (error) {
+        logger.error(`Failed to download from Cloudinary: ${storageKey}`, error);
+        throw new Error("Failed to download file from cloud storage");
+      }
+    }
+
+    // Local storage
+    try {
+      if (!fs.existsSync(storageKey)) {
+        throw new Error("File not found on local disk");
+      }
+      return fs.readFileSync(storageKey);
+    } catch (error) {
+      logger.error(`Failed to read local file: ${storageKey}`, error);
+      throw error;
+    }
+  }
+
+  // Get URL for file (Cloudinary JPG preview for PDFs)
+  getPreviewUrl(storageKey) {
+    if (STORAGE_PROVIDER === "cloudinary") {
+      // Cloudinary trick: Change extension to .jpg to get the first page as an image
+      return cloudinary.url(storageKey, { secure: true, format: 'jpg' });
+    }
+    return null; // Not supported for local storage yet
   }
 
   // backend/src/services/storage/StorageService.js (partial update)

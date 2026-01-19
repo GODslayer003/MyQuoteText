@@ -10,8 +10,26 @@ const OCRService = require('../../services/ocr/OCRService');
 const AIOrchestrator = require('../../services/ai/AIOrchestrator');
 const User = require('../../models/User');
 const logger = require('../../utils/logger');
+const ReportService = require('../../services/report/ReportService');
 
 class JobController {
+  /**
+   * Resolve job by UUID or ObjectId
+   */
+  async resolveJob(id) {
+    if (!id) return null;
+    let query = { deletedAt: null };
+
+    // Check if it's a valid MongoDB ObjectId
+    if (id.match(/^[0-9a-fA-F]{24}$/)) {
+      query.$or = [{ _id: id }, { jobId: id }];
+    } else {
+      query.jobId = id;
+    }
+
+    return await Job.findOne(query).populate('result').populate('documents').populate('userId').populate('leadId');
+  }
+
   /**
    * Create a new job and upload document
    */
@@ -36,11 +54,11 @@ class JobController {
         });
       }
 
-      const allowedMimes = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
+      const allowedMimes = ['application/pdf', 'text/plain', 'image/jpeg', 'image/png', 'image/webp'];
       if (!allowedMimes.includes(file.mimetype)) {
         return res.status(400).json({
           success: false,
-          error: 'Only PDF and image files (JPG, PNG, WEBP) are accepted'
+          error: 'Only PDF, Text, and image files (JPG, PNG, WEBP) are accepted'
         });
       }
 
@@ -73,20 +91,30 @@ class JobController {
 
         // Check Quota / Credits
         if (user.subscription.credits > 0) {
-          // Use Credit
+          // Use Paid Credit
           user.subscription.credits -= 1;
-          jobTier = user.subscription.plan || 'Standard';
+          user.subscription.reportsUsed = (user.subscription.reportsUsed || 0) + 1;
+          jobTier = user.subscription.plan === 'Premium' ? 'Premium' : 'Standard';
+
+          // If no credits left, transition back to Free plan
+          if (user.subscription.credits === 0) {
+            user.subscription.plan = 'Free';
+            user.subscription.reportsTotal = 1; // Back to monthly free limit
+            // Reset reportsUsed for the Free monthly cycle if needed, 
+            // but let's keep it honest: they just used their "credits"
+          }
+
           await user.save();
+          logger.info(`Used 1 paid credit for user ${user._id}. Remaining: ${user.subscription.credits}. Plan reset: ${user.subscription.plan === 'Free'}`);
         } else {
-          // Check Free Monthly Limit
+          // Check Free Monthly Limit (1 per month)
           const now = new Date();
-          const lastFreeReport = user.subscription.freeReportDate;
+          const lastFreeReport = user.subscription.freeReportDate ? new Date(user.subscription.freeReportDate) : null;
 
           let canUseFree = true;
           if (lastFreeReport) {
-            const oneMonthAgo = new Date();
-            oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
-            if (lastFreeReport > oneMonthAgo) {
+            // Check if same month and year
+            if (lastFreeReport.getMonth() === now.getMonth() && lastFreeReport.getFullYear() === now.getFullYear()) {
               canUseFree = false;
             }
           }
@@ -94,15 +122,21 @@ class JobController {
           if (!canUseFree) {
             return res.status(403).json({
               success: false,
-              error: 'Monthly free limit reached. Please buy credits.',
-              nextAvailableDate: lastFreeReport ? new Date(new Date(lastFreeReport).setMonth(new Date(lastFreeReport).getMonth() + 1)) : null
+              error: 'Monthly usage limit reached',
+              nextAvailableDate: new Date(now.getFullYear(), now.getMonth() + 1, 1),
+              message: 'Free tier is limited to 1 report per month. Please upgrade for more analysis.'
             });
           }
 
           // Mark free usage
           user.subscription.freeReportDate = now;
+          user.subscription.reportsUsed = 1; // Used their 1 free report
+          user.subscription.reportsTotal = 1;
+          user.subscription.plan = 'Free'; // Ensure they are on Free plan
           await user.save();
+
           jobTier = 'Free';
+          logger.info(`Used monthly free report for user ${user._id}`);
         }
       } else {
         // Guest User - Allow Free Tier for now
@@ -118,7 +152,11 @@ class JobController {
         userId: req.user?._id,
         tier: jobTier, // Use calculated tier
         status: 'pending',
-        processingSteps: [{ step: 'upload', status: 'in_progress' }],
+        processingSteps: [
+          { step: 'upload', status: 'in_progress' },
+          { step: 'extraction', status: 'pending' },
+          { step: 'analysis', status: 'pending' }
+        ],
         metadata: {
           ...metadata,
           filename: file.originalname,
@@ -161,131 +199,31 @@ class JobController {
         logger.info(`Document created: ${document._id}`);
 
         // Queue for production processing
-        setTimeout(async () => {
-          try {
-            // 1. Extraction Phase
-            await job.updateProcessingStep('extraction', 'in_progress');
-            await job.save();
+        const { documentProcessingQueue } = require('../../config/queue');
 
-            let extractedText = '';
-            let ocrMetadata = {};
+        if (documentProcessingQueue) {
+          await documentProcessingQueue.add('process-document', {
+            jobId: job._id,
+            documentId: document._id,
+            tier: job.tier
+          }, {
+            attempts: 3,
+            backoff: {
+              type: 'exponential',
+              delay: 2000
+            },
+            removeOnComplete: true
+          });
+          logger.info(`Job ${jobPublicId} queued for processing`);
+        } else {
+          logger.warn(`Redis queue not available. Falling back to inline processing for Job ${jobPublicId}`);
 
-            if (file.mimetype === 'text/plain') {
-              extractedText = file.buffer.toString('utf8');
-              ocrMetadata = { method: 'text_direct' };
-            } else {
-              try {
-                const ocrResult = await OCRService.extractTextFromPDF(file.buffer);
-                extractedText = ocrResult.text;
-                ocrMetadata = {
-                  method: ocrResult.method,
-                  ocrConfidence: ocrResult.ocrConfidence,
-                  processingTime: ocrResult.processingTime
-                };
-              } catch (ocrErr) {
-                logger.error('OCR failed, falling back to basic extraction', ocrErr);
-                extractedText = file.buffer.toString('binary').replace(/[^\x20-\x7E\n]/g, ''); // Crude fallback
-                ocrMetadata = { method: 'fallback_binary' };
-              }
-            }
+          // CRITICAL: The DocumentProcessor relies on 'aiAnalysisQueue'.
+          // If Redis is down, that queue is also null.
+          // We need a robust fallback that runs the WHOLE chain.
 
-            if (!extractedText || extractedText.length < 10) {
-              throw new Error('No readable text found in document');
-            }
-
-            await job.updateProcessingStep('extraction', 'completed');
-            await job.save();
-
-            // 2. Analysis Phase
-            await job.updateProcessingStep('analysis', 'in_progress');
-            await job.save();
-
-            // Call real AI
-            const aiOutcome = await AIOrchestrator.analyzeQuote(
-              extractedText,
-              job.tier.toLowerCase(),
-              { ...job.metadata, ...ocrMetadata }
-            );
-
-            // 3. Map result based on tier
-            let resultData = {
-              jobId: job._id,
-              userId: job.userId,
-              tier: job.tier,
-              extractedText: extractedText.substring(0, 10000), // Cap it
-              analysisAccuracy: aiOutcome.confidenceLevel === 'high' ? 95 : 80,
-              confidence: 90
-            };
-
-            if (job.tier.toLowerCase() === 'free') {
-              resultData = {
-                ...resultData,
-                summary: aiOutcome.freeSummary?.overview || 'Quote overview generated.',
-                verdict: 'good',
-                verdictScore: 70,
-                supplierInfo: aiOutcome.contractorProfile,
-                detailedReview: aiOutcome.freeSummary?.mainPoints?.join('\n') || ''
-              };
-            } else {
-              // Standard/Premium
-              const analysis = aiOutcome.analysis;
-              resultData = {
-                ...resultData,
-                summary: analysis.pricingAnalysis?.comparableWork?.substring(0, 200) || 'Detailed quote analysis completed.',
-                verdict: analysis.pricingAnalysis?.assessment === 'appears_high' ? 'overpriced' : 'good',
-                verdictScore: analysis.confidenceLevel === 'very_high' ? 90 : 80,
-                overallCost: analysis.pricingAnalysis?.totalAmount,
-                fairPriceRange: {
-                  min: analysis.pricingAnalysis?.priceRange?.low,
-                  max: analysis.pricingAnalysis?.priceRange?.high
-                },
-                costBreakdown: analysis.costBreakdown?.map(item => ({
-                  description: item.item,
-                  totalPrice: item.amount,
-                  category: item.category,
-                  flagged: item.notes?.toLowerCase().includes('red flag')
-                })),
-                redFlags: analysis.redFlags?.map(flag => ({
-                  title: flag.category.replace('_', ' ').toUpperCase(),
-                  description: flag.description,
-                  severity: flag.severity === 'critical' ? 'high' : flag.severity,
-                  category: flag.category
-                })),
-                questionsToAsk: analysis.questionsToAsk?.map(q => ({
-                  question: q,
-                  importance: 'should-ask'
-                })),
-                detailedReview: analysis.pricingAnalysis?.disclaimer || '',
-                supplierInfo: analysis.contractorProfile
-              };
-            }
-
-            const finalResult = await Result.create(resultData);
-
-            // 4. Linkage & Completion
-            job.result = finalResult._id;
-            await job.updateProcessingStep('analysis', 'completed');
-            job.status = 'completed';
-            await job.save();
-
-            logger.info(`Job ${jobPublicId} processing completed. Result: ${finalResult._id}`);
-
-            // Send completion email
-            try {
-              const EmailService = require('../../services/email/EmailService');
-              const user = await User.findById(job.userId);
-              if (user && user.email) {
-                await EmailService.sendJobCompletionEmail(user, job);
-              }
-            } catch (emailErr) {
-              logger.error('Failed to send completion email', emailErr);
-            }
-          } catch (error) {
-            logger.error(`Job processing failed: ${jobPublicId}`, error);
-            job.status = 'failed';
-            await job.save();
-          }
-        }, 500);
+          this.runInlineFallback(job, document, file);
+        }
 
         return res.status(201).json({
           success: true,
@@ -362,9 +300,7 @@ class JobController {
    */
   async getJob(req, res, next) {
     try {
-      const job = await Job.findOne({ jobId: req.params.jobId })
-        .populate('documents')
-        .lean();
+      const job = await this.resolveJob(req.params.jobId);
 
       if (!job) {
         return res.status(404).json({
@@ -373,7 +309,8 @@ class JobController {
         });
       }
 
-      if (req.user && job.userId?.toString() !== req.user._id.toString()) {
+      const jobUserId = job.userId?._id || job.userId;
+      if (req.user && jobUserId?.toString() !== req.user._id.toString()) {
         return res.status(403).json({
           success: false,
           error: 'Access denied'
@@ -419,9 +356,7 @@ class JobController {
    */
   async getJobStatus(req, res, next) {
     try {
-      const job = await Job.findOne({ jobId: req.params.jobId })
-        .select('jobId status processingSteps createdAt updatedAt')
-        .lean();
+      const job = await this.resolveJob(req.params.jobId);
 
       if (!job) {
         return res.status(404).json({
@@ -450,8 +385,14 @@ class JobController {
    */
   async getJobResult(req, res, next) {
     try {
-      const job = await Job.findOne({ jobId: req.params.jobId })
-        .populate('result');
+      const job = await this.resolveJob(req.params.jobId);
+
+      logger.info(`getJobResult request for ${req.params.jobId}`, {
+        jobFound: !!job,
+        hasResult: !!job?.result,
+        jobId: job?._id,
+        status: job?.status
+      });
 
       if (!job) {
         return res.status(404).json({
@@ -460,7 +401,8 @@ class JobController {
         });
       }
 
-      if (req.user && job.userId?.toString() !== req.user._id.toString()) {
+      const jobUserId = job.userId?._id || job.userId;
+      if (req.user && jobUserId?.toString() !== req.user._id.toString()) {
         return res.status(403).json({
           success: false,
           error: 'Access denied'
@@ -471,6 +413,8 @@ class JobController {
         // Fallback: Check if there's a result ID that failed to populate OR a result that exists but isn't linked
         const Result = require('../../models/Result');
         const fallbackResult = await Result.findOne({ jobId: job._id });
+
+        logger.info(`Fallback result search for job ${job._id}`, { found: !!fallbackResult });
 
         if (fallbackResult) {
           // Auto-repair linkage
@@ -514,7 +458,8 @@ class JobController {
 
       // Check access
       const job = await Job.findById(document.jobId);
-      if (req.user && job.userId?.toString() !== req.user._id.toString()) {
+      const jobUserId = job.userId?._id || job.userId;
+      if (req.user && jobUserId?.toString() !== req.user._id.toString()) {
         return res.status(403).json({
           success: false,
           error: 'Access denied'
@@ -537,7 +482,7 @@ class JobController {
   async submitRating(req, res, next) {
     try {
       const { rating } = req.body;
-      const job = await Job.findOne({ jobId: req.params.jobId });
+      const job = await this.resolveJob(req.params.jobId);
 
       if (!job) {
         return res.status(404).json({
@@ -547,7 +492,8 @@ class JobController {
       }
 
       // If job has a userId, check it
-      if (job.userId && req.user && job.userId.toString() !== req.user._id.toString()) {
+      const jobUserId = job.userId?._id || job.userId;
+      if (jobUserId && req.user && jobUserId.toString() !== req.user._id.toString()) {
         return res.status(403).json({
           success: false,
           error: 'Access denied'
@@ -563,6 +509,191 @@ class JobController {
       });
     } catch (error) {
       next(error);
+    }
+  }
+  /**
+   * Fallback method when Redis is unavailable
+   * Re-implements the processing chain: OCR -> AI -> Result -> Email
+   */
+  async runInlineFallback(job, document, file) {
+    setTimeout(async () => {
+      try {
+        logger.info(`Starting INLINE processing for job ${job._id}`);
+
+        // 1. Extraction Phase
+        await job.updateProcessingStep('extraction', 'in_progress');
+
+        const ocrService = require('../../services/ocr/OCRService');
+        const AIOrchestrator = require('../../services/ai/AIOrchestrator');
+
+        // 1. Text Extraction
+        let extractionResult = { text: '' };
+        try {
+          if (file.mimetype === 'text/plain') {
+            extractionResult = {
+              text: file.buffer.toString('utf8'),
+              ocrRequired: false,
+              method: 'text_input'
+            };
+          } else {
+            extractionResult = await ocrService.extractTextFromPDF(file.buffer);
+          }
+          logger.info('Text extracted (inline)', {
+            length: extractionResult?.text?.length,
+            method: extractionResult?.method
+          });
+        } catch (e) {
+          logger.error(`Extraction failed for job ${job._id}`, e);
+          // Continue to allow fallback check
+        }
+
+        // Handle Fallback to Vision (e.g. Scanned Scanned PDF)
+        let imageUrl = null;
+        let textToAnalyze = extractionResult?.text || "";
+        let ocrMetadata = {
+          method: extractionResult?.method,
+          ocrConfidence: extractionResult?.ocrConfidence
+        };
+
+        if (extractionResult?.fallbackToVision) {
+          logger.info('OCR failed or scanned PDF detected. Falling back to Vision API.');
+          // Generate preview URL from storage key (Cloudinary)
+          // Document object from earlier scope?? 
+          // Wait, 'document' is passed in runInlineFallback arguments
+          if (document && document.storageKey) {
+            const storageService = require('../../services/storage/StorageService');
+            imageUrl = storageService.getPreviewUrl(document.storageKey);
+            logger.info('Generated Vision Preview URL', { imageUrl });
+            textToAnalyze = "Please analyze this attached image of the quote document.";
+          }
+        }
+
+        // Check text limit (only if not using Vision? No, apply limit to text part anyway)
+        const limits = { free: 6000, standard: 20000, premium: 40000 };
+        const limit = limits[job.tier] || 6000;
+
+        const cappedText = textToAnalyze.length > limit
+          ? textToAnalyze.slice(0, limit)
+          : textToAnalyze;
+
+        if (textToAnalyze.length > limit) {
+          logger.warn('AI input truncated', { tier: job.tier, originalLength: textToAnalyze.length, allowed: limit });
+        }
+
+        if (!cappedText && !imageUrl) {
+          throw new Error(`Insufficient text extracted or no image for analysis.`);
+        }
+
+        await job.updateProcessingStep('extraction', 'completed');
+
+        // 2. AI Phase
+        await job.updateProcessingStep('analysis', 'in_progress');
+        logger.info(`Starting AI analysis for job ${job._id} (${cappedText.length} chars)`);
+
+        // Pass imageUrl if available
+        const aiOutcome = await AIOrchestrator.analyzeQuote(
+          cappedText,
+          job.tier.toLowerCase(),
+          { ...job.metadata, ...ocrMetadata },
+          imageUrl // Pass imageUrl to AIOrchestrator
+        );
+
+        // 3. Result
+        const aiProcessor = require('../../workers/processors/aiProcessor');
+        // CRITICAL: job.data is NOT populated here because it's not a Bull job!
+        // The aiProcessor.createResult expects job.data.extractedText.
+        // Shim job to have .data for the processor
+        const jobShim = {
+          _id: job._id,
+          userId: job.userId,
+          data: {
+            extractedText: cappedText,
+            extractionMethod: ocrMetadata.method,
+            ocrConfidence: ocrMetadata.ocrConfidence,
+            ...job.metadata
+          }
+        };
+
+        const result = await aiProcessor.createResult(jobShim, aiOutcome, job.tier);
+
+        job.result = result._id;
+        job.status = 'completed';
+        await job.updateProcessingStep('analysis', 'completed');
+        await job.save();
+
+        logger.info(`Inline job ${job._id} completed successfully`);
+
+        // 4. Email
+        try {
+          const EmailService = require('../../services/email/EmailService');
+          const user = await User.findById(job.userId);
+          if (user?.email) {
+            await EmailService.sendJobCompletionEmail(user, job);
+          }
+        } catch (e) { logger.warn('Email failed', e); }
+
+      } catch (error) {
+        logger.error(`Inline job failed: ${job._id}`, error);
+        job.status = 'failed';
+        await job.updateProcessingStep('analysis', 'failed', error.message);
+        await job.save();
+      }
+    }, 100);
+  }
+
+  /**
+   * Generate professional PDF report for Standard/Premium users
+   */
+  async generateReport(req, res, next) {
+    try {
+      const { jobId } = req.params;
+      const job = await this.resolveJob(jobId);
+
+      if (!job) {
+        return res.status(404).json({ success: false, error: 'Job not found' });
+      }
+
+      // 1. Ownership check (Allow if lead job OR if user matches)
+      const jobUserId = job.userId?._id || job.userId;
+      if (req.user && jobUserId && jobUserId.toString() !== req.user._id.toString()) {
+        return res.status(403).json({
+          success: false,
+          error: 'Access denied',
+          message: 'You do not have permission to access this report.'
+        });
+      }
+
+      // 2. Tier Check (Allow if job is Standard/Premium OR if user has Standard/Premium subscription)
+      const isJobPremium = ['standard', 'premium'].includes(job.tier.toLowerCase());
+      const isUserPremium = req.user && ['Standard', 'Premium'].includes(req.user.subscription?.plan);
+
+      if (!isJobPremium && !isUserPremium) {
+        return res.status(403).json({
+          success: false,
+          error: 'PDF reports are a premium feature',
+          message: 'Please upgrade to Standard or Premium to download professional reports.'
+        });
+      }
+
+      if (!job.result) {
+        return res.status(404).json({
+          success: false,
+          error: 'Analysis result not found',
+          message: 'The analysis result for this job is not yet available. Please wait for processing to complete.'
+        });
+      }
+
+      const effectiveTier = isUserPremium ? req.user.subscription.plan.toLowerCase() : job.tier.toLowerCase();
+      const pdfBuffer = await ReportService.generateProfessionalReport(job, job.result, effectiveTier);
+
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename=Analysis_Report_${jobId}.pdf`);
+      res.setHeader('Content-Length', pdfBuffer.length);
+      res.send(pdfBuffer);
+
+    } catch (error) {
+      logger.error('Failed to generate report:', error);
+      res.status(500).json({ success: false, error: 'Failed to generate PDF report' });
     }
   }
 }

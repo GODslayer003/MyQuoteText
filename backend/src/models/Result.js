@@ -25,7 +25,7 @@ const redFlagSchema = new mongoose.Schema(
     description: String,
     severity: {
       type: String,
-      enum: ['low', 'medium', 'high'],
+      enum: ['low', 'medium', 'high', 'critical'],
       default: 'medium'
     },
     category: String
@@ -40,7 +40,7 @@ const questionSchema = new mongoose.Schema(
     category: String,
     importance: {
       type: String,
-      enum: ['must-ask', 'should-ask', 'nice-to-ask'],
+      enum: ['must-ask', 'should-ask', 'nice-to-ask', 'critical'],
       default: 'should-ask'
     }
   },
@@ -101,13 +101,22 @@ const resultSchema = new mongoose.Schema(
     verdict: {
       type: String,
       required: true,
-      enum: ['excellent', 'good', 'fair', 'overpriced']
+      enum: ['excellent', 'good', 'fair', 'overpriced', 'irrelevant']
     },
 
     verdictScore: {
       type: Number,
       min: 0,
       max: 100
+    },
+
+    verdictJustification: {
+      type: String
+    },
+
+    isIrrelevant: {
+      type: Boolean,
+      default: false
     },
 
     // Free Tier Features
@@ -147,6 +156,14 @@ const resultSchema = new mongoose.Schema(
       email: String,
       phone: String,
       address: String
+    },
+
+    // Metadata about the analysis process
+    metadata: {
+      extractionMethod: { type: String, enum: ['text_extraction', 'ocr_fallback', 'vision_api', 'fallback_placeholder', 'text_input'], default: 'text_extraction' },
+      pageCount: Number,
+      processingTimeMs: Number,
+      fileSize: Number
     },
 
     quoteComparison: {

@@ -11,6 +11,7 @@ const adminRoutes = require('./admin.routes');
 const pricingRoutes = require('./pricing.routes');
 const discountRoutes = require('./discount.routes');
 const paymentRoutes = require('./payment.routes');
+const aiRoutes = require('./ai.routes');
 
 // Mount routes
 router.use('/auth', authRoutes);
@@ -21,6 +22,7 @@ router.use('/admin', adminRoutes);
 router.use('/pricing', pricingRoutes);
 router.use('/payments', paymentRoutes);
 router.use('/discounts', discountRoutes);
+router.use('/ai', aiRoutes);
 
 // Test route
 router.get('/test', (req, res) => {

@@ -1,6 +1,7 @@
 // backend/src/api/controllers/admin.controller.js
 const jwt = require('jsonwebtoken');
 const User = require('../../models/User');
+const Admin = require('../../models/Admin');
 const Payment = require('../../models/Payment');
 const Pricing = require('../../models/Pricing');
 const AuditLog = require('../../models/AuditLog');
@@ -145,8 +146,8 @@ class AdminController {
     // Get Admin Profile
     static async getProfile(req, res) {
         try {
-            const user = await User.findById(req.user._id).select('-passwordHash');
-            return res.json({ success: true, data: user });
+            const admin = await Admin.findById(req.user._id).select('-passwordHash');
+            return res.json({ success: true, data: admin });
         } catch (e) {
             return res.status(500).json({ success: false, error: 'Failed to fetch profile' });
         }
@@ -162,21 +163,21 @@ class AdminController {
             if (lastName !== undefined) updates.lastName = lastName;
             if (password) updates.passwordHash = password; // pre-save hook will hash
 
-            const user = await User.findById(req.user._id).select('+passwordHash');
-            if (!user) return res.status(404).json({ success: false, error: 'Admin not found' });
+            const admin = await Admin.findById(req.user._id).select('+passwordHash');
+            if (!admin) return res.status(404).json({ success: false, error: 'Admin not found' });
 
-            Object.assign(user, updates);
-            await user.save();
+            Object.assign(admin, updates);
+            await admin.save();
 
             await AuditLog.log({
-                userId: user._id,
-                action: 'user.profile_update',
-                resourceType: 'user',
-                resourceId: user._id.toString(),
+                userId: admin._id,
+                action: 'admin.profile_update',
+                resourceType: 'admin',
+                resourceId: admin._id.toString(),
                 metadata: { fields: Object.keys(updates) }
             });
 
-            const sanitized = await User.findById(user._id).select('-passwordHash');
+            const sanitized = await Admin.findById(admin._id).select('-passwordHash');
             return res.json({ success: true, data: sanitized });
         } catch (e) {
             return res.status(500).json({ success: false, error: 'Failed to update profile' });

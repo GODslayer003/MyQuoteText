@@ -66,11 +66,15 @@ const userSchema = new mongoose.Schema({
     currentPeriodStart: Date,
     currentPeriodEnd: Date,
     stripeCustomerId: String,
-    stripeSubscriptionId: String
-  },
-  reportsUsed: {
-    type: Number,
-    default: 0
+    stripeSubscriptionId: String,
+    reportsUsed: {
+      type: Number,
+      default: 0
+    },
+    reportsTotal: {
+      type: Number,
+      default: 1
+    }
   },
   preferences: {
     email: {

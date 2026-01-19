@@ -7,13 +7,34 @@ const logger = require('../../utils/logger');
 
 class OCRService {
   /**
-   * Extract text from PDF
+   * Extract text from PDF or Text files
    */
-  async extractTextFromPDF(pdfBuffer) {
+  async extractText(buffer, mimeType) {
     try {
-      // Try text extraction first
-      const pdfData = await pdfParse(pdfBuffer);
-      const extractedText = pdfData.text.trim();
+      if (mimeType === 'text/plain') {
+        const text = buffer.toString('utf8').trim();
+        return {
+          text,
+          ocrRequired: false,
+          ocrConfidence: 100,
+          method: 'text_input'
+        };
+      }
+
+      // Try text extraction first for PDFs
+      let extractedText = '';
+      try {
+        const pdfData = await pdfParse(buffer);
+        extractedText = pdfData.text?.trim() || '';
+      } catch (pdfError) {
+        logger.warn('PDF parsing failed (corrupt or invalid format), will attempt Vision fallback:', pdfError.message);
+        return {
+          text: "",
+          ocrRequired: true,
+          fallbackToVision: true,
+          method: 'fallback_placeholder'
+        };
+      }
 
       // If sufficient text found, return it
       if (extractedText && extractedText.length >= 100) {
@@ -27,11 +48,16 @@ class OCRService {
 
       // Otherwise, perform OCR
       logger.info('PDF appears to be scanned, performing OCR');
-      return await this.performOCR(pdfBuffer);
+      return await this.performOCR(buffer);
     } catch (error) {
-      logger.error('Text extraction failed:', error);
-      throw new Error('Failed to extract text from PDF');
+      logger.error('Extraction failed:', error);
+      throw new Error(`Failed to extract text from ${mimeType === 'application/pdf' ? 'PDF' : 'file'}`);
     }
+  }
+
+  // Legacy support
+  async extractTextFromPDF(pdfBuffer) {
+    return this.extractText(pdfBuffer, 'application/pdf');
   }
 
   /**
@@ -42,7 +68,20 @@ class OCRService {
     const warnings = [];
 
     try {
-      const { data: { text, confidence } } = await Tesseract.recognize(
+      // Tesseract.js cannot read PDF buffers directly in Node without external tools (like pdftoppm).
+      // Attempting to do so crashes the worker.
+      // We will skip OCR for now if standard extraction failed, to prevent crash.
+
+      return {
+        text: "",
+        ocrRequired: true,
+        fallbackToVision: true,
+        method: 'fallback_placeholder'
+      };
+
+      /* 
+       // Original Code crashes on PDF buffer:
+       const { data: { text, confidence } } = await Tesseract.recognize(
         pdfBuffer,
         'eng',
         {
@@ -52,7 +91,8 @@ class OCRService {
             }
           }
         }
-      );
+      ); */
+
 
       const processingTime = Date.now() - startTime;
 

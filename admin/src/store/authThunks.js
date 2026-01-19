@@ -6,11 +6,25 @@ export const adminLogin = createAsyncThunk(
   'auth/adminLogin',
   async (credentials, { rejectWithValue }) => {
     try {
-      const response = await api.post('/admin/login', credentials);
+      const response = await api.post('/admin/auth/login', credentials);
       return response.data.data;
     } catch (error) {
       return rejectWithValue(
         error.response?.data?.error || 'Login failed. Please try again.'
+      );
+    }
+  }
+);
+
+export const adminRegister = createAsyncThunk(
+  'auth/adminRegister',
+  async (formData, { rejectWithValue }) => {
+    try {
+      const response = await api.post('/admin/auth/register', formData);
+      return response.data.data;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.error || 'Registration failed. Please try again.'
       );
     }
   }

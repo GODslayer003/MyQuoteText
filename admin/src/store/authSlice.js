@@ -1,6 +1,6 @@
 // admin/src/store/authSlice.js
 import { createSlice } from '@reduxjs/toolkit';
-import { adminLogin, getAdminProfile, updateAdminProfile } from './authThunks';
+import { adminLogin, adminRegister, getAdminProfile, updateAdminProfile } from './authThunks';
 
 const initialState = {
   admin: null,
@@ -38,6 +38,24 @@ const authSlice = createSlice({
       localStorage.setItem('refreshToken', action.payload.tokens.refreshToken);
     });
     builder.addCase(adminLogin.rejected, (state, action) => {
+      state.loading = false;
+      state.error = action.payload;
+      state.isAuthenticated = false;
+    });
+
+    // Admin Register
+    builder.addCase(adminRegister.pending, state => {
+      state.loading = true;
+      state.error = null;
+    });
+    builder.addCase(adminRegister.fulfilled, (state, action) => {
+      state.loading = false;
+      state.admin = action.payload.user;
+      state.isAuthenticated = true;
+      localStorage.setItem('accessToken', action.payload.tokens.accessToken);
+      localStorage.setItem('refreshToken', action.payload.tokens.refreshToken);
+    });
+    builder.addCase(adminRegister.rejected, (state, action) => {
       state.loading = false;
       state.error = action.payload;
       state.isAuthenticated = false;

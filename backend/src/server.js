@@ -9,15 +9,23 @@ const cookieParser = require('cookie-parser');
 const mongoSanitize = require('express-mongo-sanitize');
 
 const { connectDB, disconnectDB } = require('./db/connection');
-const { shutdownQueues } = require('./config/queue');
+const { shutdownQueues, initializeQueues } = require('./config/queue');
 const routes = require('./api/routes');
 const errorMiddleware = require('./api/middleware/error.middleware');
 const rateLimitMiddleware = require('./api/middleware/rateLimit.middleware');
 const logger = require('./utils/logger');
-
+const crypto = require('crypto');
 // Initialize Express app
 const app = express();
-app.set('trust proxy', 1);
+if (process.env.NODE_ENV === 'production') {
+  app.set('trust proxy', 1);
+}
+
+app.use((req, res, next) => {
+  req.id = crypto.randomUUID();
+  res.setHeader('X-Request-Id', req.id);
+  next();
+});
 
 // ============================================
 // SECURITY MIDDLEWARE
@@ -45,7 +53,6 @@ const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:3001',
   'http://localhost:5174',
-  'https://myquotemate-7u5w.onrender.com',
   'https://my-quote-text-opie2cc4t-pranjals-projects-37b353eb.vercel.app',
   'https://my-quote-text.vercel.app',
   process.env.FRONTEND_URL
@@ -58,8 +65,18 @@ app.use(cors({
 
     // In production, we'll be more permissive for now to resolve deployment blockers
     if (process.env.NODE_ENV === 'production') {
+      const isAllowed =
+        allowedOrigins.includes(origin) ||
+        origin.endsWith('.vercel.app');
+
+      if (!isAllowed) {
+        logger.warn('CORS blocked', { origin });
+        return callback(new Error('Not allowed by CORS'));
+      }
+
       return callback(null, true);
     }
+
 
     // Check if origin is in allowedOrigins or is a vercel subdomain
     const isAllowed = allowedOrigins.includes(origin) ||
@@ -298,6 +315,16 @@ const startServer = async () => {
     logger.info('Connecting to MongoDB...');
     await connectDB();
     logger.info('MongoDB connected successfully');
+
+    // Initialize Queues
+    try {
+      logger.info('Initializing Job Queues...');
+      await initializeQueues();
+      logger.info('Job Queues ready');
+    } catch (queueError) {
+      logger.warn('Failed to initialize Job Queues (Redis down?). Background processing will be disabled or degraded.', { error: queueError.message });
+      // Do not exit, allow server to start
+    }
 
     // Start Express server
     server = app.listen(PORT, () => {

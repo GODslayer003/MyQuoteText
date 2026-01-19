@@ -1,7 +1,7 @@
 // admin/src/pages/LoginPage.jsx
 import React, { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { adminLogin } from '../store/authThunks';
 import { clearError } from '../store/authSlice';
 import { LogIn, AlertCircle, Eye, EyeOff, Loader2 } from 'lucide-react';
@@ -136,6 +136,15 @@ const LoginPage = () => {
               Password: <span className="font-mono">Roohan00327!</span>
             </p>
           </div>
+          {/* Register Link */}
+          <div className="mt-6 text-center">
+            <p className="text-gray-600 text-sm">
+              Need access?{' '}
+              <Link to="/register" className="text-orange-600 font-bold hover:text-orange-700 transition-colors">
+                Sign Up
+              </Link>
+            </p>
+          </div>
         </form>
 
         {/* Footer */}
@@ -143,7 +152,7 @@ const LoginPage = () => {
           Secure Admin Access Only
         </p>
       </div>
-    </div>
+    </div >
   );
 };
 

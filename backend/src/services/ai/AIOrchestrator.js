@@ -1,151 +1,277 @@
+// ============================================
 // src/services/ai/AIOrchestrator.js
+// ============================================
+
 const OpenAI = require('openai');
-const pRetry = require('p-retry');
+const pRetry = require('p-retry').default;
 const openaiConfig = require('../../config/openai');
 const PromptBuilder = require('./PromptBuilder');
 const logger = require('../../utils/logger');
 
+/**
+ * HARD tier limits (cost safety)
+ */
+const TIER_LIMITS = {
+  free: {
+    maxInputChars: 6000,
+    maxOutputTokens: 6000
+  },
+  standard: {
+    maxInputChars: 20000,
+    maxOutputTokens: 15000
+  },
+  premium: {
+    maxInputChars: 40000,
+    maxOutputTokens: 30000
+  }
+};
+
 class AIOrchestrator {
   constructor() {
-    this.openai = new OpenAI({
+    this.client = new OpenAI({
       apiKey: openaiConfig.apiKey,
       timeout: openaiConfig.timeout
     });
-    this.model = openaiConfig.model;
-    this.maxTokens = openaiConfig.maxTokens;
+
+    this.model = openaiConfig.model; // gpt-5-nano
     this.temperature = openaiConfig.temperature;
   }
 
   /**
-   * Analyze quote document
+   * Enforce tier-based input limits
    */
-  async analyzeQuote(extractedText, tier, metadata = {}) {
+  applyInputLimit(text, tier) {
+    const limits = TIER_LIMITS[tier] || TIER_LIMITS.free;
+
+    if (typeof text !== 'string') return '';
+
+    if (text.length > limits.maxInputChars) {
+      logger.warn('AI input truncated', {
+        tier,
+        originalLength: text.length,
+        allowed: limits.maxInputChars
+      });
+      return text.slice(0, limits.maxInputChars);
+    }
+
+    return text;
+  }
+
+  /**
+   * Analyze single quote
+   */
+  async analyzeQuote(extractedText, tier = 'free', metadata = {}, imageUrl = null) {
+    const limits = TIER_LIMITS[tier] || TIER_LIMITS.free;
+
     try {
-      logger.info(`Starting AI analysis for tier: ${tier}`);
+      logger.info('AI analysis started', { tier, hasImage: !!imageUrl });
+
+      const safeText = this.applyInputLimit(extractedText, tier);
 
       const systemPrompt = PromptBuilder.buildSystemPrompt(tier);
-      const userPrompt = PromptBuilder.buildUserPrompt(extractedText, metadata);
+      let userPrompt = PromptBuilder.buildUserPrompt(safeText, metadata);
 
-      const response = await this.callOpenAI(systemPrompt, userPrompt);
+      // If we have an image, we need to construct the content array for OpenAI Vision
+      if (imageUrl) {
+        // userPrompt from PromptBuilder is a string. We need to wrap it.
+        userPrompt = [
+          { type: "input_text", text: userPrompt },
+          {
+            type: "input_image",
+            image_url: imageUrl
+          }
+        ];
+      }
+
+      const response = await this.callOpenAI({
+        systemPrompt,
+        userPrompt,
+        maxOutputTokens: limits.maxOutputTokens,
+        // Ensure model is vision compatible if image is sent
+        model: imageUrl ? 'gpt-4o' : undefined
+      });
+
+      // DEBUG LOGGING
+      logger.info('Raw OpenAI Response:', {
+        response: JSON.stringify(response, null, 2)
+      });
+
       const parsed = this.parseResponse(response, tier);
 
-      logger.info(`AI analysis completed for tier: ${tier}`);
+      logger.info('AI analysis completed', {
+        tier,
+        totalTokens: response.usage?.total_tokens
+      });
 
       return parsed;
     } catch (error) {
-      logger.error('AI analysis failed:', error);
+      logger.error('AI analysis failed', { error: error.message });
       throw new Error('AI analysis failed. Please try again.');
     }
   }
 
   /**
-   * Compare multiple quotes (Premium only)
+   * Compare quotes (Premium only)
    */
-  async compareQuotes(quotes, metadata = {}) {
+  async compareQuotes(quotes = [], metadata = {}) {
+    if (!Array.isArray(quotes) || quotes.length < 2) {
+      throw new Error('At least two quotes are required');
+    }
+
+    if (quotes.length > 3) {
+      throw new Error('Maximum 3 quotes allowed');
+    }
+
     try {
-      logger.info(`Starting quote comparison for ${quotes.length} quotes`);
+      logger.info('AI comparison started', { count: quotes.length });
 
       const systemPrompt = PromptBuilder.buildComparisonSystemPrompt();
       const userPrompt = PromptBuilder.buildComparisonUserPrompt(quotes, metadata);
 
-      const response = await this.callOpenAI(systemPrompt, userPrompt);
-      const parsed = this.parseComparisonResponse(response);
+      const response = await this.callOpenAI({
+        systemPrompt,
+        userPrompt,
+        maxOutputTokens: TIER_LIMITS.premium.maxOutputTokens
+      });
 
-      logger.info('Quote comparison completed');
-
-      return parsed;
+      return this.parseComparisonResponse(response);
     } catch (error) {
-      logger.error('Quote comparison failed:', error);
+      logger.error('AI comparison failed', { error: error.message });
       throw new Error('Quote comparison failed. Please try again.');
     }
   }
 
   /**
-   * Call OpenAI API with retry logic
+   * ✅ CORRECT GPT-5-NANO RESPONSES API CALL
    */
-  async callOpenAI(systemPrompt, userPrompt) {
+  async callOpenAI({ systemPrompt, userPrompt, maxOutputTokens, model }) {
     return pRetry(
       async () => {
-        const completion = await this.openai.chat.completions.create({
-          model: this.model,
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: userPrompt }
-          ],
-          temperature: this.temperature,
-          max_tokens: this.maxTokens,
-          response_format: { type: 'json_object' }
-        });
+        const requestOptions = {
+          model: model || this.model,
 
-        return completion;
+          input: [
+            {
+              role: 'system',
+              content: [
+                { type: 'input_text', text: systemPrompt }
+              ]
+            },
+            {
+              role: 'user',
+              content: Array.isArray(userPrompt)
+                ? userPrompt
+                : [{ type: 'input_text', text: userPrompt }]
+            }
+          ],
+
+          max_output_tokens: maxOutputTokens,
+
+          // ✅ ONLY VALID JSON MODE
+          text: {
+            format: { type: 'json_object' }
+          }
+        };
+
+        const activeModel = model || this.model;
+
+        // Temperature check: GPT-5 (and o1-like models) do not support temperature
+        if (activeModel.includes('gpt-5') || activeModel.includes('o1')) {
+          // For reasoning models, try to reduce effort to save tokens
+          requestOptions.reasoning = { effort: 'low' };
+        } else {
+          requestOptions.temperature = this.temperature;
+        }
+
+        return this.client.responses.create(requestOptions);
       },
       {
-        retries: openaiConfig.maxRetries,
+        retries: openaiConfig.maxRetries ?? 3,
+        factor: 2,
+        minTimeout: 500,
+        maxTimeout: 3000,
         onFailedAttempt: (error) => {
-          logger.warn(
-            `OpenAI API attempt ${error.attemptNumber} failed. ${error.retriesLeft} retries left.`,
-            { error: error.message }
-          );
+          logger.warn(`OpenAI retry ${error.attemptNumber}`, {
+            error: error.message
+          });
         }
       }
     );
   }
 
   /**
-   * Parse and validate response
+   * Parse single-quote response
    */
   parseResponse(response, tier) {
-    try {
-      const content = response.choices[0].message.content;
-      const parsed = JSON.parse(content);
-
-      // Validate structure
-      if (tier === 'free') {
-        if (!parsed.freeSummary) {
-          throw new Error('Invalid AI response structure for free tier');
-        }
-      } else {
-        if (!parsed.analysis) {
-          throw new Error('Invalid AI response structure for paid tier');
-        }
-      }
-
-      // Track usage
-      const usage = {
-        model: response.model,
-        promptTokens: response.usage?.prompt_tokens,
-        completionTokens: response.usage?.completion_tokens,
-        totalTokens: response.usage?.total_tokens,
-        finishReason: response.choices[0].finish_reason
-      };
-
-      return {
-        ...parsed,
-        aiResponse: usage
-      };
-    } catch (error) {
-      logger.error('Failed to parse AI response:', error);
-      throw new Error('Failed to parse AI response');
+    // Check for incomplete responses first
+    if (response.status === 'incomplete') {
+      const reason = response.incomplete_details?.reason || 'unknown';
+      logger.warn('AI response incomplete', { reason, tier });
+      throw new Error(`AI analysis incomplete (limit reached: ${reason}). Please try again or upgrade tier.`);
     }
+
+    const outputText =
+      response.output_text ||
+      response.output?.[0]?.content?.[0]?.text;
+
+    if (!outputText) {
+      throw new Error('Empty AI response from provider');
+    }
+
+    let parsed;
+    try {
+      parsed = JSON.parse(outputText);
+    } catch (e) {
+      logger.error('Failed to parse AI JSON', { output: outputText });
+      throw new Error('Invalid AI response format');
+    }
+
+    if (tier === 'free' && !parsed.freeSummary) {
+      throw new Error('Invalid free-tier response');
+    }
+
+    if (tier !== 'free' && !parsed.analysis) {
+      throw new Error('Invalid paid-tier response');
+    }
+
+    return {
+      ...parsed,
+      aiResponse: {
+        model: response.model,
+        inputTokens: response.usage?.input_tokens ?? 0,
+        outputTokens: response.usage?.output_tokens ?? 0,
+        totalTokens: response.usage?.total_tokens ?? 0
+      }
+    };
   }
 
   /**
    * Parse comparison response
    */
   parseComparisonResponse(response) {
-    try {
-      const content = response.choices[0].message.content;
-      const parsed = JSON.parse(content);
+    const outputText =
+      response.output_text ||
+      response.output?.[0]?.content?.[0]?.text;
 
-      if (!parsed.comparison) {
-        throw new Error('Invalid AI comparison response structure');
-      }
-
-      return parsed;
-    } catch (error) {
-      logger.error('Failed to parse comparison response:', error);
-      throw new Error('Failed to parse comparison response');
+    if (!outputText) {
+      throw new Error('Empty comparison response');
     }
+
+    const parsed = JSON.parse(outputText);
+
+    if (!parsed.comparison) {
+      throw new Error('Invalid comparison structure');
+    }
+
+    return {
+      ...parsed,
+      aiResponse: {
+        model: response.model,
+        inputTokens: response.usage?.input_tokens ?? 0,
+        outputTokens: response.usage?.output_tokens ?? 0,
+        totalTokens: response.usage?.total_tokens ?? 0
+      }
+    };
   }
 }
 

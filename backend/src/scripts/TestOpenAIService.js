@@ -47,7 +47,7 @@ async function testOpenAI() {
                 { role: 'system', content: 'You are a service connectivity tester.' },
                 { role: 'user', content: 'Say "OpenAI Connection Successful" if you can read this.' }
             ],
-            max_tokens: 50
+
         });
 
         const duration = Date.now() - startTime;

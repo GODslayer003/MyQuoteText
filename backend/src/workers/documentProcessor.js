@@ -27,11 +27,11 @@ class DocumentProcessor {
       const pdfBuffer = await StorageService.downloadFile(document.storageKey);
 
       // Extract text
-      const extractionResult = await OCRService.extractTextFromPDF(pdfBuffer);
+      const extractionResult = await OCRService.extractText(pdfBuffer, document.mimeType);
 
       // Validate
       const validation = OCRService.validateExtractedText(extractionResult.text);
-      
+
       if (!validation.valid) {
         throw new Error(validation.reason);
       }
@@ -63,7 +63,8 @@ class DocumentProcessor {
         documentId: documentId,
         extractedText: extractionResult.text,
         tier: tier,
-        ocrConfidence: extractionResult.ocrConfidence
+        ocrConfidence: extractionResult.ocrConfidence,
+        extractionMethod: extractionResult.method
       }, {
         jobId: `ai-${jobId}`,
         attempts: 3

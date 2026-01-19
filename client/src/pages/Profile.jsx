@@ -63,7 +63,7 @@ const Profile = () => {
       status: 'active',
       expiresAt: null,
       reportsUsed: 0,
-      reportsTotal: 3 // Default for free plan
+      reportsTotal: 1 // Default for free plan (1 per month)
     },
     notifications: {
       email: true,
@@ -349,9 +349,9 @@ const Profile = () => {
   const getSubscriptionData = () => {
     const plan = userData.subscription?.plan || 'Free';
     const plans = {
-      'Free': { price: '0', reportsTotal: 3, color: 'from-gray-500 to-gray-600' },
-      'Standard': { price: '7.99', reportsTotal: 10, color: 'from-orange-500 to-amber-600' },
-      'Premium': { price: '9.99', reportsTotal: 50, color: 'from-gray-800 to-gray-900' }
+      'Free': { price: '0', reportsTotal: 1, color: 'from-gray-500 to-gray-600' },
+      'Standard': { price: '7.99', reportsTotal: 1, color: 'from-orange-500 to-amber-600' },
+      'Premium': { price: '9.99', reportsTotal: 3, color: 'from-gray-800 to-gray-900' }
     };
 
     return plans[plan] || plans['Free'];
@@ -664,10 +664,10 @@ const Profile = () => {
               <div className="mb-6">
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-gray-700 font-medium">
-                    {userData.subscription?.reportsUsed || 0} of {userData.subscription?.reportsTotal || 3} reports used
+                    {userData.subscription?.reportsUsed || 0} of {userData.subscription?.reportsTotal || 1} reports used
                   </span>
                   <span className="text-orange-600 font-semibold">
-                    {Math.round((userData.subscription?.reportsUsed || 0) / (userData.subscription?.reportsTotal || 3) * 100)}%
+                    {Math.round((userData.subscription?.reportsUsed || 0) / (userData.subscription?.reportsTotal || 1) * 100)}%
                   </span>
                 </div>
 
@@ -687,12 +687,12 @@ const Profile = () => {
                 <div className="text-center p-4 bg-gray-50 rounded-lg">
                   <p className="text-gray-600 text-sm">Remaining</p>
                   <p className="text-2xl font-bold text-orange-600 mt-2">
-                    {(userData.subscription?.reportsTotal || 3) - (userData.subscription?.reportsUsed || 0)}
+                    {(userData.subscription?.reportsTotal || 1) - (userData.subscription?.reportsUsed || 0)}
                   </p>
                 </div>
                 <div className="text-center p-4 bg-gray-50 rounded-lg">
                   <p className="text-gray-600 text-sm">Total Quota</p>
-                  <p className="text-2xl font-bold text-gray-900 mt-2">{userData.subscription?.reportsTotal || 3}</p>
+                  <p className="text-2xl font-bold text-gray-900 mt-2">{userData.subscription?.reportsTotal || 1}</p>
                 </div>
               </div>
             </div>

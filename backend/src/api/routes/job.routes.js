@@ -12,11 +12,11 @@ const upload = multer({
     fileSize: 10 * 1024 * 1024 // 10MB
   },
   fileFilter: (req, file, cb) => {
-    const allowedMimes = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
+    const allowedMimes = ['application/pdf', 'text/plain', 'image/jpeg', 'image/png', 'image/webp'];
     if (allowedMimes.includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error('Only PDF and image files (JPG, PNG, WEBP) are allowed'));
+      cb(new Error('Only PDF, Text, and image files (JPG, PNG, WEBP) are allowed'));
     }
   }
 });
@@ -26,42 +26,42 @@ router.post(
   '/',
   authMiddleware.optionalAuth,
   upload.single('document'),
-  JobController.createJob
+  JobController.createJob.bind(JobController)
 );
 
 // Get user's jobs
 router.get(
   '/',
   authMiddleware.authenticate,
-  JobController.getUserJobs
+  JobController.getUserJobs.bind(JobController)
 );
 
 // Get single job
 router.get(
   '/:jobId',
   authMiddleware.optionalAuth,
-  JobController.getJob
+  JobController.getJob.bind(JobController)
 );
 
 // Get job status
 router.get(
   '/:jobId/status',
   authMiddleware.optionalAuth,
-  JobController.getJobStatus
+  JobController.getJobStatus.bind(JobController)
 );
 
 // Get job result (analysis)
 router.get(
   '/:jobId/result',
   authMiddleware.optionalAuth,
-  JobController.getJobResult
+  JobController.getJobResult.bind(JobController)
 );
 
 // Delete job
 router.delete(
   '/:jobId',
   authMiddleware.authenticate,
-  JobController.deleteJob
+  JobController.deleteJob.bind(JobController)
 );
 
 // Download document
@@ -76,6 +76,13 @@ router.patch(
   '/:jobId/rating',
   authMiddleware.optionalAuth,
   JobController.submitRating
+);
+
+// Generate Professional PDF Report
+router.get(
+  '/:jobId/report',
+  authMiddleware.optionalAuth,
+  JobController.generateReport.bind(JobController)
 );
 
 module.exports = router;

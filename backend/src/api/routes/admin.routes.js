@@ -2,14 +2,16 @@
 const express = require('express');
 const router = express.Router();
 const AdminController = require('../controllers/admin.controller');
-const { authenticate } = require('../middleware/auth.middleware');
-const { requireAdmin } = require('../middleware/admin.middleware');
+const AdminAuthController = require('../controllers/AdminAuthController');
+const { authenticateAdmin } = require('../middleware/adminAuth.middleware');
 
-// Public Admin Routes
-router.post('/login', AdminController.login);
+// Public Admin Auth Routes
+router.post('/auth/login', AdminAuthController.login);
+router.post('/auth/register', AdminAuthController.register);
+router.post('/auth/refresh', AdminAuthController.refresh);
 
 // Protected Admin Routes
-router.use(authenticate, requireAdmin);
+router.use(authenticateAdmin);
 
 router.get('/me', AdminController.getProfile);
 router.put('/me', AdminController.updateProfile);

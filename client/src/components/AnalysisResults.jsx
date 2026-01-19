@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Lock, Unlock, ChevronDown, ChevronUp, Zap, Crown, Star, Download, FileText } from 'lucide-react';
+import { Lock, Unlock, ChevronDown, ChevronUp, Zap, Crown, Star, Download, FileText, AlertTriangle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import quoteApi from '../services/quoteApi';
 import { toast } from 'react-hot-toast';
@@ -17,6 +17,7 @@ const AnalysisResults = ({ jobResult, userTier = 'free' }) => {
   const [rating, setRating] = useState(0);
   const [hoveredRating, setHoveredRating] = useState(0);
   const [isSubmittingRating, setIsSubmittingRating] = useState(false);
+  const [isDownloadingReport, setIsDownloadingReport] = useState(false);
   const [ratingSubmitted, setRatingSubmitted] = useState(false);
 
   const handleRatingSubmit = async (value) => {
@@ -34,6 +35,32 @@ const AnalysisResults = ({ jobResult, userTier = 'free' }) => {
     } finally {
       setIsSubmittingRating(false);
     }
+  };
+
+  const handleDownloadReport = async () => {
+    if (!jobResult?.jobId) return;
+
+    try {
+      setIsDownloadingReport(true);
+      const blob = await quoteApi.generateReport(jobResult.jobId);
+      const url = window.URL.createObjectURL(new Blob([blob]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `Analysis_Report_${jobResult.jobId}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode.removeChild(link);
+      toast.success('Professional Report downloaded successfully!');
+    } catch (err) {
+      console.error('Report download error:', err);
+      toast.error('Failed to generate professional report');
+    } finally {
+      setIsDownloadingReport(false);
+    }
+  };
+
+  const toggleExpand = (key) => {
+    setExpandedSections(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
   // Sample/mock data for demonstration
@@ -221,34 +248,54 @@ const AnalysisResults = ({ jobResult, userTier = 'free' }) => {
   const displayResult = jobResult || mockJobResult;
 
   // Normalize tier names to lowercase
-  const normalizedTier = userTier?.toLowerCase() === 'Standard' ? 'standard' :
-    userTier?.toLowerCase() === 'Premium' ? 'premium' :
+  const normalizedTier = userTier?.toLowerCase() === 'standard' ? 'standard' :
+    userTier?.toLowerCase() === 'premium' ? 'premium' :
       userTier?.toLowerCase() || 'free';
 
   // Tier access mapping
   const tierAccess = {
-    free: ['summary', 'verdict'],
+    free: ['summary', 'verdict', 'redFlags', 'questions'],
     standard: ['summary', 'verdict', 'redFlags', 'detailedReview', 'questions'],
     premium: ['summary', 'verdict', 'redFlags', 'detailedReview', 'questions', 'comparison', 'benchmarking', 'recommendations']
   };
 
   const currentTierAccess = tierAccess[normalizedTier] || tierAccess.free;
 
+  const getVerdictDisplay = () => {
+    if (!displayResult?.verdictScore) return displayResult?.verdict || 'Analyzing pricing...';
+
+    // Detect if score is on 0-10 or 0-100 scale
+    let scoreValue = displayResult.verdictScore;
+    if (scoreValue > 10) scoreValue = scoreValue / 10;
+
+    const getLabel = (s) => {
+      if (s >= 90) return 'Excellent';
+      if (s >= 70) return 'Good';
+      if (s >= 50) return 'Average';
+      return 'Bad';
+    };
+
+    const label = getLabel(scoreValue * 10);
+    return `${scoreValue.toFixed(1)}/10 - ${label}`;
+  };
+
+  const verdictContent = getVerdictDisplay();
+
   // Feature definitions
   const features = {
     summary: {
-      title: 'Basic Summary',
+      title: (normalizedTier === 'standard' || normalizedTier === 'premium') ? 'Analysis Summary' : 'Basic Summary',
       description: 'AI-generated overview of your quote',
       icon: '📋',
       tier: 'free',
       content: displayResult?.summary || 'Processing summary...'
     },
     verdict: {
-      title: 'Fair Price Verdict',
+      title: 'Price Verdict',
       description: 'Assessment of pricing fairness',
       icon: '⚖️',
       tier: 'free',
-      content: displayResult?.verdict || 'Analyzing pricing...'
+      content: verdictContent
     },
     redFlags: {
       title: 'Red Flags & Concerns',
@@ -407,8 +454,29 @@ const AnalysisResults = ({ jobResult, userTier = 'free' }) => {
             )}
           </ul>
         ) : (
-          <div className="p-5 bg-white border border-gray-200 rounded-lg text-gray-700 whitespace-pre-wrap font-normal leading-relaxed text-sm">
-            {feature.content}
+          <div className="p-5 bg-white border border-gray-200 rounded-lg text-gray-700 font-normal leading-relaxed text-sm">
+            {featureKey === 'summary' && typeof feature.content === 'string' && feature.content.length > 500 ? (
+              <>
+                <div className={`${!expandedSections.summaryFull ? 'line-clamp-4' : ''} whitespace-pre-wrap`}>
+                  {feature.content}
+                </div>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setExpandedSections(prev => ({ ...prev, summaryFull: !prev.summaryFull }));
+                  }}
+                  className="mt-3 text-orange-600 font-bold text-xs flex items-center gap-1 hover:text-orange-700 transition-colors"
+                >
+                  {expandedSections.summaryFull ? (
+                    <>Show Less <ChevronUp className="w-3 h-3" /></>
+                  ) : (
+                    <>Show More <ChevronDown className="w-3 h-3" /></>
+                  )}
+                </button>
+              </>
+            ) : (
+              <div className="whitespace-pre-wrap">{feature.content}</div>
+            )}
           </div>
         )}
       </div>
@@ -469,9 +537,14 @@ const AnalysisResults = ({ jobResult, userTier = 'free' }) => {
           </div>
         </button>
 
-        {/* Content - Only show if unlocked and expanded */}
+        {/* Expanded Content */}
         {isUnlocked && isExpanded && (
           <div className="p-4 sm:p-6 border-t border-gray-200 bg-white">
+            {featureKey === 'verdict' && displayResult?.verdictJustification && (
+              <div className="mb-4 p-4 bg-orange-50 border border-orange-100 rounded-lg text-sm text-gray-800 italic leading-relaxed">
+                "{displayResult.verdictJustification}"
+              </div>
+            )}
             {renderFeatureContent(feature, featureKey)}
           </div>
         )}
@@ -488,6 +561,43 @@ const AnalysisResults = ({ jobResult, userTier = 'free' }) => {
 
   return (
     <div className="w-full max-w-4xl mx-auto">
+      {/* Irrelevant Document Warning */}
+      {displayResult?.isIrrelevant && (
+        <div className="mb-6 p-6 bg-red-50 border border-red-200 rounded-2xl">
+          <div className="flex items-start gap-4">
+            <div className="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center flex-shrink-0">
+              <AlertTriangle className="w-6 h-6 text-red-600" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-red-900 mb-1">This Report is irrelevant</h3>
+              <p className="text-red-700 font-medium leading-relaxed">
+                {displayResult.summary}
+              </p>
+              <p className="text-sm text-red-600 mt-2">
+                This platform is specifically designed for analyzing home renovation, maintenance, and construction quotes or invoices.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Processing Method Badge */}
+      {displayResult?.metadata?.extractionMethod && !displayResult?.isIrrelevant && (
+        <div className="mb-4 flex items-center justify-end">
+          {displayResult.metadata.extractionMethod === 'vision_api' || displayResult.metadata.extractionMethod === 'fallback_placeholder' ? (
+            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-purple-100 text-purple-800 border border-purple-200 shadow-sm">
+              <Star className="w-3 h-3 mr-1.5" />
+              Analyzed via AI Vision (Image Mode)
+            </span>
+          ) : (
+            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-700 border border-gray-200">
+              <FileText className="w-3 h-3 mr-1.5" />
+              Standard Text Analyzed
+            </span>
+          )}
+        </div>
+      )}
+
       {/* Tier Information Banner */}
       {normalizedTier === 'free' && (
         <div className="mb-8 p-4 sm:p-6 bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-200 rounded-xl">
@@ -532,74 +642,76 @@ const AnalysisResults = ({ jobResult, userTier = 'free' }) => {
       )}
 
       {/* Features Grid */}
-      <div className="space-y-4">
-        {renderFeatureCard('summary', features.summary)}
-        {renderFeatureCard('verdict', features.verdict)}
-        {renderFeatureCard('redFlags', features.redFlags)}
-        {renderFeatureCard('detailedReview', features.detailedReview)}
-        {renderFeatureCard('questions', features.questions)}
-        {renderFeatureCard('comparison', features.comparison)}
-        {renderFeatureCard('benchmarking', features.benchmarking)}
-        {renderFeatureCard('recommendations', features.recommendations)}
-      </div>
+      {!displayResult?.isIrrelevant && (
+        <div className="space-y-4">
+          {renderFeatureCard('summary', features.summary)}
+          {renderFeatureCard('verdict', features.verdict)}
+          {renderFeatureCard('redFlags', features.redFlags)}
+          {renderFeatureCard('detailedReview', features.detailedReview)}
+          {renderFeatureCard('questions', features.questions)}
+          {renderFeatureCard('comparison', features.comparison)}
+          {renderFeatureCard('benchmarking', features.benchmarking)}
+          {renderFeatureCard('recommendations', features.recommendations)}
+        </div>
+      )}
 
       {/* Rating Section */}
-      <div className="mt-12 p-8 bg-white border border-gray-200 rounded-2xl text-center shadow-sm">
-        <h3 className="text-xl font-bold text-gray-900 mb-2">How helpful was this analysis?</h3>
-        <p className="text-gray-600 mb-6 font-normal">Your feedback helps us improve our AI insights.</p>
+      {!displayResult?.isIrrelevant && (
+        <div className="mt-12 p-8 bg-white border border-gray-200 rounded-2xl text-center shadow-sm">
+          <h3 className="text-xl font-bold text-gray-900 mb-2">How helpful was this analysis?</h3>
+          <p className="text-gray-600 mb-6 font-normal">Your feedback helps us improve our AI insights.</p>
 
-        <div className="flex items-center justify-center gap-2 mb-4">
-          {[1, 2, 3, 4, 5].map((star) => (
-            <button
-              key={star}
-              disabled={ratingSubmitted || isSubmittingRating}
-              onMouseEnter={() => setHoveredRating(star)}
-              onMouseLeave={() => setHoveredRating(0)}
-              onClick={() => handleRatingSubmit(star)}
-              className={`p-1 transition-all transform hover:scale-110 ${(hoveredRating || rating) >= star ? 'text-orange-500' : 'text-gray-300'
-                } ${(ratingSubmitted || isSubmittingRating) ? 'cursor-default' : 'cursor-pointer'}`}
-            >
-              <Star className={`w-10 h-10 ${((hoveredRating || rating) >= star) ? 'fill-current' : ''}`} />
-            </button>
-          ))}
+          <div className="flex items-center justify-center gap-2 mb-4">
+            {[1, 2, 3, 4, 5].map((star) => (
+              <button
+                key={star}
+                disabled={ratingSubmitted || isSubmittingRating}
+                onMouseEnter={() => setHoveredRating(star)}
+                onMouseLeave={() => setHoveredRating(0)}
+                onClick={() => handleRatingSubmit(star)}
+                className={`p-1 transition-all transform hover:scale-110 ${(hoveredRating || rating) >= star ? 'text-orange-500' : 'text-gray-300'
+                  } ${(ratingSubmitted || isSubmittingRating) ? 'cursor-default' : 'cursor-pointer'}`}
+              >
+                <Star className={`w-10 h-10 ${((hoveredRating || rating) >= star) ? 'fill-current' : ''}`} />
+              </button>
+            ))}
+          </div>
+
+          {ratingSubmitted && (
+            <p className="text-green-600 font-medium">Feedback received! Thank you.</p>
+          )}
         </div>
+      )}
 
-        {ratingSubmitted && (
-          <p className="text-green-600 font-medium">Feedback received! Thank you.</p>
-        )}
-      </div>
-
-      {/* Action Bar */}
+      {/* Action Bar - Unified Professional Report */}
       <div className="mt-8 flex flex-wrap gap-4 items-center justify-between p-6 bg-white border border-gray-100 rounded-2xl shadow-sm">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
-            <Download className="w-6 h-6 text-orange-600" />
+          <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+            <FileText className="w-6 h-6 text-blue-600" />
           </div>
           <div>
-            <h4 className="font-bold text-gray-900">Original Document</h4>
-            <p className="text-sm text-gray-600">Download the original quote for your records</p>
+            <div className="flex items-center gap-2">
+              <h4 className="font-bold text-gray-900">Professional Report</h4>
+            </div>
+            <p className="text-sm text-gray-600">Download a comprehensive report including the original document and AI analysis.</p>
           </div>
         </div>
         <button
-          onClick={async () => {
-            if (!jobResult?.jobId) return;
-            try {
-              const job = await quoteApi.getJob(jobResult.jobId);
-              if (job && job.documents?.length > 0) {
-                const docId = job.documents[0]._id || job.documents[0];
-                const data = await quoteApi.downloadDocument(jobResult.jobId, docId);
-                if (data.url) window.open(data.url, '_blank');
-              } else {
-                toast.error('No document found for this analysis');
-              }
-            } catch (err) {
-              console.error('Download error:', err);
-              toast.error('Failed to download document');
-            }
-          }}
-          className="px-6 py-2.5 bg-orange-500 text-white rounded-xl font-bold hover:bg-orange-600 transition-all shadow-md active:scale-95"
+          onClick={normalizedTier === 'free' ? () => toast.error('Professional Report is available for Standard and Premium users.') : handleDownloadReport}
+          disabled={isDownloadingReport}
+          className={`px-6 py-2.5 rounded-xl font-bold transition-all shadow-md active:scale-95 flex items-center gap-2 ${normalizedTier === 'free'
+            ? 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200 shadow-none'
+            : 'bg-blue-600 text-white hover:bg-blue-700'
+            }`}
         >
-          Download PDF
+          {isDownloadingReport ? (
+            'Preparing...'
+          ) : (
+            <>
+              {normalizedTier === 'free' ? <Lock className="w-4 h-4" /> : <Download className="w-4 h-4" />}
+              {normalizedTier === 'free' ? 'Unlock Professional Report' : 'Download Report'}
+            </>
+          )}
         </button>
       </div>
 

@@ -28,6 +28,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { useAuth } from '../providers/AuthProvider';
+import { toast } from 'react-hot-toast';
 import quoteApi from '../services/quoteApi';
 import jobPollingService from '../services/jobPollingService';
 import AnalysisResults from '../components/AnalysisResults';
@@ -48,6 +49,7 @@ const CheckQuote = () => {
   const [currentJob, setCurrentJob] = useState(null);
   const [jobStatus, setJobStatus] = useState(null);
   const [jobResult, setJobResult] = useState(null);
+  const [limitError, setLimitError] = useState(null);
 
   const fileInputRef = useRef(null);
 
@@ -56,6 +58,77 @@ const CheckQuote = () => {
     setIsVisible(true);
     loadUserJobs();
   }, []);
+
+  // Usage Limit Notifications
+  useEffect(() => {
+    if (user && !isProcessing && phase === 'upload') {
+      const credits = user.subscription?.credits || 0;
+      const lastFree = user.subscription?.freeReportDate ? new Date(user.subscription.freeReportDate) : null;
+      const now = new Date();
+
+      const isFreeUsed = lastFree &&
+        lastFree.getMonth() === now.getMonth() &&
+        lastFree.getFullYear() === now.getFullYear();
+
+      // Clear existing toasts to prevent duplicates
+      toast.dismiss('limit-status');
+
+      if (credits === 0 && isFreeUsed) {
+        // Limit Reached
+        toast((t) => (
+          <div className="flex items-start gap-4 min-w-[300px]">
+            <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
+              <Clock className="w-6 h-6 text-orange-600" />
+            </div>
+            <div className="flex-1">
+              <h3 className="font-bold text-gray-900">Monthly Limit Reached</h3>
+              <p className="text-sm text-gray-600 mt-1">
+                You've used your free report for this month.
+                <span className="block mt-1 text-orange-600 font-medium">Upgrade to continue analyzing!</span>
+              </p>
+            </div>
+          </div>
+        ), {
+          id: 'limit-status',
+          duration: 6000,
+          position: 'top-center',
+          style: {
+            background: '#fff',
+            border: '1px solid #fed7aa', // orange-200
+            padding: '16px',
+            borderRadius: '16px',
+            boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)'
+          }
+        });
+      } else if (credits === 0 && !isFreeUsed) {
+        // Free Report Available
+        toast((t) => (
+          <div className="flex items-start gap-4 min-w-[300px]">
+            <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+              <Sparkles className="w-6 h-6 text-green-600" />
+            </div>
+            <div className="flex-1">
+              <h3 className="font-bold text-gray-900">Free Report Available</h3>
+              <p className="text-sm text-gray-600 mt-1">
+                You have 1 free analysis available this month. use it wisely!
+              </p>
+            </div>
+          </div>
+        ), {
+          id: 'limit-status',
+          duration: 5000,
+          position: 'top-center',
+          style: {
+            background: '#fff',
+            border: '1px solid #bbf7d0', // green-200
+            padding: '16px',
+            borderRadius: '16px',
+            boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)'
+          }
+        });
+      }
+    }
+  }, [user, isProcessing, phase]);
 
   // Scroll to bottom
   useEffect(() => {
@@ -241,11 +314,19 @@ const CheckQuote = () => {
     } catch (err) {
       console.error('Analysis error:', err);
       // Check for limit reached error
-      if (err.response?.status === 403 && err.response?.data?.nextAvailableDate) {
-        const nextDate = new Date(err.response.data.nextAvailableDate);
-        setError(`You have reached your Free Tier limit (1 report/month). Next free report available on: ${nextDate.toLocaleDateString()} at ${nextDate.toLocaleTimeString()}. Upgrade to Standard to continue immediately.`);
+      if (err.response?.status === 403 && (err.response?.data?.nextAvailableDate || err.message.includes('limit'))) {
+        const nextDateStr = err.response?.data?.nextAvailableDate;
+        const nextDate = nextDateStr ? new Date(nextDateStr) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+
+        setLimitError({
+          title: "Monthly Free Limit Reached",
+          message: "You've used your free quote analysis for this month.",
+          nextDate: nextDate
+        });
+        setError(null);
       } else {
         setError(err.message || 'Failed to analyze quote. Please try again.');
+        setLimitError(null);
       }
       setIsAnalyzing(false);
     }
@@ -260,6 +341,7 @@ const CheckQuote = () => {
     setJobStatus(null);
     setJobResult(null);
     setError(null);
+    setLimitError(null);
     setSuccess(null);
 
     // Stop any polling
@@ -483,8 +565,29 @@ WARRANTY: 6 years on workmanship`
       </section>
 
       {/* Error/Success Messages */}
-      {(error || success) && (
+      {(error || success || limitError) && (
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 mb-6">
+          {limitError && (
+            <div className="p-6 bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-200 rounded-xl shadow-sm">
+              <div className="flex items-start gap-4">
+                <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
+                  <Clock className="w-5 h-5 text-orange-600" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-bold text-gray-900 mb-1">{limitError.title}</h3>
+                  <p className="text-gray-700 mb-3">
+                    {limitError.message} Next free analysis available on: <span className="font-semibold">{limitError.nextDate.toLocaleDateString()}</span>
+                  </p>
+                  <button
+                    onClick={() => window.location.href = '/pricing'}
+                    className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-orange-500 to-amber-600 text-white rounded-lg text-sm font-semibold hover:shadow-md transition-all"
+                  >
+                    Upgrade for Unlimited Access
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
           {error && (
             <div className="p-4 bg-red-50 border border-red-200 rounded-xl">
               <div className="flex items-center gap-3">
@@ -663,8 +766,27 @@ WARRANTY: 6 years on workmanship`
                           <p className="text-gray-600">Upload or paste your tradie quote for analysis</p>
                         </div>
                       </div>
-                      <div className="text-sm text-gray-500">
-                        Step 1 of 2
+                      <div className="text-right">
+                        <div className="text-sm text-gray-500 mb-1">Step 1 of 2</div>
+                        {user && (
+                          <div className="inline-flex items-center px-3 py-1 bg-gray-100 rounded-full text-xs font-medium text-gray-700">
+                            {user.subscription?.credits > 0 ? (
+                              <>
+                                <Zap className="w-3 h-3 text-orange-500 mr-1.5" />
+                                {user.subscription.credits} Credit{user.subscription.credits !== 1 ? 's' : ''} Remaining
+                              </>
+                            ) : (
+                              <>
+                                <Clock className="w-3 h-3 text-blue-500 mr-1.5" />
+                                {user.subscription?.freeReportDate &&
+                                  new Date(user.subscription.freeReportDate).getMonth() === new Date().getMonth() &&
+                                  new Date(user.subscription.freeReportDate).getFullYear() === new Date().getFullYear()
+                                  ? 'Monthly Free Report Used'
+                                  : 'Free Report Available'}
+                              </>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
 
@@ -829,7 +951,7 @@ WARRANTY: 6 years on workmanship`
                       {isAnalyzing ? (
                         <span className="flex items-center justify-center gap-2">
                           <Loader2 className="w-5 h-5 animate-spin" />
-                          Uploading & Analyzing...
+                          {uploadMethod === 'text' ? 'Analyzing Quote...' : 'Uploading & Analyzing...'}
                         </span>
                       ) : (
                         <span className="flex items-center justify-center gap-2">
@@ -911,15 +1033,6 @@ WARRANTY: 6 years on workmanship`
                           <ArrowLeft className="w-4 h-4" />
                           Back to Upload
                         </button>
-                        {isAuthenticated && (
-                          <button
-                            onClick={() => window.open(`/analysis/${currentJob?.jobId}`, '_blank')}
-                            className="px-4 py-2 bg-gradient-to-r from-orange-500 to-amber-600 text-white rounded-lg text-sm font-medium hover:shadow-lg transition-all flex items-center gap-2"
-                          >
-                            <ExternalLink className="w-4 h-4" />
-                            Full Report
-                          </button>
-                        )}
                       </div>
                     </div>
 

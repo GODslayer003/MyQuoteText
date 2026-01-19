@@ -213,8 +213,10 @@ class PaymentController {
       if (tier === 'Premium') creditsToAdd = 3; // "3 Reports per Buy"
 
       user.subscription.credits = (user.subscription.credits || 0) + creditsToAdd;
+      user.subscription.reportsTotal = (user.subscription.reportsTotal || 0) + creditsToAdd;
+      user.subscription.reportsUsed = 0; // Reset usage for the new purchased batch
 
-      // Update tier only if upgrading to a higher tier
+      // Update tier only if upgrading to a higher tier or stay in Premium
       const tierLevels = { 'Free': 0, 'Standard': 1, 'Premium': 2 };
       const currentTier = user.subscription.plan || 'Free';
 

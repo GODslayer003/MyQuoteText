@@ -8,6 +8,7 @@ import {
     Zap
 } from 'lucide-react';
 import { useAuth } from '../providers/AuthProvider';
+import quoteApi from '../services/quoteApi';
 
 const PaymentModal = ({ isOpen, onClose, plan = 'Standard', price = 7.99, onSuccess }) => {
     const { user } = useAuth();
@@ -21,8 +22,9 @@ const PaymentModal = ({ isOpen, onClose, plan = 'Standard', price = 7.99, onSucc
         setIsProcessing(true);
         setStep('processing');
 
-        // Simulate API call
-        setTimeout(() => {
+        try {
+            await quoteApi.upgradeTier(plan);
+
             setIsProcessing(false);
             setStep('success');
 
@@ -31,7 +33,13 @@ const PaymentModal = ({ isOpen, onClose, plan = 'Standard', price = 7.99, onSucc
                 onSuccess?.();
                 onClose();
             }, 2500);
-        }, 2000);
+        } catch (error) {
+            console.error('Payment failed:', error);
+            setIsProcessing(false);
+            // Ideally handle error state here
+            setStep('summary'); // Reset to summary on failure
+            // Note: In production, show error message
+        }
     };
 
     return (

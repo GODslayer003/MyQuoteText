@@ -35,7 +35,7 @@ const documentSchema = new mongoose.Schema(
     mimeType: {
       type: String,
       required: true,
-      enum: ['application/pdf']
+      enum: ['application/pdf', 'text/plain', 'image/jpeg', 'image/png', 'image/webp']
     },
 
     // Storage
