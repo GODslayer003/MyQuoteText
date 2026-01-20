@@ -150,7 +150,7 @@ const AuthModal = ({ isOpen, onClose }) => {
 
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (isLocked) {
       const remainingTime = getRemainingLockTime();
       alert(`Account is locked. Please try again in ${remainingTime} minute(s).`);
@@ -164,11 +164,11 @@ const AuthModal = ({ isOpen, onClose }) => {
     }
 
     const success = await login(loginData);
-    
+
     if (!success) {
       const newAttempts = loginAttempts + 1;
       setLoginAttempts(newAttempts);
-      
+
       if (newAttempts >= 5) {
         const lockTime = Date.now() + (2 * 60 * 60 * 1000);
         setLockUntil(lockTime);
@@ -187,12 +187,12 @@ const AuthModal = ({ isOpen, onClose }) => {
   // ---------------------------
   const handleSignupChange = (e) => {
     const { name, value } = e.target;
-    
+
     let formattedValue = value;
     if (name === 'phone') {
       formattedValue = value.replace(/[^\d+]/g, '');
     }
-    
+
     setSignupData(prev => ({ ...prev, [name]: formattedValue }));
 
     if (name === 'password') {
@@ -399,7 +399,7 @@ const AuthModal = ({ isOpen, onClose }) => {
   };
 
   return (
-    <div 
+    <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in"
     >
       <div
@@ -593,11 +593,10 @@ const LoginForm = ({
           value={loginData.email}
           onChange={handleLoginChange}
           disabled={isLocked || loading}
-          className={`w-full pl-10 pr-3 py-2.5 rounded-lg border ${
-            fieldErrors.email
-              ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
-              : 'border-gray-300 focus:border-orange-500 focus:ring-orange-500'
-          } focus:ring-2 focus:ring-opacity-20 transition-colors disabled:bg-gray-50 disabled:cursor-not-allowed`}
+          className={`w-full pl-10 pr-3 py-2.5 rounded-lg border ${fieldErrors.email
+            ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
+            : 'border-gray-300 focus:border-orange-500 focus:ring-orange-500'
+            } focus:ring-2 focus:ring-opacity-20 transition-colors disabled:bg-gray-50 disabled:cursor-not-allowed`}
           placeholder="you@example.com"
           autoComplete="email"
         />
@@ -629,11 +628,10 @@ const LoginForm = ({
           value={loginData.password}
           onChange={handleLoginChange}
           disabled={isLocked || loading}
-          className={`w-full pl-10 pr-10 py-2.5 rounded-lg border ${
-            fieldErrors.password
-              ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
-              : 'border-gray-300 focus:border-orange-500 focus:ring-orange-500'
-          } focus:ring-2 focus:ring-opacity-20 transition-colors disabled:bg-gray-50 disabled:cursor-not-allowed`}
+          className={`w-full pl-10 pr-10 py-2.5 rounded-lg border ${fieldErrors.password
+            ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
+            : 'border-gray-300 focus:border-orange-500 focus:ring-orange-500'
+            } focus:ring-2 focus:ring-opacity-20 transition-colors disabled:bg-gray-50 disabled:cursor-not-allowed`}
           placeholder="••••••••"
           autoComplete="current-password"
         />
@@ -743,11 +741,10 @@ const SignupForm = ({
             value={signupData.firstName}
             onChange={handleSignupChange}
             disabled={loading}
-            className={`w-full pl-10 pr-3 py-2.5 rounded-lg border ${
-              fieldErrors.firstName
-                ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
-                : 'border-gray-300 focus:border-orange-500 focus:ring-orange-500'
-            } focus:ring-2 focus:ring-opacity-20 transition-colors disabled:bg-gray-50 disabled:cursor-not-allowed`}
+            className={`w-full pl-10 pr-3 py-2.5 rounded-lg border ${fieldErrors.firstName
+              ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
+              : 'border-gray-300 focus:border-orange-500 focus:ring-orange-500'
+              } focus:ring-2 focus:ring-opacity-20 transition-colors disabled:bg-gray-50 disabled:cursor-not-allowed`}
             placeholder="John"
             autoComplete="given-name"
           />
@@ -768,11 +765,10 @@ const SignupForm = ({
             value={signupData.lastName}
             onChange={handleSignupChange}
             disabled={loading}
-            className={`w-full pl-10 pr-3 py-2.5 rounded-lg border ${
-              fieldErrors.lastName
-                ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
-                : 'border-gray-300 focus:border-orange-500 focus:ring-orange-500'
-            } focus:ring-2 focus:ring-opacity-20 transition-colors disabled:bg-gray-50 disabled:cursor-not-allowed`}
+            className={`w-full pl-10 pr-3 py-2.5 rounded-lg border ${fieldErrors.lastName
+              ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
+              : 'border-gray-300 focus:border-orange-500 focus:ring-orange-500'
+              } focus:ring-2 focus:ring-opacity-20 transition-colors disabled:bg-gray-50 disabled:cursor-not-allowed`}
             placeholder="Doe"
             autoComplete="family-name"
           />
@@ -786,7 +782,7 @@ const SignupForm = ({
     {/* Phone */}
     <div>
       <label className="block text-sm font-medium text-gray-700 mb-1">
-        Phone Number <span className="text-gray-500 font-normal">(Optional)</span>
+        Phone Number
       </label>
       <div className="relative">
         <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -796,11 +792,10 @@ const SignupForm = ({
           value={signupData.phone}
           onChange={handleSignupChange}
           disabled={loading}
-          className={`w-full pl-10 pr-3 py-2.5 rounded-lg border ${
-            fieldErrors.phone
-              ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
-              : 'border-gray-300 focus:border-orange-500 focus:ring-orange-500'
-          } focus:ring-2 focus:ring-opacity-20 transition-colors disabled:bg-gray-50 disabled:cursor-not-allowed`}
+          className={`w-full pl-10 pr-3 py-2.5 rounded-lg border ${fieldErrors.phone
+            ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
+            : 'border-gray-300 focus:border-orange-500 focus:ring-orange-500'
+            } focus:ring-2 focus:ring-opacity-20 transition-colors disabled:bg-gray-50 disabled:cursor-not-allowed`}
           placeholder="+1 (555) 123-4567"
           autoComplete="tel"
         />
@@ -823,11 +818,10 @@ const SignupForm = ({
           value={signupData.email}
           onChange={handleSignupChange}
           disabled={loading}
-          className={`w-full pl-10 pr-3 py-2.5 rounded-lg border ${
-            fieldErrors.email
-              ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
-              : 'border-gray-300 focus:border-orange-500 focus:ring-orange-500'
-          } focus:ring-2 focus:ring-opacity-20 transition-colors disabled:bg-gray-50 disabled:cursor-not-allowed`}
+          className={`w-full pl-10 pr-3 py-2.5 rounded-lg border ${fieldErrors.email
+            ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
+            : 'border-gray-300 focus:border-orange-500 focus:ring-orange-500'
+            } focus:ring-2 focus:ring-opacity-20 transition-colors disabled:bg-gray-50 disabled:cursor-not-allowed`}
           placeholder="you@example.com"
           autoComplete="email"
         />
@@ -850,11 +844,10 @@ const SignupForm = ({
           value={signupData.password}
           onChange={handleSignupChange}
           disabled={loading}
-          className={`w-full pl-10 pr-10 py-2.5 rounded-lg border ${
-            fieldErrors.password
-              ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
-              : 'border-gray-300 focus:border-orange-500 focus:ring-orange-500'
-          } focus:ring-2 focus:ring-opacity-20 transition-colors disabled:bg-gray-50 disabled:cursor-not-allowed`}
+          className={`w-full pl-10 pr-10 py-2.5 rounded-lg border ${fieldErrors.password
+            ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
+            : 'border-gray-300 focus:border-orange-500 focus:ring-orange-500'
+            } focus:ring-2 focus:ring-opacity-20 transition-colors disabled:bg-gray-50 disabled:cursor-not-allowed`}
           placeholder="••••••••"
           autoComplete="new-password"
         />
@@ -878,12 +871,11 @@ const SignupForm = ({
         <div className="mt-2 space-y-2">
           <div className="flex justify-between text-xs">
             <span className="text-gray-600">Password strength</span>
-            <span className={`font-medium ${
-              passwordStrength < 25 ? 'text-red-600' :
+            <span className={`font-medium ${passwordStrength < 25 ? 'text-red-600' :
               passwordStrength < 50 ? 'text-orange-600' :
-              passwordStrength < 75 ? 'text-yellow-600' :
-              passwordStrength < 90 ? 'text-blue-600' : 'text-green-600'
-            }`}>
+                passwordStrength < 75 ? 'text-yellow-600' :
+                  passwordStrength < 90 ? 'text-blue-600' : 'text-green-600'
+              }`}>
               {getStrengthLabel(passwordStrength)}
             </span>
           </div>
@@ -903,9 +895,8 @@ const SignupForm = ({
                 ) : (
                   <div className="w-3 h-3 rounded-full border border-gray-300 flex-shrink-0" />
                 )}
-                <span className={`text-xs ${
-                  req.check ? 'text-green-600' : 'text-gray-500'
-                }`}>
+                <span className={`text-xs ${req.check ? 'text-green-600' : 'text-gray-500'
+                  }`}>
                   {req.text}
                 </span>
               </div>
@@ -932,11 +923,10 @@ const SignupForm = ({
           value={signupData.confirmPassword}
           onChange={handleSignupChange}
           disabled={loading}
-          className={`w-full pl-10 pr-10 py-2.5 rounded-lg border ${
-            fieldErrors.confirmPassword
-              ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
-              : 'border-gray-300 focus:border-orange-500 focus:ring-orange-500'
-          } focus:ring-2 focus:ring-opacity-20 transition-colors disabled:bg-gray-50 disabled:cursor-not-allowed`}
+          className={`w-full pl-10 pr-10 py-2.5 rounded-lg border ${fieldErrors.confirmPassword
+            ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
+            : 'border-gray-300 focus:border-orange-500 focus:ring-orange-500'
+            } focus:ring-2 focus:ring-opacity-20 transition-colors disabled:bg-gray-50 disabled:cursor-not-allowed`}
           placeholder="••••••••"
           autoComplete="new-password"
         />
@@ -1043,11 +1033,10 @@ const ForgotPasswordForm = ({
           value={forgotPasswordData.email}
           onChange={handleForgotPasswordChange}
           disabled={loading}
-          className={`w-full pl-10 pr-3 py-2.5 rounded-lg border ${
-            fieldErrors.email
-              ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
-              : 'border-gray-300 focus:border-orange-500 focus:ring-orange-500'
-          } focus:ring-2 focus:ring-opacity-20 transition-colors disabled:bg-gray-50 disabled:cursor-not-allowed`}
+          className={`w-full pl-10 pr-3 py-2.5 rounded-lg border ${fieldErrors.email
+            ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
+            : 'border-gray-300 focus:border-orange-500 focus:ring-orange-500'
+            } focus:ring-2 focus:ring-opacity-20 transition-colors disabled:bg-gray-50 disabled:cursor-not-allowed`}
           placeholder="you@example.com"
           autoComplete="email"
         />
