@@ -143,7 +143,25 @@ OUTPUT JSON SCHEMA (PAID TIERS):
       "abn": "string or null",
       "licenseNumber": "string or null",
       "insuranceMentioned": boolean
-    }
+    },
+    "recommendations": [
+      {
+        "title": "Negotiation or saving tip",
+        "description": "2-3 sentences of advice",
+        "potentialSavings": 500,
+        "difficulty": "easy|moderate|complex"
+      }
+    ],
+    "benchmarking": [
+      {
+        "item": "e.g., Labor Rate",
+        "quotePrice": 95,
+        "marketMin": 80,
+        "marketAvg": 95,
+        "marketMax": 115,
+        "percentile": 45
+      }
+    ]
   }
 }
 
@@ -156,9 +174,21 @@ IMPORTANT:
   - title: 'Quote Integrity Verified'
   - description: 'EXPLAIN IN 3-4 SENTENCES why the quote is structurally sound, mentioning specific lack of hidden costs, clear itemization, and standard pricing found in this document.'
   - recommendation: 'Proceed with standard administrative caution.'
+${tier === 'premium' ? `
+- PREMIUM TIER REQUIREMENTS (MANDATORY):
+  - 'recommendations' array MUST contain 3-5 actionable negotiation tips or cost-saving strategies based on the quote analysis.
+  - 'benchmarking' array MUST contain 3-7 items comparing key quote elements (labor rates, material costs, markup percentages) against 2026 Australian market averages.
+  - For benchmarking, use realistic 2026 Australian construction market data:
+    * Skilled labor: $80-$120/hr (avg $95/hr)
+    * General labor: $50-$75/hr (avg $60/hr)
+    * Materials markup: 15-35% (avg 25%)
+    * Project management fee: 10-20% (avg 15%)
+  - Each recommendation should include realistic potential savings (e.g., $200-$2000 depending on the quote size).
+  - Benchmarking percentiles should reflect where the quote sits in the market (0-100, where 50 is average).
+` : ''}
 - Return EXACTLY this JSON structure.
 - Be precise, technical, and helpful.
-- No field should be empty.
+- No field should be empty (use empty arrays [] if truly no data, but try to populate).
 `;
     }
 

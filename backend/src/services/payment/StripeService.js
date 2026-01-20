@@ -24,7 +24,7 @@
 //     try {
 //       // Get price based on tier
 //       const amount = this._getTierAmount(tier);
-      
+
 //       // Generate idempotency key to prevent duplicate charges
 //       const idempotencyKey = this._generateIdempotencyKey(jobData.jobId, tier);
 
@@ -165,7 +165,7 @@
 //     try {
 //       // Find payment record
 //       const payment = await Payment.findByPaymentIntent(paymentIntent.id);
-      
+
 //       if (!payment) {
 //         logger.error(`Payment not found for intent: ${paymentIntent.id}`);
 //         return;
@@ -175,7 +175,7 @@
 //       const existingEvent = payment.webhookEvents.find(
 //         e => e.eventId === paymentIntent.id && e.eventType === 'payment_intent.succeeded'
 //       );
-      
+
 //       if (existingEvent && existingEvent.processed) {
 //         logger.info(`Duplicate webhook event ignored: ${paymentIntent.id}`);
 //         return;
@@ -224,7 +224,7 @@
 //   async _handlePaymentFailed(paymentIntent) {
 //     try {
 //       const payment = await Payment.findByPaymentIntent(paymentIntent.id);
-      
+
 //       if (!payment) return;
 
 //       await payment.markAsFailed(
@@ -259,11 +259,11 @@
 //   async _handleRefund(charge) {
 //     try {
 //       const payment = await Payment.findOne({ stripeChargeId: charge.id });
-      
+
 //       if (!payment) return;
 
 //       const refund = charge.refunds.data[0];
-      
+
 //       await payment.addRefund({
 //         id: refund.id,
 //         amount: refund.amount,
@@ -307,7 +307,7 @@
 //   async _handlePaymentCanceled(paymentIntent) {
 //     try {
 //       const payment = await Payment.findByPaymentIntent(paymentIntent.id);
-      
+
 //       if (!payment) return;
 
 //       payment.status = 'cancelled';
@@ -377,7 +377,7 @@
 //   async createRefund(paymentId, amount = null, reason = 'requested_by_customer') {
 //     try {
 //       const payment = await Payment.findById(paymentId);
-      
+
 //       if (!payment || payment.status !== 'succeeded') {
 //         throw new Error('Payment not found or not in succeeded state');
 //       }
@@ -421,8 +421,8 @@ const logger = require('../../utils/logger');
 const PAYMENT_PROVIDER = process.env.PAYMENT_PROVIDER || 'mock';
 
 const PRICING = {
-  standard:7.99,
-  premium: 9.99
+  Standard: 7.99,
+  Premium: 9.99
 };
 
 class StripeService {

@@ -187,7 +187,12 @@ const Pricing = () => {
       setLoading(false);
     }
   };
-  const handlePlanSelect = (plan) => {
+  const handlePlanSelect = (planInput) => {
+    // Handle both object (from desktop cards) and string (from mobile buttons)
+    const plan = typeof planInput === 'string'
+      ? plans.find(p => p.name === planInput) || { name: planInput }
+      : planInput;
+
     if (plan.name === "Free") {
       // Free plan - redirect to upload or dashboard
       navigate('/check-quote');

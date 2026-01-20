@@ -254,9 +254,9 @@ const AnalysisResults = ({ jobResult, userTier = 'free' }) => {
 
   // Tier access mapping
   const tierAccess = {
-    free: ['summary', 'verdict', 'redFlags', 'questions'],
-    standard: ['summary', 'verdict', 'redFlags', 'detailedReview', 'questions'],
-    premium: ['summary', 'verdict', 'redFlags', 'detailedReview', 'questions', 'comparison', 'benchmarking', 'recommendations']
+    free: ['summary', 'verdict'],
+    standard: ['summary', 'verdict', 'costBreakdown', 'redFlags', 'detailedReview', 'questions'],
+    premium: ['summary', 'verdict', 'costBreakdown', 'redFlags', 'detailedReview', 'questions', 'comparison', 'benchmarking', 'recommendations']
   };
 
   const currentTierAccess = tierAccess[normalizedTier] || tierAccess.free;
@@ -297,6 +297,15 @@ const AnalysisResults = ({ jobResult, userTier = 'free' }) => {
       tier: 'free',
       content: verdictContent
     },
+    costBreakdown: {
+      title: 'Detailed Cost Overview',
+      description: 'Line-by-line breakdown of all costs',
+      icon: '💰',
+      tier: 'standard',
+      content: displayResult?.costBreakdown || [],
+      isList: true,
+      isTable: true
+    },
     redFlags: {
       title: 'Red Flags & Concerns',
       description: 'Potential issues identified in the quote',
@@ -326,7 +335,7 @@ const AnalysisResults = ({ jobResult, userTier = 'free' }) => {
       description: 'Side-by-side analysis of multiple quotes',
       icon: '📊',
       tier: 'premium',
-      content: displayResult?.comparison || 'Upload additional quotes to compare',
+      content: displayResult?.quoteComparison || 'Upload additional quotes to compare',
       isList: false
     },
     benchmarking: {
@@ -334,8 +343,8 @@ const AnalysisResults = ({ jobResult, userTier = 'free' }) => {
       description: 'Compare against local market rates',
       icon: '📈',
       tier: 'premium',
-      content: displayResult?.benchmarking || 'Market data loading...',
-      isList: false
+      content: displayResult?.benchmarking || [],
+      isList: true
     },
     recommendations: {
       title: 'Advanced Recommendations',
@@ -380,11 +389,51 @@ const AnalysisResults = ({ jobResult, userTier = 'free' }) => {
     const isUnlocked = isFeatureUnlocked(featureKey);
 
     if (!isUnlocked) {
+      // Check if user is already on Premium and trying to access Premium features
+      if (normalizedTier === 'premium' && feature.tier === 'premium') {
+        return (
+          <div className="text-center py-8">
+            <Crown className="w-12 h-12 text-amber-500 mx-auto mb-3" />
+            <p className="text-gray-700 font-semibold mb-2">
+              You're already on the Premium plan!
+            </p>
+            <p className="text-sm text-gray-600">
+              This feature will be available once you analyze a quote.
+            </p>
+          </div>
+        );
+      }
+
+      // Check if user is on Standard trying to access Premium
+      if (normalizedTier === 'standard' && feature.tier === 'premium') {
+        return (
+          <div className="text-center py-8">
+            <Lock className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+            <p className="text-gray-600 mb-4">
+              This feature is exclusive to Premium users
+            </p>
+            <div className="space-y-3">
+              <p className="text-sm text-gray-600">
+                Unlock with <strong>Premium Plan</strong>
+              </p>
+              <Link
+                to="/pricing"
+                className="inline-flex items-center gap-2 px-6 py-2 bg-gradient-to-r from-black to-gray-900 text-white rounded-lg font-semibold hover:shadow-lg transition-all"
+              >
+                <Crown className="w-4 h-4" />
+                Upgrade to Premium
+              </Link>
+            </div>
+          </div>
+        );
+      }
+
+      // Default upgrade prompt for Free users
       return (
         <div className="text-center py-8">
           <Lock className="w-12 h-12 text-gray-400 mx-auto mb-3" />
           <p className="text-gray-600 mb-4">
-            This feature is locked for {userTier === 'free' ? 'free' : userTier} tier users
+            This feature is locked for free tier users
           </p>
           <div className="space-y-3">
             <p className="text-sm text-gray-600">
@@ -401,6 +450,116 @@ const AnalysisResults = ({ jobResult, userTier = 'free' }) => {
         </div>
       );
     }
+
+    // Handle Quote Comparison (Premium feature with object structure)
+    if (featureKey === 'comparison') {
+      // If it's an object with quotes array, render the comparison UI
+      if (typeof feature.content === 'object' && feature.content !== null && !Array.isArray(feature.content)) {
+        const { quotes, winner } = feature.content;
+
+        // Only render if we have quotes data
+        if (Array.isArray(quotes) && quotes.length > 0) {
+          return (
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {quotes.map((q, idx) => (
+                  <div key={idx} className={`p-4 border rounded-xl ${winner?.index === idx ? 'border-orange-500 bg-orange-50 ring-1 ring-orange-500' : 'border-gray-200 bg-white'}`}>
+                    {winner?.index === idx && (
+                      <div className="inline-flex items-center px-2 py-0.5 bg-orange-500 text-white text-[10px] font-bold rounded mb-2">
+                        WINNER
+                      </div>
+                    )}
+                    <h4 className="font-bold text-gray-900 truncate">{q.name}</h4>
+                    <p className="text-xl font-black text-gray-900 mt-1">${(q.cost || 0).toLocaleString()}</p>
+                  </div>
+                ))}
+              </div>
+              {winner?.reason && (
+                <div className="p-4 bg-blue-50 border border-blue-100 rounded-xl">
+                  <p className="text-xs font-bold text-blue-700 uppercase mb-1">Recommendation:</p>
+                  <p className="text-sm text-blue-900 leading-relaxed font-medium">{winner.reason}</p>
+                </div>
+              )}
+            </div>
+          );
+        }
+      }
+
+
+      // Fallback for string content or when no quotes available
+      return (
+        <div className="p-6 bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-dashed border-blue-200 rounded-xl text-center">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">
+            <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
+          </div>
+          <h4 className="text-lg font-bold text-gray-900 mb-2">Multi-Quote Comparison</h4>
+          <p className="text-sm text-gray-700 mb-4 max-w-md mx-auto">
+            This Premium feature allows you to compare multiple quotes side-by-side and get AI-powered recommendations on which contractor offers the best value.
+          </p>
+          <div className="bg-white rounded-lg p-4 mb-4 text-left max-w-md mx-auto">
+            <p className="text-xs font-bold text-blue-700 uppercase mb-2">How to use:</p>
+            <ol className="text-sm text-gray-700 space-y-2">
+              <li className="flex items-start gap-2">
+                <span className="inline-flex items-center justify-center w-5 h-5 bg-blue-100 text-blue-700 rounded-full text-xs font-bold flex-shrink-0">1</span>
+                <span>Upload your first quote and wait for the analysis</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="inline-flex items-center justify-center w-5 h-5 bg-blue-100 text-blue-700 rounded-full text-xs font-bold flex-shrink-0">2</span>
+                <span>Upload additional quotes (up to 3 total)</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="inline-flex items-center justify-center w-5 h-5 bg-blue-100 text-blue-700 rounded-full text-xs font-bold flex-shrink-0">3</span>
+                <span>Our AI will compare them and recommend the best option</span>
+              </li>
+            </ol>
+          </div>
+          <p className="text-xs text-gray-500 italic">
+            Currently showing analysis for a single quote. Upload more quotes to enable comparison.
+          </p>
+        </div>
+      );
+    }
+
+    // Handle Cost Breakdown Table
+    if (feature.isTable) {
+      return (
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-gray-50 border-b border-gray-200">
+                <th className="p-3 text-xs font-bold text-gray-700 uppercase">Item</th>
+                <th className="p-3 text-xs font-bold text-gray-700 uppercase">Category</th>
+                <th className="p-3 text-xs font-bold text-gray-700 uppercase text-right">Price</th>
+              </tr>
+            </thead>
+            <tbody>
+              {Array.isArray(feature.content) && feature.content.length > 0 ? (
+                feature.content.map((item, idx) => (
+                  <tr key={idx} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                    <td className="p-3 text-sm text-gray-900 font-medium">{item.description || item.item}</td>
+                    <td className="p-3 text-sm text-gray-600">
+                      <span className="px-2 py-0.5 bg-gray-100 rounded text-xs">
+                        {item.category || 'General'}
+                      </span>
+                    </td>
+                    <td className="p-3 text-sm text-gray-900 font-bold text-right">
+                      ${(item.totalPrice || item.amount || 0).toLocaleString()}
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="3" className="p-4 text-center text-gray-500 italic">No detailed cost breakdown available for this quote.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      );
+    }
+
 
     return (
       <div className="space-y-3">
@@ -427,6 +586,11 @@ const AnalysisResults = ({ jobResult, userTier = 'free' }) => {
                   if (item.potentialSavings && item.potentialSavings > 0) {
                     displaySubtext = `${displaySubtext} • Potential savings: $${item.potentialSavings}`;
                   }
+                } else if (item.marketAvg) {
+                  // Benchmark object
+                  displayText = `${item.item}: $${item.quotePrice}`;
+                  displaySubtext = `Market Range: $${item.marketMin} - $${item.marketMax} (Avg: $${item.marketAvg})`;
+                  category = `Market Percentile: ${item.percentile}%`;
                 } else if (item.description) {
                   // Generic object with description
                   displayText = item.description;
@@ -434,7 +598,7 @@ const AnalysisResults = ({ jobResult, userTier = 'free' }) => {
 
                 return (
                   <li key={index} className="flex items-start gap-4 p-4 bg-white border border-gray-200 rounded-lg hover:border-orange-300 hover:shadow-sm transition-all">
-                    <span className="text-lg mt-0.5 flex-shrink-0">✓</span>
+                    <span className="text-lg mt-0.5 flex-shrink-0 text-orange-500">✓</span>
                     <div className="flex-1">
                       <p className="font-medium text-gray-900">{displayText}</p>
                       {displaySubtext && (
@@ -475,7 +639,9 @@ const AnalysisResults = ({ jobResult, userTier = 'free' }) => {
                 </button>
               </>
             ) : (
-              <div className="whitespace-pre-wrap">{feature.content}</div>
+              <div className="whitespace-pre-wrap">
+                {typeof feature.content === 'object' ? 'No detailed data available yet.' : feature.content}
+              </div>
             )}
           </div>
         )}
@@ -581,20 +747,46 @@ const AnalysisResults = ({ jobResult, userTier = 'free' }) => {
         </div>
       )}
 
-      {/* Processing Method Badge */}
-      {displayResult?.metadata?.extractionMethod && !displayResult?.isIrrelevant && (
-        <div className="mb-4 flex items-center justify-end">
-          {displayResult.metadata.extractionMethod === 'vision_api' || displayResult.metadata.extractionMethod === 'fallback_placeholder' ? (
-            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-purple-100 text-purple-800 border border-purple-200 shadow-sm">
-              <Star className="w-3 h-3 mr-1.5" />
-              Analyzed via AI Vision (Image Mode)
-            </span>
-          ) : (
-            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-700 border border-gray-200">
-              <FileText className="w-3 h-3 mr-1.5" />
-              Standard Text Analyzed
-            </span>
-          )}
+      {/* Tier & Method Badges */}
+      {!displayResult?.isIrrelevant && (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            {normalizedTier === 'premium' && (
+              <span className="inline-flex items-center px-4 py-1.5 rounded-full text-xs font-bold bg-black text-white shadow-lg border border-gray-800">
+                <Crown className="w-4 h-4 mr-2 text-amber-400" />
+                PREMIUM ANALYSIS
+              </span>
+            )}
+            {normalizedTier === 'standard' && (
+              <span className="inline-flex items-center px-4 py-1.5 rounded-full text-xs font-bold bg-gradient-to-r from-orange-500 to-amber-600 text-white shadow-md">
+                <Zap className="w-4 h-4 mr-2" />
+                STANDARD ANALYSIS
+              </span>
+            )}
+            {normalizedTier === 'free' && (
+              <span className="inline-flex items-center px-4 py-1.5 rounded-full text-xs font-bold bg-gray-200 text-gray-700">
+                BASIC SUMMARY (FREE)
+              </span>
+            )}
+
+            {displayResult?.metadata?.extractionMethod && (
+              displayResult.metadata.extractionMethod === 'vision_api' || displayResult.metadata.extractionMethod === 'fallback_placeholder' ? (
+                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-purple-100 text-purple-800 border border-purple-200 shadow-sm">
+                  <Star className="w-3 h-3 mr-1.5" />
+                  AI Vision
+                </span>
+              ) : (
+                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-100">
+                  <FileText className="w-3 h-3 mr-1.5" />
+                  Text Verified
+                </span>
+              )
+            )}
+          </div>
+
+          <div className="text-xs text-gray-500 font-medium italic">
+            Ref ID: {jobResult?.jobId?.substring(0, 8).toUpperCase() || 'MOCK-RESULT'}
+          </div>
         </div>
       )}
 
@@ -646,6 +838,7 @@ const AnalysisResults = ({ jobResult, userTier = 'free' }) => {
         <div className="space-y-4">
           {renderFeatureCard('summary', features.summary)}
           {renderFeatureCard('verdict', features.verdict)}
+          {renderFeatureCard('costBreakdown', features.costBreakdown)}
           {renderFeatureCard('redFlags', features.redFlags)}
           {renderFeatureCard('detailedReview', features.detailedReview)}
           {renderFeatureCard('questions', features.questions)}

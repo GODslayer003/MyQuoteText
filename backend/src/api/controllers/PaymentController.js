@@ -15,11 +15,14 @@ class PaymentController {
     try {
       const { jobId, tier, customerData } = req.body;
 
-      // Validate tier
-      if (!['standard', 'premium'].includes(tier)) {
+      // Validate tier (Case-insensitive check, but we'll use capitalized for the model)
+      const validTiers = ['Standard', 'Premium'];
+      const normalizedTier = validTiers.find(t => t.toLowerCase() === tier?.toLowerCase());
+
+      if (!normalizedTier) {
         return res.status(400).json({
           success: false,
-          error: 'Invalid tier. Must be standard or premium.'
+          error: 'Invalid tier. Must be Standard or Premium.'
         });
       }
 
@@ -52,7 +55,7 @@ class PaymentController {
       // Create payment intent
       const paymentIntent = await stripeService.createPaymentIntent(
         job,
-        tier,
+        normalizedTier,
         {
           ...customerData,
           userId: req.user?._id,
@@ -231,14 +234,17 @@ class PaymentController {
       await user.save();
 
       // Log the mock payment
+      const stripeService = require('../../services/payment/StripeService');
+      const amount = (tier === 'Standard' ? 7.99 : 9.99);
+
       const payment = new Payment({
         userId: user._id,
-        amount: tier === 'Standard' ? 799 : 999,
-        currency: 'usd',
+        amount: amount,
+        currency: 'AUD',
         status: 'succeeded',
         provider: 'stripe', // Mocking stripe
         stripePaymentIntentId: 'mock_pi_' + Date.now(),
-        tier: tier
+        tier: tier // Already 'Standard' or 'Premium' from the check above
       });
       await payment.save();
 

@@ -25,7 +25,8 @@ import {
   Eye,
   Download,
   FileUp,
-  AlertCircle
+  AlertCircle,
+  Zap
 } from 'lucide-react';
 import { useAuth } from '../providers/AuthProvider';
 import { toast } from 'react-hot-toast';
