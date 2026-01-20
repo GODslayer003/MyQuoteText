@@ -7,30 +7,151 @@ const logger = require('../../utils/logger');
 
 class ReportService {
     constructor() {
-        // Correct absolute path for the logo
-        this.logoPath = 'D:\\ReactJS PRO-jects\\DrDesignProject\\MyQuoteText\\client\\src\\assets\\logo.png';
+        // Logo path - corrected to match actual location
+        this.logoPath = path.join(__dirname, '..', '..', '..', 'client', 'src', 'assets', 'logo.png');
+
+        // Color schemes for tiers
+        this.colors = {
+            standard: {
+                primary: '#f97316',      // Orange
+                secondary: '#fb923c',
+                accent: '#fdba74',
+                dark: '#ea580c'
+            },
+            premium: {
+                primary: '#000000',      // Black
+                secondary: '#1f2937',
+                accent: '#fbbf24',       // Gold
+                dark: '#111827'
+            },
+            neutral: {
+                dark: '#1f2937',
+                gray: '#6b7280',
+                lightGray: '#d1d5db',
+                white: '#ffffff',
+                background: '#f9fafb'
+            }
+        };
     }
 
     /**
-     * Generate a professional 5-page PDF report
-     * @param {Object} job - The job document
-     * @param {Object} result - The analysis result document
-     * @param {string} effectiveTier - The calculated tier for branding
-     * @returns {Promise<Buffer>} - PDF buffer
+     * Draw a crown icon (for Premium)
      */
-    async generateProfessionalReport(job, result, effectiveTier = 'Free') {
+    drawCrown(doc, x, y, size, color) {
+        doc.save();
+        doc.fillColor(color);
+
+        // Crown base
+        doc.polygon(
+            [x, y + size],
+            [x + size, y + size],
+            [x + size * 0.9, y + size * 0.4],
+            [x + size * 0.7, y + size * 0.6],
+            [x + size * 0.5, y],
+            [x + size * 0.3, y + size * 0.6],
+            [x + size * 0.1, y + size * 0.4]
+        ).fill();
+
+        // Crown jewels (circles)
+        doc.circle(x + size * 0.2, y + size * 0.5, size * 0.08).fill();
+        doc.circle(x + size * 0.5, y + size * 0.15, size * 0.08).fill();
+        doc.circle(x + size * 0.8, y + size * 0.5, size * 0.08).fill();
+
+        doc.restore();
+    }
+
+    /**
+     * Draw a star icon
+     */
+    drawStar(doc, x, y, size, color) {
+        doc.save();
+        doc.fillColor(color);
+
+        const points = [];
+        for (let i = 0; i < 5; i++) {
+            const angle = (i * 4 * Math.PI) / 5 - Math.PI / 2;
+            const radius = i % 2 === 0 ? size : size * 0.4;
+            points.push([
+                x + radius * Math.cos(angle),
+                y + radius * Math.sin(angle)
+            ]);
+        }
+
+        doc.polygon(...points).fill();
+        doc.restore();
+    }
+
+    /**
+     * Draw a simple chart/graph for visual enhancement
+     */
+    drawCostDistributionChart(doc, x, y, width, height, costBreakdown) {
+        // Calculate category totals
+        const categories = {};
+        (costBreakdown || []).forEach(item => {
+            const cat = (item.category || 'Other').toUpperCase();
+            categories[cat] = (categories[cat] || 0) + (item.totalPrice || item.amount || 0);
+        });
+
+        const total = Object.values(categories).reduce((sum, val) => sum + val, 0);
+        if (total === 0) return;
+
+        // Draw simple bar chart
+        const catNames = Object.keys(categories);
+        const barHeight = (height - (catNames.length - 1) * 10) / catNames.length;
+        const maxValue = Math.max(...Object.values(categories));
+
+        catNames.forEach((cat, idx) => {
+            const value = categories[cat];
+            const barWidth = (value / maxValue) * (width - 100);
+            const barY = y + idx * (barHeight + 10);
+
+            // Bar background
+            doc.save();
+            doc.fillColor('#e5e7eb')
+                .rect(x + 100, barY, width - 100, barHeight)
+                .fill();
+            doc.restore();
+
+            // Bar fill
+            doc.save();
+            doc.fillColor('#f97316')
+                .rect(x + 100, barY, barWidth, barHeight)
+                .fill();
+            doc.restore();
+
+            // Label
+            doc.fillColor('#374151')
+                .font('Helvetica')
+                .fontSize(9)
+                .text(cat, x, barY + barHeight / 2 - 4, { width: 90, align: 'left' });
+
+            // Value
+            doc.fillColor('#111827')
+                .font('Helvetica-Bold')
+                .fontSize(9)
+                .text(`$${value.toLocaleString()}`, x + 100 + barWidth + 5, barY + barHeight / 2 - 4);
+        });
+    }
+
+    /**
+     * Main entry point - Generate professional PDF report
+     */
+    async generateProfessionalReport(job, result, effectiveTier = 'standard') {
         return new Promise(async (resolve, reject) => {
             try {
-                const displayTier = (effectiveTier || job.tier || 'Free').toUpperCase();
+                const tier = effectiveTier.toLowerCase();
+                const colors = tier === 'premium' ? this.colors.premium : this.colors.standard;
+
+                logger.info(`Generating ${tier} PDF report for job ${job.jobId}`);
 
                 const doc = new PDFDocument({
-                    margin: 0, // We'll manage margins manually for full-page control
+                    margin: 0,
                     size: 'A4',
                     bufferPages: true,
                     info: {
                         Title: `MyQuoteMate Analysis - ${job.jobId}`,
                         Author: 'MyQuoteMate AI',
-                        Subject: 'Quote Verification & Risk Assessment'
+                        Subject: 'Quote Analysis & Risk Assessment Report'
                     }
                 });
 
@@ -38,306 +159,1002 @@ class ReportService {
                 doc.on('data', buffers.push.bind(buffers));
                 doc.on('end', () => resolve(Buffer.concat(buffers)));
 
-                const pageWidth = doc.page.width;
-                const pageHeight = doc.page.height;
-                const centerX = pageWidth / 2;
+                // Get user/client information
+                const clientInfo = this.extractClientInfo(job);
 
-                // Color Palette
-                const ORANGE = '#f97316';
-                const DARK = '#0f172a';
-                const GRAY = '#64748b';
-                const LIGHT_GRAY = '#f8fafc';
-                const WHITE = '#ffffff';
+                // Generate all pages
+                await this.generatePage1Cover(doc, job, result, tier, colors, clientInfo);
+                await this.generatePage2Summary(doc, job, result, tier, colors, clientInfo);
+                await this.generatePage3CostBreakdown(doc, job, result, tier, colors);
+                await this.generatePage4RiskAnalysis(doc, job, result, tier, colors);
 
-                // Client Metadata Resolution
-                let clientName = 'Valued Client';
-                let clientEmail = '-';
-
-                if (job.userId) {
-                    clientName = job.userId.fullName || `${job.userId.firstName} ${job.userId.lastName}`.trim() || 'Valued Client';
-                    clientEmail = job.userId.email;
-                } else if (job.leadId) {
-                    clientEmail = job.leadId.email;
-                }
-                if (job.metadata?.name) clientName = job.metadata.name;
-                if (job.metadata?.email) clientEmail = job.metadata.email;
-
-                // --- HELPER: PAGE SHELL (Header/Footer/Logo) ---
-                const addPageShell = (pageNum, title) => {
-                    // Header Line
-                    doc.moveTo(40, 60).lineTo(pageWidth - 40, 60).lineWidth(1).stroke(ORANGE);
-
-                    // Logo Top Left
-                    if (fs.existsSync(this.logoPath)) {
-                        doc.image(this.logoPath, 40, 20, { height: 28 });
-                    } else {
-                        doc.fillColor(ORANGE).font('Helvetica-Bold').fontSize(16).text('MyQuoteMate', 40, 25);
-                    }
-
-                    // Page Tag Top Right
-                    const tagWidth = 80;
-                    doc.save();
-                    doc.fillColor(ORANGE).fillOpacity(0.1).rect(pageWidth - 40 - tagWidth, 22, tagWidth, 22).fill();
-                    doc.restore();
-                    doc.fillColor(ORANGE).font('Helvetica').fontSize(9).text(`PAGE ${pageNum}`, pageWidth - 40 - tagWidth, 28, { align: 'center', width: tagWidth });
-
-                    // Section Title
-                    if (title) {
-                        doc.fillColor(DARK).font('Helvetica-Bold').fontSize(22).text(title.toUpperCase(), 40, 85);
-                        doc.rect(40, 115, 60, 3).fill(ORANGE);
-                    }
-
-                    // Footer
-                    doc.moveTo(40, pageHeight - 60).lineTo(pageWidth - 40, pageHeight - 60).lineWidth(0.5).stroke(`${GRAY}33`);
-                    doc.fillColor(GRAY).font('Helvetica').fontSize(8).text(
-                        `MyQuoteMate Analysis | Ref: ${job.jobId.substring(0, 8).toUpperCase()} | © 2026 Professional AI Report`,
-                        0,
-                        pageHeight - 45,
-                        { align: 'center', width: pageWidth }
-                    );
-                };
-
-                // =====================================================================
-                // PAGE 1: PROFESSIONAL COVER PAGE
-                // =====================================================================
-                // Background Gradient/Shape
-                doc.rect(0, 0, pageWidth, pageHeight).fill('#F9FAFB');
-
-                // Abstract Shapes (Circles)
-                doc.save();
-                doc.fillColor(ORANGE).fillOpacity(0.05).circle(pageWidth, 0, 300).fill();
-                doc.circle(0, pageHeight, 200).fill();
-                doc.restore();
-
-                // Main Logo
-                if (fs.existsSync(this.logoPath)) {
-                    doc.image(this.logoPath, centerX - 75, 140, { width: 150 });
-                } else {
-                    doc.fillColor(ORANGE).font('Helvetica-Bold').fontSize(36).text('MyQuoteMate', 0, 150, { align: 'center', width: pageWidth });
+                if (tier === 'premium') {
+                    await this.generatePage5Benchmarking(doc, job, result, tier, colors);
                 }
 
-                doc.moveDown(5);
-                doc.fillColor(DARK).font('Helvetica-Bold').fontSize(32).text('Quote Analysis &\nRisk Assessment', 0, 300, { align: 'center', width: pageWidth, lineGap: 8 });
-                doc.fillColor(ORANGE).fontSize(14).font('Helvetica').text('Advanced AI Forensic Review', 0, 385, { align: 'center', width: pageWidth });
-
-                // Tier Badge
-                doc.rect(centerX - 110, 425, 220, 32).fill(DARK);
-                doc.fillColor(WHITE).font('Helvetica-Bold').fontSize(11).text(`${displayTier} ANALYTIC VERSION`, centerX - 110, 436, { align: 'center', width: 220 });
-
-                // Client Card (White Box)
-                doc.rect(centerX - 160, 500, 320, 180).fill(WHITE).stroke(`${DARK}11`);
-                doc.fillColor(ORANGE).font('Helvetica-Bold').fontSize(9).text('OFFICIAL REPORT DATA', centerX - 160, 515, { align: 'center', width: 320 });
-                doc.moveTo(centerX - 130, 530).lineTo(centerX + 130, 530).lineWidth(0.5).stroke(`${GRAY}22`);
-
-                const cardY = 555;
-                const labelX = centerX - 130;
-                doc.fillColor(GRAY).font('Helvetica').fontSize(10).text('CLIENT:', labelX, cardY);
-                doc.fillColor(DARK).font('Helvetica-Bold').fontSize(12).text(clientName.toUpperCase(), labelX, cardY + 15);
-
-                doc.fillColor(GRAY).font('Helvetica-Bold').fontSize(10).text('REPORT ID:', labelX, cardY + 45);
-                doc.fillColor(DARK).font('Helvetica-Bold').fontSize(12).text(job.jobId.substring(0, 16).toUpperCase(), labelX, cardY + 60);
-
-                doc.fillColor(GRAY).font('Helvetica-Bold').fontSize(10).text('ISSUE DATE:', labelX, cardY + 95);
-                doc.fillColor(DARK).font('Helvetica-Bold').fontSize(12).text(new Date().toLocaleDateString('en-AU', { dateStyle: 'long' }).toUpperCase(), labelX, cardY + 110);
-
-                // Footer Status
-                doc.fillColor(ORANGE).font('Helvetica-Bold').fontSize(9).text('✓ AUDITED BY MYQUOTEMATE AI ENGINE', 0, 770, { align: 'center', width: pageWidth });
-
-                // =====================================================================
-                // PAGE 2: THE MYQUOTEMATE PROCESS
-                // =====================================================================
-                doc.addPage();
-                addPageShell(2, 'Test Methodology & Process');
-
-                const introText = "MyQuoteMate employs a multi-stage validation framework to ensure quote integrity. We cross-reference document metadata, textual logic, and market benchmarks to provide a non-biased assessment of your project's financial and operational risks.";
-                doc.fillColor(DARK).font('Helvetica').fontSize(13).text(introText, 40, 155, { width: pageWidth - 100, align: 'justify', lineGap: 6 });
-
-                doc.moveDown(4);
-
-                const steps = [
-                    { title: "Structural Extraction", desc: "Digital and physical quote patterns are deconstructed into machine-readable data streams." },
-                    { title: "Contextual Analysis", desc: "Our AI evaluates the 'hidden' logic behind the pricing—checking for common contractor tactics." },
-                    { title: "Risk Identification", desc: "Over 40 distinct risk markers are checked, including compliance gaps and price elasticity." },
-                    { title: "Report Finalization", desc: "The analysis is verified and formatted into this expert narrative for client empowerment." }
-                ];
-
-                let stepY = doc.y + 20;
-                steps.forEach((step, idx) => {
-                    // Number Circle
-                    doc.save();
-                    doc.fillColor(ORANGE).circle(60, stepY + 18, 18).fill();
-                    doc.fillColor(WHITE).font('Helvetica-Bold').fontSize(16).text(idx + 1, 42, stepY + 10, { width: 36, align: 'center' });
-                    doc.restore();
-
-                    doc.fillColor(DARK).font('Helvetica-Bold').fontSize(14).text(step.title, 95, stepY + 4);
-                    doc.fillColor(GRAY).font('Helvetica').fontSize(11).text(step.desc, 95, stepY + 22, { width: pageWidth - 150, lineGap: 2 });
-
-                    stepY += 80;
-                });
-
-                // Support Box
-                doc.rect(40, pageHeight - 190, pageWidth - 80, 90).fill(`${ORANGE}05`).stroke(ORANGE);
-                doc.fillColor(DARK).font('Helvetica-Bold').fontSize(13).text('Professional Support', 60, pageHeight - 175);
-                doc.fillColor(GRAY).font('Helvetica').fontSize(10).text('Need assistance interpreting these findings? Contact our support team.', 60, pageHeight - 158);
-                doc.fillColor(ORANGE).font('Helvetica-Bold').fontSize(11).text('support@myquotemate.com.au', 60, pageHeight - 130);
-
-                // =====================================================================
-                // PAGE 3: ANALYTICAL SUMMARY (GRID)
-                // =====================================================================
-                doc.addPage();
-                addPageShell(3, 'Executive Analysis Snapshot');
-
-                // Grid (2x2)
-                const gridX = 40;
-                const gridY = 160;
-                const boxW = (pageWidth - 100) / 2;
-                const boxH = 95;
-
-                const scoreVal = (result.verdictScore > 10 ? result.verdictScore / 10 : result.verdictScore) || 0;
-                const metrics = [
-                    { label: "Document Status", val: "Verified Authenticity", icon: "✓", color: "#10b981" },
-                    { label: "Analytic Depth", val: displayTier, icon: "🔍", color: DARK },
-                    { label: "Detected Risks", val: `${result.redFlags?.length || 0} Identification(s)`, icon: "!", color: result.redFlags?.length > 0 ? '#ef4444' : '#10b981' },
-                    { label: "Quote Integrity", val: `${scoreVal.toFixed(1)} / 10.0`, icon: "★", color: scoreVal >= 8 ? '#10b981' : (scoreVal >= 6 ? '#f59e0b' : '#ef4444') }
-                ];
-
-                metrics.forEach((m, idx) => {
-                    const bx = gridX + (idx % 2) * (boxW + 20);
-                    const by = gridY + Math.floor(idx / 2) * (boxH + 20);
-
-                    doc.rect(bx, by, boxW, boxH).fill(WHITE).stroke(`${DARK}11`);
-                    doc.fillColor(GRAY).font('Helvetica-Bold').fontSize(9).text(m.label.toUpperCase(), bx + 15, by + 20);
-                    doc.fillColor(m.color).font('Helvetica-Bold').fontSize(16).text(m.val, bx + 15, by + 45);
-
-                    doc.save();
-                    doc.fillColor(m.color).fillOpacity(0.1).circle(bx + boxW - 25, by + 25, 12).fill();
-                    doc.restore();
-                    doc.fillColor(m.color).fontSize(10).text(m.icon, bx + boxW - 31, by + 20, { width: 12, align: 'center' });
-                });
-
-                // Narrative Summary
-                doc.moveDown(13);
-                doc.fillColor(DARK).font('Helvetica-Bold').fontSize(16).text('Interpretive Narrative');
-                doc.save();
-                doc.fillColor(LIGHT_GRAY).rect(40, doc.y + 8, pageWidth - 80, 160).fill();
-                doc.restore();
-                doc.fillColor(DARK).font('Helvetica').fontSize(12).text(result.summary, 60, doc.y + 25, { width: pageWidth - 120, align: 'justify', lineGap: 5 });
-
-                // =====================================================================
-                // PAGE 4: DETAILED FINDINGS (COSTS & RISKS)
-                // =====================================================================
-                doc.addPage();
-                addPageShell(4, 'Detailed Observation Log');
-
-                doc.moveDown(5);
-                doc.fillColor(DARK).font('Helvetica-Bold').fontSize(17).text('Quote Financial Structure');
-                doc.moveDown(0.5);
-
-                const totalValue = result.costs?.overall ? `$${result.costs.overall.toLocaleString()} AUD` : 'N/A';
-
-                const costItems = result.costBreakdown || [];
-                const costTableData = {
-                    headers: [
-                        { label: "ANALYZED ITEM", property: 'desc', width: 280 },
-                        { label: "CATEGORY", property: 'cat', width: 110 },
-                        { label: "AMOUNT", property: 'price', width: 120, align: 'right' }
-                    ],
-                    rows: costItems.length > 0 ?
-                        costItems.slice(0, 12).map(item => [item.description?.toUpperCase() || 'GENERAL ITEM', item.category?.toUpperCase() || 'STANDARD', `$${(item.totalPrice || 0).toLocaleString()}`]) :
-                        [["BASE QUOTE ANALYSIS", "CONSOLIDATED", totalValue]]
-                };
-
-                await doc.table(costTableData, {
-                    x: 40,
-                    prepareHeader: () => {
-                        doc.font("Helvetica-Bold").fontSize(9);
-                        return doc;
-                    },
-                    prepareRow: (row, indexColumn, indexRow, rectRow, rectCell) => {
-                        doc.font("Helvetica").fontSize(10).fillColor(DARK);
-                        return doc;
-                    },
-                });
-
-                doc.moveDown(2);
-                doc.fillColor(DARK).font('Helvetica-Bold').fontSize(17).text('Risk Matrix & Red Flags');
-                doc.moveDown(0.5);
-
-                if (result.redFlags && result.redFlags.length > 0) {
-                    result.redFlags.slice(0, 4).forEach(flag => {
-                        const sCol = flag.severity === 'high' ? '#ef4444' : ORANGE;
-                        doc.fillColor(sCol).font('Helvetica-Bold').fontSize(12).text(`[!] ${flag.title || flag.category}`);
-                        doc.fillColor(GRAY).font('Helvetica').fontSize(10).text(flag.description, { width: pageWidth - 100, align: 'justify' });
-                        doc.moveDown(0.4);
-                    });
-                } else {
-                    doc.fillColor('#10b981').font('Helvetica').fontSize(11).text('No critical security or financial red flags detected in this document.');
-                }
-
-                // =====================================================================
-                // PAGE 5: STRATEGIC GUIDANCE & EXPERT NOTE
-                // =====================================================================
-                doc.addPage();
-                addPageShell(5, 'Strategic Guidance');
-
-                doc.moveDown(5);
-                doc.fillColor(DARK).font('Helvetica-Bold').fontSize(16).text('Immediate Recommendations');
-                doc.moveDown(1);
-
-                const recList = result.questionsToAsk && result.questionsToAsk.length > 0 ?
-                    result.questionsToAsk.slice(0, 3).map(q => ({ t: q.question, d: "Ask the contractor to clarify this specific point to ensure price stability." })) :
-                    [
-                        { t: "Request Detailed Breakdown", d: "Ask for a more granular list of materials and labor if not provided." },
-                        { t: "Confirm Insurance", d: "Request certificates of currency for public liability and workers compensation." }
-                    ];
-
-                recList.forEach(r => {
-                    doc.fillColor(ORANGE).font('Helvetica-Bold').fontSize(12).text(`▶ ${r.t}`);
-                    doc.fillColor(GRAY).font('Helvetica').fontSize(10).text(r.d, { width: pageWidth - 100 });
-                    doc.moveDown(0.8);
-                });
-
-                doc.moveDown(4);
-                doc.fillColor(DARK).font('Helvetica-Bold').fontSize(16).text('Professional Verdict');
-                doc.save();
-                doc.fillColor(WHITE).stroke(DARK).rect(40, doc.y + 8, pageWidth - 80, 120).fillAndStroke();
-                doc.restore();
-
-                doc.fillColor(DARK).font('Helvetica-Bold').fontSize(18).text(result.verdict.toUpperCase(), 0, doc.y + 25, { align: 'center', width: pageWidth });
-                doc.fillColor(GRAY).font('Helvetica-Oblique').fontSize(11).text(
-                    result.verdictJustification || "The quote displays standard patterns. Proceed with typical due diligence.",
-                    60,
-                    doc.y + 10,
-                    { width: pageWidth - 120, align: 'center' }
-                );
-
-                // Professional Seal Background
-                doc.save();
-                doc.fillColor(ORANGE).fillOpacity(0.03).circle(pageWidth - 80, pageHeight - 150, 60).fill();
-                doc.restore();
-
-                doc.fillColor(GRAY).font('Helvetica').fontSize(8).text(
-                    "NOTICE: This report is generated by MyQuoteMate AI Analysis. It is a decision-support tool, not a substitute for legal advice. MyQuoteMate does not guarantee the performance of any contractor analyzed in this report.",
-                    40,
-                    pageHeight - 90,
-                    { width: pageWidth - 80, align: 'center' }
-                );
-                doc.text("END OF PROFESSIONAL REPORT", 0, pageHeight - 40, { align: 'center', width: pageWidth });
-
-                // Finalize decorations across all pages
-                const range = doc.bufferedPageRange();
-                for (let i = range.start; i < range.start + range.count; i++) {
-                    doc.switchToPage(i);
-                    // Headers/Footers are already added per-page by addPageShell in this new structure
-                    // but we could do any final global touches here.
-                }
+                await this.generatePage6Recommendations(doc, job, result, tier, colors);
+                await this.generatePage7Appendix(doc, job, result, tier, colors);
 
                 doc.end();
+
             } catch (error) {
-                logger.error('Professional PDF Generation Error:', error);
+                logger.error('PDF generation failed:', error);
                 reject(error);
             }
         });
+    }
+
+    /**
+     * Extract client information from job
+     */
+    extractClientInfo(job) {
+        let clientName = 'Valued Client';
+        let clientEmail = 'Not provided';
+
+        if (job.userId) {
+            if (job.userId.fullName) {
+                clientName = job.userId.fullName;
+            } else if (job.userId.firstName || job.userId.lastName) {
+                clientName = `${job.userId.firstName || ''} ${job.userId.lastName || ''}`.trim();
+            }
+            clientEmail = job.userId.email || clientEmail;
+        } else if (job.leadId) {
+            clientEmail = job.leadId.email || clientEmail;
+        }
+
+        if (job.metadata?.name) clientName = job.metadata.name;
+        if (job.metadata?.email) clientEmail = job.metadata.email;
+
+        return { clientName, clientEmail };
+    }
+
+    /**
+     * Add header to page (logo + page number)
+     */
+    addHeader(doc, pageNum, tier, colors) {
+        const pageWidth = doc.page.width;
+
+        // Logo
+        if (fs.existsSync(this.logoPath)) {
+            try {
+                doc.image(this.logoPath, 40, 25, { height: 35 });
+            } catch (err) {
+                // Fallback to text
+                doc.fillColor(colors.primary)
+                    .font('Helvetica-Bold')
+                    .fontSize(18)
+                    .text('MyQuoteMate', 40, 30);
+            }
+        } else {
+            doc.fillColor(colors.primary)
+                .font('Helvetica-Bold')
+                .fontSize(18)
+                .text('MyQuoteMate', 40, 30);
+        }
+
+        // Page number badge
+        const badgeWidth = 80;
+        doc.save();
+        doc.fillColor(colors.primary)
+            .fillOpacity(0.1)
+            .roundedRect(pageWidth - 40 - badgeWidth, 28, badgeWidth, 24, 12)
+            .fill();
+        doc.restore();
+
+        doc.fillColor(colors.primary)
+            .font('Helvetica')
+            .fontSize(10)
+            .text(`Page ${pageNum}`, pageWidth - 40 - badgeWidth, 34, {
+                width: badgeWidth,
+                align: 'center'
+            });
+
+        // Header line
+        doc.moveTo(40, 70)
+            .lineTo(pageWidth - 40, 70)
+            .lineWidth(2)
+            .strokeColor(colors.primary)
+            .strokeOpacity(0.3)
+            .stroke();
+    }
+
+    /**
+     * Add footer to page
+     */
+    addFooter(doc, jobId) {
+        const pageHeight = doc.page.height;
+        const pageWidth = doc.page.width;
+
+        // Footer line
+        doc.moveTo(40, pageHeight - 60)
+            .lineTo(pageWidth - 40, pageHeight - 60)
+            .lineWidth(1)
+            .strokeColor(this.colors.neutral.lightGray)
+            .stroke();
+
+        // Disclaimer
+        doc.fillColor(this.colors.neutral.gray)
+            .font('Helvetica')
+            .fontSize(8)
+            .text(
+                'This report is informational and based on the provided quote. Confirm details with the supplier before proceeding.',
+                40,
+                pageHeight - 50,
+                { width: pageWidth - 80, align: 'center' }
+            );
+
+        // Reference ID
+        doc.fillColor(this.colors.neutral.gray)
+            .fontSize(7)
+            .text(
+                `Report ID: ${jobId.substring(0, 12).toUpperCase()} | Generated by MyQuoteMate AI`,
+                40,
+                pageHeight - 35,
+                { width: pageWidth - 80, align: 'center' }
+            );
+    }
+
+    /**
+     * PAGE 1: Cover Page
+     */
+    async generatePage1Cover(doc, job, result, tier, colors, clientInfo) {
+        const pageWidth = doc.page.width;
+        const pageHeight = doc.page.height;
+        const centerX = pageWidth / 2;
+
+        // Background
+        doc.rect(0, 0, pageWidth, pageHeight)
+            .fill(this.colors.neutral.background);
+
+        // Decorative circles
+        doc.save();
+        doc.fillColor(colors.primary)
+            .fillOpacity(0.05)
+            .circle(pageWidth, 0, 300)
+            .fill()
+            .circle(0, pageHeight, 200)
+            .fill();
+        doc.restore();
+
+        // Logo (larger on cover)
+        if (fs.existsSync(this.logoPath)) {
+            try {
+                doc.image(this.logoPath, centerX - 80, 120, { width: 160 });
+            } catch (err) {
+                doc.fillColor(colors.primary)
+                    .font('Helvetica-Bold')
+                    .fontSize(42)
+                    .text('MyQuoteMate', 0, 140, { align: 'center', width: pageWidth });
+            }
+        } else {
+            doc.fillColor(colors.primary)
+                .font('Helvetica-Bold')
+                .fontSize(42)
+                .text('MyQuoteMate', 0, 140, { align: 'center', width: pageWidth });
+        }
+
+        // Main title
+        doc.fillColor(this.colors.neutral.dark)
+            .font('Helvetica-Bold')
+            .fontSize(36)
+            .text('Quote Analysis &', 0, 260, { align: 'center', width: pageWidth });
+
+        doc.text('Risk Assessment', 0, 300, { align: 'center', width: pageWidth });
+
+        // Subtitle
+        doc.fillColor(colors.primary)
+            .font('Helvetica')
+            .fontSize(16)
+            .text('Professional AI-Powered Report', 0, 355, { align: 'center', width: pageWidth });
+
+        // Tier badge
+        const tierLabel = tier === 'premium' ? 'PREMIUM ANALYSIS' : 'STANDARD ANALYSIS';
+        const badgeY = 410;
+
+        doc.save();
+        doc.fillColor(tier === 'premium' ? '#000000' : colors.primary)
+            .roundedRect(centerX - 120, badgeY, 240, 40, 20)
+            .fill();
+        doc.restore();
+
+        if (tier === 'premium') {
+            // Add golden crown for premium
+            this.drawCrown(doc, centerX - 105, badgeY + 10, 20, '#fbbf24');
+
+            doc.fillColor('#ffffff')
+                .font('Helvetica-Bold')
+                .fontSize(13)
+                .text(tierLabel, centerX - 75, badgeY + 13, { width: 180, align: 'center' });
+        } else {
+            // Add star for standard
+            this.drawStar(doc, centerX - 100, badgeY + 20, 10, '#ffffff');
+
+            doc.fillColor('#ffffff')
+                .font('Helvetica-Bold')
+                .fontSize(13)
+                .text(tierLabel, centerX - 85, badgeY + 13, { width: 180, align: 'center' });
+        }
+
+        // Client information card
+        const cardY = 490;
+        doc.save();
+        doc.fillColor('#ffffff')
+            .roundedRect(centerX - 180, cardY, 360, 200, 12)
+            .fill()
+            .strokeColor(this.colors.neutral.lightGray)
+            .lineWidth(1)
+            .stroke();
+        doc.restore();
+
+        // Card header
+        doc.fillColor(colors.primary)
+            .font('Helvetica-Bold')
+            .fontSize(11)
+            .text('REPORT INFORMATION', centerX - 160, cardY + 20, { width: 320, align: 'center' });
+
+        doc.moveTo(centerX - 140, cardY + 40)
+            .lineTo(centerX + 140, cardY + 40)
+            .lineWidth(1)
+            .strokeColor(this.colors.neutral.lightGray)
+            .stroke();
+
+        // Client details
+        const detailsY = cardY + 60;
+        const labelX = centerX - 140;
+
+        // Client name
+        doc.fillColor(this.colors.neutral.gray)
+            .font('Helvetica')
+            .fontSize(10)
+            .text('Client:', labelX, detailsY);
+
+        doc.fillColor(this.colors.neutral.dark)
+            .font('Helvetica-Bold')
+            .fontSize(12)
+            .text(clientInfo.clientName, labelX, detailsY + 18, { width: 280 });
+
+        // Email
+        doc.fillColor(this.colors.neutral.gray)
+            .font('Helvetica')
+            .fontSize(10)
+            .text('Email:', labelX, detailsY + 50);
+
+        doc.fillColor(this.colors.neutral.dark)
+            .font('Helvetica-Bold')
+            .fontSize(11)
+            .text(clientInfo.clientEmail, labelX, detailsY + 68, { width: 280 });
+
+        // Report ID
+        doc.fillColor(this.colors.neutral.gray)
+            .font('Helvetica')
+            .fontSize(10)
+            .text('Report ID:', labelX, detailsY + 100);
+
+        doc.fillColor(this.colors.neutral.dark)
+            .font('Helvetica-Bold')
+            .fontSize(11)
+            .text(job.jobId.substring(0, 20).toUpperCase(), labelX, detailsY + 118);
+
+        // Generation date
+        doc.fillColor(this.colors.neutral.gray)
+            .font('Helvetica')
+            .fontSize(10)
+            .text('Generated:', labelX + 180, detailsY + 100);
+
+        doc.fillColor(this.colors.neutral.dark)
+            .font('Helvetica-Bold')
+            .fontSize(11)
+            .text(new Date().toLocaleDateString('en-AU', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            }), labelX + 180, detailsY + 118, { width: 100 });
+
+        // Status indicator
+        doc.fillColor(colors.primary)
+            .font('Helvetica-Bold')
+            .fontSize(10)
+            .text('✓ Analysis Complete', 0, 740, { align: 'center', width: pageWidth });
+
+        // Add new page for next section
+        doc.addPage();
+    }
+
+    /**
+     * PAGE 2: Executive Summary
+     */
+    async generatePage2Summary(doc, job, result, tier, colors, clientInfo) {
+        this.addHeader(doc, 2, tier, colors);
+
+        const pageWidth = doc.page.width;
+        let currentY = 100;
+
+        // Page title
+        doc.fillColor(colors.primary)
+            .font('Helvetica-Bold')
+            .fontSize(28)
+            .text('Executive Summary', 40, currentY);
+
+        // Underline
+        doc.moveTo(40, currentY + 38)
+            .lineTo(160, currentY + 38)
+            .lineWidth(4)
+            .strokeColor(colors.primary)
+            .stroke();
+
+        currentY += 70;
+
+        // Key metrics grid (2x2)
+        const gridStartY = currentY;
+        const boxWidth = (pageWidth - 100) / 2;
+        const boxHeight = 100;
+        const gap = 20;
+
+        const verdictScore = result.verdictScore || 0;
+        const normalizedScore = verdictScore > 10 ? verdictScore / 10 : verdictScore;
+
+        const metrics = [
+            {
+                label: 'QUOTE INTEGRITY',
+                value: `${normalizedScore.toFixed(1)}/10`,
+                color: normalizedScore >= 8 ? '#10b981' : normalizedScore >= 6 ? '#f59e0b' : '#ef4444',
+                icon: '&'
+            },
+            {
+                label: 'RISK LEVEL',
+                value: result.redFlags?.length > 3 ? 'High' : result.redFlags?.length > 1 ? 'Medium' : 'Low',
+                color: result.redFlags?.length > 3 ? '#ef4444' : result.redFlags?.length > 1 ? '#f59e0b' : '#10b981',
+                icon: '!'
+            },
+            {
+                label: 'TOTAL COST',
+                value: `$${(result.overallCost || result.costs?.overall || 0).toLocaleString()}`,
+                color: colors.primary,
+                icon: '$'
+            },
+            {
+                label: 'CONFIDENCE',
+                value: `${result.confidence || 95}%`,
+                color: '#3b82f6',
+                icon: '•'
+            }
+        ];
+
+        metrics.forEach((metric, idx) => {
+            const col = idx % 2;
+            const row = Math.floor(idx / 2);
+            const x = 40 + col * (boxWidth + gap);
+            const y = gridStartY + row * (boxHeight + gap);
+
+            // Box
+            doc.save();
+            doc.fillColor('#ffffff')
+                .roundedRect(x, y, boxWidth, boxHeight, 8)
+                .fill()
+                .strokeColor(this.colors.neutral.lightGray)
+                .lineWidth(1)
+                .stroke();
+            doc.restore();
+
+            // Label
+            doc.fillColor(this.colors.neutral.gray)
+                .font('Helvetica')
+                .fontSize(11)
+                .text(metric.label, x + 20, y + 20);
+
+            // Value
+            doc.fillColor(metric.color)
+                .font('Helvetica-Bold')
+                .fontSize(24)
+                .text(metric.value, x + 20, y + 45);
+
+            // Icon circle (properly aligned)
+            doc.save();
+            doc.fillColor(metric.color)
+                .fillOpacity(0.1)
+                .circle(x + boxWidth - 35, y + 50, 18)
+                .fill();
+            doc.restore();
+
+            doc.fillColor(metric.color)
+                .font('Helvetica-Bold')
+                .fontSize(20)
+                .text(metric.icon, x + boxWidth - 43, y + 40, { width: 16, align: 'center' });
+        });
+
+        currentY = gridStartY + 2 * (boxHeight + gap) + 30;
+
+        // Summary text
+        doc.fillColor(this.colors.neutral.dark)
+            .font('Helvetica-Bold')
+            .fontSize(14)
+            .text('Analysis Overview', 40, currentY);
+
+        currentY += 25;
+
+        const summaryText = result.summary || 'Quote analysis completed successfully.';
+        doc.fillColor(this.colors.neutral.dark)
+            .font('Helvetica')
+            .fontSize(11)
+            .text(summaryText, 40, currentY, {
+                width: pageWidth - 80,
+                align: 'justify',
+                lineGap: 4
+            });
+
+        currentY = doc.y + 20;
+
+        // Verdict justification
+        if (result.verdictJustification) {
+            doc.fillColor(this.colors.neutral.dark)
+                .font('Helvetica-Bold')
+                .fontSize(14)
+                .text('Price Verdict', 40, currentY);
+
+            currentY += 25;
+
+            doc.save();
+            doc.fillColor(colors.primary)
+                .fillOpacity(0.05)
+                .roundedRect(40, currentY, pageWidth - 80, 80, 8)
+                .fill();
+            doc.restore();
+
+            doc.fillColor(this.colors.neutral.dark)
+                .font('Helvetica')
+                .fontSize(11)
+                .text(result.verdictJustification, 55, currentY + 15, {
+                    width: pageWidth - 110,
+                    align: 'justify',
+                    lineGap: 4
+                });
+        }
+
+        this.addFooter(doc, job.jobId);
+        doc.addPage();
+    }
+
+    /**
+     * PAGE 3: Detailed Cost Breakdown
+     */
+    async generatePage3CostBreakdown(doc, job, result, tier, colors) {
+        this.addHeader(doc, 3, tier, colors);
+
+        const pageWidth = doc.page.width;
+        let currentY = 100;
+
+        // Page title
+        doc.fillColor(colors.primary)
+            .font('Helvetica-Bold')
+            .fontSize(28)
+            .text('Cost Breakdown', 40, currentY);
+
+        doc.moveTo(40, currentY + 38)
+            .lineTo(200, currentY + 38)
+            .lineWidth(4)
+            .strokeColor(colors.primary)
+            .stroke();
+
+        currentY += 70;
+
+        // Cost breakdown table
+        const costItems = result.costBreakdown || [];
+
+        if (costItems.length > 0) {
+            const tableData = {
+                headers: [
+                    { label: 'ITEM DESCRIPTION', property: 'desc', width: 240 },
+                    { label: 'CATEGORY', property: 'cat', width: 100 },
+                    { label: 'AMOUNT', property: 'price', width: 130, align: 'right' }
+                ],
+                rows: costItems.slice(0, 15).map(item => [
+                    (item.description || 'General Item').substring(0, 50),
+                    (item.category || 'General').toUpperCase(),
+                    `$${(item.totalPrice || item.amount || 0).toLocaleString()}`
+                ])
+            };
+
+            await doc.table(tableData, {
+                x: 40,
+                y: currentY,
+                prepareHeader: () => {
+                    doc.font('Helvetica-Bold')
+                        .fontSize(9)
+                        .fillColor(colors.primary);
+                    return doc;
+                },
+                prepareRow: (row, indexColumn, indexRow, rectRow, rectCell) => {
+                    doc.font('Helvetica')
+                        .fontSize(10)
+                        .fillColor(this.colors.neutral.dark);
+                    return doc;
+                }
+            });
+
+            currentY = doc.y + 30;
+
+            // Add cost distribution chart if space available
+            if (currentY < 500 && costItems.length > 1) {
+                doc.fillColor(this.colors.neutral.dark)
+                    .font('Helvetica-Bold')
+                    .fontSize(12)
+                    .text('Cost Distribution by Category', 40, currentY);
+
+                currentY += 25;
+                this.drawCostDistributionChart(doc, 40, currentY, pageWidth - 80, 150, costItems);
+                currentY += 160;
+            }
+        } else {
+            doc.fillColor(this.colors.neutral.gray)
+                .font('Helvetica')
+                .fontSize(11)
+                .text('No detailed cost breakdown available for this quote.', 40, currentY, {
+                    width: pageWidth - 80,
+                    align: 'center'
+                });
+            currentY += 50;
+        }
+
+        // Total summary box
+        const totalCost = result.overallCost || result.costs?.overall ||
+            costItems.reduce((sum, item) => sum + (item.totalPrice || item.amount || 0), 0);
+
+        doc.save();
+        doc.fillColor(colors.primary)
+            .fillOpacity(0.1)
+            .roundedRect(40, currentY, pageWidth - 80, 60, 8)
+            .fill();
+        doc.restore();
+
+        doc.fillColor(this.colors.neutral.dark)
+            .font('Helvetica-Bold')
+            .fontSize(13)
+            .text('TOTAL QUOTE VALUE', 60, currentY + 15);
+
+        doc.fillColor(colors.primary)
+            .font('Helvetica-Bold')
+            .fontSize(26)
+            .text(`$${totalCost.toLocaleString()} AUD`, 60, currentY + 35);
+
+        this.addFooter(doc, job.jobId);
+        doc.addPage();
+    }
+
+    /**
+     * PAGE 4: Risk Analysis & Red Flags
+     */
+    async generatePage4RiskAnalysis(doc, job, result, tier, colors) {
+        this.addHeader(doc, 4, tier, colors);
+
+        const pageWidth = doc.page.width;
+        let currentY = 100;
+
+        // Page title
+        doc.fillColor(colors.primary)
+            .font('Helvetica-Bold')
+            .fontSize(28)
+            .text('Risk Analysis', 40, currentY);
+
+        doc.moveTo(40, currentY + 38)
+            .lineTo(180, currentY + 38)
+            .lineWidth(4)
+            .strokeColor(colors.primary)
+            .stroke();
+
+        currentY += 70;
+
+        // Red flags
+        const redFlags = result.redFlags || [];
+
+        if (redFlags.length > 0) {
+            redFlags.slice(0, 8).forEach((flag, idx) => {
+                const severityColor =
+                    flag.severity === 'critical' ? '#dc2626' :
+                        flag.severity === 'high' ? '#ef4444' :
+                            flag.severity === 'medium' ? '#f59e0b' : '#10b981';
+
+                // Flag box
+                doc.save();
+                doc.fillColor('#ffffff')
+                    .roundedRect(40, currentY, pageWidth - 80, 80, 8)
+                    .fill()
+                    .strokeColor(this.colors.neutral.lightGray)
+                    .lineWidth(1)
+                    .stroke();
+                doc.restore();
+
+                // Severity badge
+                doc.save();
+                doc.fillColor(severityColor)
+                    .fillOpacity(0.15)
+                    .roundedRect(55, currentY + 15, 80, 22, 11)
+                    .fill();
+                doc.restore();
+
+                doc.fillColor(severityColor)
+                    .font('Helvetica-Bold')
+                    .fontSize(9)
+                    .text((flag.severity || 'medium').toUpperCase(), 55, currentY + 20, {
+                        width: 80,
+                        align: 'center'
+                    });
+
+                // Flag title
+                doc.fillColor(this.colors.neutral.dark)
+                    .font('Helvetica-Bold')
+                    .fontSize(12)
+                    .text(flag.title || flag.category || 'Risk Identified', 150, currentY + 18, {
+                        width: pageWidth - 210
+                    });
+
+                // Description
+                doc.fillColor(this.colors.neutral.gray)
+                    .font('Helvetica')
+                    .fontSize(10)
+                    .text(flag.description || 'Review this item carefully.', 55, currentY + 45, {
+                        width: pageWidth - 110,
+                        lineGap: 2
+                    });
+
+                currentY += 90;
+
+                if (currentY > 650 && idx < redFlags.length - 1) {
+                    this.addFooter(doc, job.jobId);
+                    doc.addPage();
+                    this.addHeader(doc, 4, tier, colors);
+                    currentY = 100;
+                }
+            });
+        } else {
+            doc.save();
+            doc.fillColor('#10b981')
+                .fillOpacity(0.1)
+                .roundedRect(40, currentY, pageWidth - 80, 80, 8)
+                .fill();
+            doc.restore();
+
+            doc.fillColor('#10b981')
+                .font('Helvetica-Bold')
+                .fontSize(14)
+                .text('✓ No Critical Risks Detected', 60, currentY + 20);
+
+            doc.fillColor(this.colors.neutral.gray)
+                .font('Helvetica')
+                .fontSize(11)
+                .text('This quote appears to be structurally sound with no major red flags identified.', 60, currentY + 45, {
+                    width: pageWidth - 120
+                });
+        }
+
+        this.addFooter(doc, job.jobId);
+        doc.addPage();
+    }
+
+    /**
+     * PAGE 5: Market Benchmarking (Premium Only)
+     */
+    async generatePage5Benchmarking(doc, job, result, tier, colors) {
+        this.addHeader(doc, 5, tier, colors);
+
+        const pageWidth = doc.page.width;
+        let currentY = 100;
+
+        // Page title
+        doc.fillColor(colors.primary)
+            .font('Helvetica-Bold')
+            .fontSize(28)
+            .text('Market Benchmarking', 40, currentY);
+
+        doc.moveTo(40, currentY + 38)
+            .lineTo(250, currentY + 38)
+            .lineWidth(4)
+            .strokeColor(colors.primary)
+            .stroke();
+
+        currentY += 70;
+
+        // Benchmarking data
+        const benchmarks = result.benchmarking || [];
+
+        if (benchmarks.length > 0) {
+            benchmarks.slice(0, 6).forEach((benchmark, idx) => {
+                // Benchmark item box
+                doc.save();
+                doc.fillColor('#ffffff')
+                    .roundedRect(40, currentY, pageWidth - 80, 90, 8)
+                    .fill()
+                    .strokeColor(this.colors.neutral.lightGray)
+                    .lineWidth(1)
+                    .stroke();
+                doc.restore();
+
+                // Item name
+                doc.fillColor(this.colors.neutral.dark)
+                    .font('Helvetica-Bold')
+                    .fontSize(13)
+                    .text(benchmark.item, 60, currentY + 15);
+
+                // Quote price vs market
+                const barY = currentY + 45;
+                const barWidth = pageWidth - 160;
+                const quotePrice = benchmark.quotePrice || 0;
+                const marketMin = benchmark.marketMin || 0;
+                const marketMax = benchmark.marketMax || 100;
+                const marketAvg = benchmark.marketAvg || 50;
+
+                // Market range bar (background)
+                doc.save();
+                doc.fillColor(this.colors.neutral.lightGray)
+                    .fillOpacity(0.3)
+                    .roundedRect(60, barY, barWidth, 20, 10)
+                    .fill();
+                doc.restore();
+
+                // Quote position indicator
+                const range = marketMax - marketMin;
+                const position = range > 0 ? ((quotePrice - marketMin) / range) * barWidth : barWidth / 2;
+                const clampedPosition = Math.max(0, Math.min(barWidth - 4, position));
+
+                doc.save();
+                doc.fillColor(colors.accent)
+                    .circle(60 + clampedPosition, barY + 10, 8)
+                    .fill();
+                doc.restore();
+
+                // Labels
+                doc.fillColor(this.colors.neutral.gray)
+                    .font('Helvetica')
+                    .fontSize(9)
+                    .text(`Min: $${marketMin}`, 60, barY + 25)
+                    .text(`Avg: $${marketAvg}`, 60 + barWidth / 2 - 25, barY + 25)
+                    .text(`Max: $${marketMax}`, 60 + barWidth - 50, barY + 25);
+
+                // Quote value
+                doc.fillColor(colors.accent)
+                    .font('Helvetica-Bold')
+                    .fontSize(11)
+                    .text(`Your Quote: $${quotePrice}`, 60, barY + 40);
+
+                // Percentile
+                if (benchmark.percentile !== undefined) {
+                    doc.fillColor(this.colors.neutral.gray)
+                        .font('Helvetica')
+                        .fontSize(9)
+                        .text(`${benchmark.percentile}th percentile`, pageWidth - 140, barY + 40);
+                }
+
+                currentY += 100;
+            });
+        } else {
+            doc.fillColor(this.colors.neutral.gray)
+                .font('Helvetica')
+                .fontSize(11)
+                .text('Market benchmarking data is being generated...', 40, currentY, {
+                    width: pageWidth - 80,
+                    align: 'center'
+                });
+        }
+
+        this.addFooter(doc, job.jobId);
+        doc.addPage();
+    }
+
+    /**
+     * PAGE 6: Recommendations & Next Steps
+     */
+    async generatePage6Recommendations(doc, job, result, tier, colors) {
+        this.addHeader(doc, 6, tier, colors);
+
+        const pageWidth = doc.page.width;
+        let currentY = 100;
+
+        // Page title
+        doc.fillColor(colors.primary)
+            .font('Helvetica-Bold')
+            .fontSize(28)
+            .text('Recommendations', 40, currentY);
+
+        doc.moveTo(40, currentY + 38)
+            .lineTo(220, currentY + 38)
+            .lineWidth(4)
+            .strokeColor(colors.primary)
+            .stroke();
+
+        currentY += 70;
+
+        // Recommendations
+        const recommendations = result.recommendations || [];
+
+        if (recommendations.length > 0) {
+            recommendations.slice(0, 5).forEach((rec, idx) => {
+                // Recommendation box
+                doc.save();
+                doc.fillColor('#ffffff')
+                    .roundedRect(40, currentY, pageWidth - 80, 100, 8)
+                    .fill()
+                    .strokeColor(this.colors.neutral.lightGray)
+                    .lineWidth(1)
+                    .stroke();
+                doc.restore();
+
+                // Number badge (properly centered)
+                doc.save();
+                doc.fillColor(colors.primary)
+                    .circle(65, currentY + 25, 18)
+                    .fill();
+                doc.restore();
+
+                doc.fillColor('#ffffff')
+                    .font('Helvetica-Bold')
+                    .fontSize(14)
+                    .text(`${idx + 1}`, 58, currentY + 17, { width: 14, align: 'center' });
+
+                // Title
+                doc.fillColor(this.colors.neutral.dark)
+                    .font('Helvetica-Bold')
+                    .fontSize(13)
+                    .text(rec.title, 95, currentY + 18, {
+                        width: pageWidth - 160
+                    });
+
+                // Description
+                doc.fillColor(this.colors.neutral.gray)
+                    .font('Helvetica')
+                    .fontSize(10)
+                    .text(rec.description, 60, currentY + 45, {
+                        width: pageWidth - 120,
+                        lineGap: 2
+                    });
+
+                // Savings & difficulty
+                if (rec.potentialSavings) {
+                    doc.fillColor('#10b981')
+                        .font('Helvetica-Bold')
+                        .fontSize(10)
+                        .text(`💰 Save up to $${rec.potentialSavings}`, 60, currentY + 80);
+                }
+
+                if (rec.difficulty) {
+                    const difficultyColor =
+                        rec.difficulty === 'easy' ? '#10b981' :
+                            rec.difficulty === 'moderate' ? '#f59e0b' : '#ef4444';
+
+                    doc.fillColor(difficultyColor)
+                        .font('Helvetica')
+                        .fontSize(9)
+                        .text(`Difficulty: ${rec.difficulty}`, pageWidth - 140, currentY + 80);
+                }
+
+                currentY += 110;
+            });
+        }
+
+        // Questions to ask
+        const questions = result.questionsToAsk || [];
+        if (questions.length > 0 && currentY < 550) {
+            doc.fillColor(this.colors.neutral.dark)
+                .font('Helvetica-Bold')
+                .fontSize(16)
+                .text('Questions to Ask Your Contractor', 40, currentY);
+
+            currentY += 30;
+
+            questions.slice(0, 5).forEach((q, idx) => {
+                const questionText = typeof q === 'string' ? q : q.question;
+
+                doc.fillColor(colors.primary)
+                    .font('Helvetica-Bold')
+                    .fontSize(10)
+                    .text(`${idx + 1}.`, 50, currentY);
+
+                doc.fillColor(this.colors.neutral.dark)
+                    .font('Helvetica')
+                    .fontSize(10)
+                    .text(questionText, 70, currentY, {
+                        width: pageWidth - 110,
+                        lineGap: 2
+                    });
+
+                currentY = doc.y + 8;
+            });
+        }
+
+        this.addFooter(doc, job.jobId);
+        doc.addPage();
+    }
+
+    /**
+     * PAGE 7: Appendix & Disclaimer
+     */
+    async generatePage7Appendix(doc, job, result, tier, colors) {
+        this.addHeader(doc, 7, tier, colors);
+
+        const pageWidth = doc.page.width;
+        let currentY = 100;
+
+        // Page title
+        doc.fillColor(colors.primary)
+            .font('Helvetica-Bold')
+            .fontSize(28)
+            .text('Appendix', 40, currentY);
+
+        doc.moveTo(40, currentY + 38)
+            .lineTo(140, currentY + 38)
+            .lineWidth(4)
+            .strokeColor(colors.primary)
+            .stroke();
+
+        currentY += 70;
+
+        // Methodology
+        doc.fillColor(this.colors.neutral.dark)
+            .font('Helvetica-Bold')
+            .fontSize(14)
+            .text('Analysis Methodology', 40, currentY);
+
+        currentY += 25;
+
+        const methodology = `This report was generated using MyQuoteMate's AI-powered analysis engine, which examines quote documents for pricing fairness, potential risks, and market competitiveness. The analysis combines document extraction, natural language processing, and market data comparison to provide comprehensive insights.`;
+
+        doc.fillColor(this.colors.neutral.gray)
+            .font('Helvetica')
+            .fontSize(10)
+            .text(methodology, 40, currentY, {
+                width: pageWidth - 80,
+                align: 'justify',
+                lineGap: 4
+            });
+
+        currentY = doc.y + 30;
+
+        // Disclaimer
+        doc.fillColor(this.colors.neutral.dark)
+            .font('Helvetica-Bold')
+            .fontSize(14)
+            .text('Important Disclaimer', 40, currentY);
+
+        currentY += 25;
+
+        const disclaimer = `This report is provided for informational purposes only and should not be considered as professional financial, legal, or construction advice. All analysis is based on the information provided in the submitted quote document. MyQuoteMate makes no warranties about the accuracy, completeness, or reliability of this analysis. Users should verify all information with qualified professionals before making any decisions. Market benchmarking data is indicative and based on general Australian construction industry averages for 2026.`;
+
+        doc.fillColor(this.colors.neutral.gray)
+            .font('Helvetica')
+            .fontSize(10)
+            .text(disclaimer, 40, currentY, {
+                width: pageWidth - 80,
+                align: 'justify',
+                lineGap: 4
+            });
+
+        currentY = doc.y + 30;
+
+        // Contact information
+        doc.fillColor(this.colors.neutral.dark)
+            .font('Helvetica-Bold')
+            .fontSize(14)
+            .text('Need Help?', 40, currentY);
+
+        currentY += 25;
+
+        doc.save();
+        doc.fillColor(colors.primary)
+            .fillOpacity(0.05)
+            .roundedRect(40, currentY, pageWidth - 80, 80, 8)
+            .fill();
+        doc.restore();
+
+        doc.fillColor(this.colors.neutral.dark)
+            .font('Helvetica-Bold')
+            .fontSize(11)
+            .text('Contact Support', 60, currentY + 15);
+
+        doc.fillColor(this.colors.neutral.gray)
+            .font('Helvetica')
+            .fontSize(10)
+            .text('Email: support@myquotemate.com.au', 60, currentY + 35)
+            .text('Website: www.myquotemate.com.au', 60, currentY + 50);
+
+        this.addFooter(doc, job.jobId);
     }
 }
 
