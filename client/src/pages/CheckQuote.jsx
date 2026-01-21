@@ -821,7 +821,7 @@ WARRANTY: 6 years on workmanship`
                         <div
                           className="border-2 border-dashed border-gray-300 rounded-2xl p-6 sm:p-8 text-center hover:border-orange-400 transition-colors cursor-pointer"
                           onClick={() => {
-                            if (!isAuthenticated) handleSignIn();
+                            fileInputRef.current?.click();
                           }}
                         >
                           {file ? (
