@@ -796,7 +796,7 @@ const SignupForm = ({
             ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
             : 'border-gray-300 focus:border-orange-500 focus:ring-orange-500'
             } focus:ring-2 focus:ring-opacity-20 transition-colors disabled:bg-gray-50 disabled:cursor-not-allowed`}
-          placeholder="+1 (555) 123-4567"
+          placeholder="+61 412 345 678"
           autoComplete="tel"
         />
       </div>

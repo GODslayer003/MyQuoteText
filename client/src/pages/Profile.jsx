@@ -49,10 +49,13 @@ const Profile = () => {
   const [uploadingImage, setUploadingImage] = useState(false);
   const [imagePreview, setImagePreview] = useState(null);
   const [deletePassword, setDeletePassword] = useState('');
+  const [showPremiumPopup, setShowPremiumPopup] = useState(false);
   const fileInputRef = useRef(null);
 
   // Dynamic user data - initially populated from auth context
   const [userData, setUserData] = useState({
+    firstName: '',
+    lastName: '',
     name: '',
     email: '',
     phone: '',
@@ -90,12 +93,15 @@ const Profile = () => {
     if (user) {
       setUserData(prev => ({
         ...prev,
+        firstName: user.firstName || '',
+        lastName: user.lastName || '',
         name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'User',
         email: user.email || '',
         phone: user.phone || '',
         address: user.address || '',
         avatarUrl: user.avatarUrl || '',
-        subscription: user.subscription || prev.subscription
+        subscription: user.subscription || prev.subscription,
+        notifications: user.notifications || prev.notifications // Load notifications
       }));
     }
   }, [user]);
@@ -108,13 +114,57 @@ const Profile = () => {
   ];
 
   const [reports, setReports] = useState([]);
+  const [payments, setPayments] = useState([]);
+
+  // ... (payments state handling continues below)
+
+  const handleNotificationToggle = async (key) => {
+    // Optimistic UI update
+    const newSettings = {
+      ...userData.notifications,
+      [key]: !userData.notifications[key]
+    };
+
+    setUserData(prev => ({
+      ...prev,
+      notifications: newSettings
+    }));
+
+    // Debounced API call or direct call
+    try {
+      // Assuming endpoint supports partial updates or full profile update including notifications
+      // If backend expects /users/me with notifications object:
+      await api.put('/users/me', { notifications: newSettings });
+
+      if (updateUser) {
+        // Update context
+        // We preserve other user fields by spreading (handled by context usually) or just passing what changed
+        updateUser({ notifications: newSettings });
+      }
+    } catch (err) {
+      console.error('Failed to update notifications:', err);
+      // Revert on failure
+      setUserData(prev => ({
+        ...prev,
+        notifications: {
+          ...prev.notifications,
+          [key]: !newSettings[key]
+        }
+      }));
+      // Assuming 'toast' is defined elsewhere or needs to be imported
+      // toast.error('Failed to update settings');
+    }
+  };
+  const [loadingPayments, setLoadingPayments] = useState(false);
+  const [showAllReports, setShowAllReports] = useState(false);
 
   // Fetch user reports
   useEffect(() => {
     const fetchReports = async () => {
       try {
         const response = await api.get('/jobs');
-        setReports(response.data.data || []);
+        const sortedReports = (response.data.data || []).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        setReports(sortedReports);
       } catch (err) {
         console.error('Error fetching reports:', err);
       }
@@ -125,8 +175,28 @@ const Profile = () => {
     }
   }, [activeTab]);
 
+  // Fetch user payments
+  useEffect(() => {
+    const fetchPayments = async () => {
+      setLoadingPayments(true);
+      try {
+        const response = await api.get('/payments');
+        setPayments(response.data.data.payments || []);
+      } catch (err) {
+        console.error('Error fetching payments:', err);
+      } finally {
+        setLoadingPayments(false);
+      }
+    };
+
+    if (activeTab === 'subscription') {
+      fetchPayments();
+    }
+  }, [activeTab]);
+
   // Handle profile picture upload
   const handleImageUpload = async (event) => {
+    // ... existing upload logic ...
     const file = event.target.files[0];
     if (!file) return;
 
@@ -188,6 +258,9 @@ const Profile = () => {
     }
   };
 
+  // ... (keeping other handlers same) ...
+
+
   // Remove profile picture
   const handleRemoveImage = async () => {
     if (!window.confirm('Are you sure you want to remove your profile picture?')) return;
@@ -220,38 +293,35 @@ const Profile = () => {
   };
 
   const handleSaveProfile = async () => {
-    if (!isEditing) return;
-
+    // This function is used for personal info and now for notifications.
+    // It should ideally send all updatable fields.
     setLoading(true);
     setError(null);
 
     try {
-      // Parse name into first and last name
-      const nameParts = userData.name.trim().split(' ');
-      const firstName = nameParts[0] || '';
-      const lastName = nameParts.slice(1).join(' ') || '';
-
       const updateData = {
-        firstName,
-        lastName,
+        firstName: userData.firstName,
+        lastName: userData.lastName,
         phone: userData.phone,
-        address: userData.address
+        address: userData.address,
+        notifications: userData.notifications // Include notifications in the save
       };
 
-      const response = await api.put('/user/profile', updateData);
+      const response = await api.put('/users/me', updateData);
 
       if (response.data.success) {
         // Update auth context
         if (updateUser) {
           updateUser({
-            firstName,
-            lastName,
+            firstName: userData.firstName,
+            lastName: userData.lastName,
             phone: userData.phone,
-            address: userData.address
+            address: userData.address,
+            notifications: userData.notifications
           });
         }
 
-        setIsEditing(false);
+        setIsEditing(false); // Only set false if saving personal info
         setShowSuccess(true);
         setTimeout(() => setShowSuccess(false), 3000);
       }
@@ -340,10 +410,12 @@ const Profile = () => {
   };
 
   const getAvatarInitials = () => {
-    if (!userData.name) return 'U';
-    const names = userData.name.split(' ');
-    if (names.length === 1) return names[0].charAt(0).toUpperCase();
-    return (names[0].charAt(0) + names[names.length - 1].charAt(0)).toUpperCase();
+    if (userData.firstName && userData.lastName) {
+      return (userData.firstName.charAt(0) + userData.lastName.charAt(0)).toUpperCase();
+    }
+    if (userData.firstName) return userData.firstName.charAt(0).toUpperCase();
+    if (userData.name) return userData.name.charAt(0).toUpperCase();
+    return 'U';
   };
 
   const getSubscriptionData = () => {
@@ -487,25 +559,46 @@ const Profile = () => {
             <div className="bg-white rounded-2xl border border-gray-200 p-6">
               <h3 className="text-lg font-semibold mb-6 text-gray-900">Personal Information</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Name Field */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Full Name
-                  </label>
-                  {isEditing ? (
-                    <input
-                      type="text"
-                      value={userData.name}
-                      onChange={(e) => setUserData({ ...userData, name: e.target.value })}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all"
-                      placeholder="Enter your full name"
-                    />
-                  ) : (
-                    <div className="px-4 py-3 bg-gray-50 rounded-lg flex items-center gap-3">
-                      <User className="w-4 h-4 text-gray-500" />
-                      <span className="text-gray-900">{userData.name || 'Not set'}</span>
-                    </div>
-                  )}
+                {/* Name Fields */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      First Name
+                    </label>
+                    {isEditing ? (
+                      <input
+                        type="text"
+                        value={userData.firstName || ''}
+                        onChange={(e) => setUserData({ ...userData, firstName: e.target.value })}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all"
+                        placeholder="John"
+                      />
+                    ) : (
+                      <div className="px-4 py-3 bg-gray-50 rounded-lg flex items-center gap-3">
+                        <User className="w-4 h-4 text-gray-500" />
+                        <span className="text-gray-900">{userData.firstName || 'Not set'}</span>
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Last Name
+                    </label>
+                    {isEditing ? (
+                      <input
+                        type="text"
+                        value={userData.lastName || ''}
+                        onChange={(e) => setUserData({ ...userData, lastName: e.target.value })}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all"
+                        placeholder="Doe"
+                      />
+                    ) : (
+                      <div className="px-4 py-3 bg-gray-50 rounded-lg flex items-center gap-3">
+                        <User className="w-4 h-4 text-gray-500" />
+                        <span className="text-gray-900">{userData.lastName || 'Not set'}</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {/* Email Field (read-only) */}
@@ -525,13 +618,17 @@ const Profile = () => {
                 {/* Phone Field */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Phone Number
+                    Phone Number (AU)
                   </label>
                   {isEditing ? (
                     <input
                       type="tel"
                       value={userData.phone}
-                      onChange={(e) => setUserData({ ...userData, phone: e.target.value })}
+                      onChange={(e) => {
+                        // Allow formatting like +61 4... or 04...
+                        const val = e.target.value.replace(/[^\d+\s\-]/g, '');
+                        setUserData({ ...userData, phone: val });
+                      }}
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all"
                       placeholder="+61 412 345 678"
                     />
@@ -652,7 +749,16 @@ const Profile = () => {
                 Manage your subscription plan, view billing history, and update payment methods.
               </p>
 
-              <button className="px-6 py-3 bg-gradient-to-r from-orange-500 to-amber-600 text-white rounded-lg font-semibold hover:shadow-lg hover:shadow-orange-500/30 transition-all">
+              <button
+                onClick={() => {
+                  if (userData.subscription?.plan === 'Premium') {
+                    setShowPremiumPopup(true);
+                  } else {
+                    navigate('/pricing');
+                  }
+                }}
+                className="px-6 py-3 bg-gradient-to-r from-orange-500 to-amber-600 text-white rounded-lg font-semibold hover:shadow-lg hover:shadow-orange-500/30 transition-all"
+              >
                 Upgrade Plan
               </button>
             </div>
@@ -734,23 +840,70 @@ const Profile = () => {
                     <tr className="border-b border-gray-200">
                       <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Date</th>
                       <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Amount</th>
+                      <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Plan</th>
                       <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Status</th>
                       <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Invoice</th>
                     </tr>
                   </thead>
                   <tbody>
-                    <tr className="border-b border-gray-200 hover:bg-gray-50">
-                      <td className="py-3 px-4 text-gray-900">Dec 1, 2024</td>
-                      <td className="py-3 px-4 text-gray-900">${getSubscriptionData().price}</td>
-                      <td className="py-3 px-4">
-                        <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">Paid</span>
-                      </td>
-                      <td className="py-3 px-4">
-                        <button className="text-orange-600 hover:text-orange-700 font-medium flex items-center gap-1">
-                          <Download className="w-4 h-4" />
-                        </button>
-                      </td>
-                    </tr>
+                    {loadingPayments ? (
+                      <tr>
+                        <td colSpan="5" className="py-6 text-center text-gray-500">
+                          <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2" />
+                          Loading payments...
+                        </td>
+                      </tr>
+                    ) : payments.length === 0 ? (
+                      <tr>
+                        <td colSpan="5" className="py-6 text-center text-gray-500">
+                          No payment history found
+                        </td>
+                      </tr>
+                    ) : (
+                      payments.map((payment) => (
+                        <tr key={payment.id} className="border-b border-gray-200 hover:bg-gray-50 last:border-0">
+                          <td className="py-3 px-4 text-gray-900">
+                            {new Date(payment.createdAt).toLocaleDateString('en-US', {
+                              year: 'numeric',
+                              month: 'short',
+                              day: 'numeric'
+                            })}
+                          </td>
+                          <td className="py-3 px-4 text-gray-900">
+                            ${payment.amount} {payment.currency?.toUpperCase() || 'AUD'}
+                          </td>
+                          <td className="py-3 px-4 text-gray-900 capitalize">
+                            {payment.tier || 'Standard'}
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className={`px-3 py-1 rounded-full text-xs font-medium ${payment.status === 'succeeded' ? 'bg-green-100 text-green-800' :
+                              payment.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                                'bg-red-100 text-red-800'
+                              }`}>
+                              {payment.status === 'succeeded' ? 'Paid' : payment.status}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4">
+                            {payment.receiptUrl ? (
+                              <a
+                                href={payment.receiptUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-orange-600 hover:text-orange-700 font-medium flex items-center gap-1 text-sm hover:underline"
+                              >
+                                <Download className="w-4 h-4" />
+                                Receipt
+                              </a>
+                            ) : (
+                              <span className="text-gray-400 text-sm flex items-center gap-1 cursor-not-allowed">
+                                <Download className="w-4 h-4" />
+                                Unavailable
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -786,24 +939,52 @@ const Profile = () => {
               </div>
             </div>
 
-            {/* Recent Reports */}
+            {/* Reports List */}
             <div className="bg-white rounded-2xl border border-gray-200 p-6">
-              <h3 className="text-lg font-semibold mb-6 text-gray-900">Recent Reports</h3>
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  {showAllReports ? 'All Reports' : 'Recent Reports'}
+                </h3>
+                {reports.length > 5 && (
+                  <button
+                    onClick={() => setShowAllReports(!showAllReports)}
+                    className="text-sm font-medium text-orange-600 hover:text-orange-700 hover:underline"
+                  >
+                    {showAllReports ? 'Show Less' : 'View All'}
+                  </button>
+                )}
+              </div>
 
               {reports.length === 0 ? (
                 <div className="text-center py-12">
                   <FileText className="w-12 h-12 text-gray-300 mx-auto mb-4" />
                   <p className="text-gray-600">No reports yet. Start by uploading a document.</p>
+                  <Link to="/check-quote" className="inline-block mt-4 px-6 py-2 bg-black text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors">
+                    Analyze a Quote
+                  </Link>
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {reports.slice(0, 5).map(report => (
-                    <div key={report._id} className="flex items-center justify-between p-4 hover:bg-gray-50 rounded-lg transition-colors border-b border-gray-200 last:border-0">
+                  {(showAllReports ? reports : reports.slice(0, 5)).map(report => (
+                    <Link
+                      to={`/analysis/${report.jobId}`}
+                      key={report._id}
+                      className="flex items-center justify-between p-4 hover:bg-gray-50 rounded-lg transition-colors border-b border-gray-200 last:border-0 block group"
+                    >
                       <div className="flex items-center gap-3 flex-1">
-                        <FileText className="w-5 h-5 text-orange-600" />
+                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${report.status === 'completed' ? 'bg-green-100 text-green-600' :
+                          report.status === 'processing' ? 'bg-blue-100 text-blue-600' :
+                            'bg-yellow-100 text-yellow-600'
+                          }`}>
+                          <FileText className="w-5 h-5" />
+                        </div>
                         <div>
-                          <p className="font-medium text-gray-900">{report.title || 'Untitled'}</p>
-                          <p className="text-sm text-gray-500">{new Date(report.createdAt).toLocaleDateString()}</p>
+                          <p className="font-medium text-gray-900 group-hover:text-orange-600 transition-colors">{report.title || 'Quote Analysis'}</p>
+                          <div className="flex items-center gap-2 text-sm text-gray-500">
+                            <span>{new Date(report.createdAt).toLocaleDateString()}</span>
+                            <span>•</span>
+                            <span className="capitalize">{report.tier || 'Free'}</span>
+                          </div>
                         </div>
                       </div>
                       <div className="flex items-center gap-4">
@@ -813,16 +994,19 @@ const Profile = () => {
                           }`}>
                           {report.status || 'Pending'}
                         </span>
-                        <ChevronRight className="w-4 h-4 text-gray-400" />
+                        <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-orange-500 transition-colors" />
                       </div>
-                    </div>
+                    </Link>
                   ))}
                 </div>
               )}
 
-              {reports.length > 5 && (
-                <button className="w-full mt-6 py-3 text-orange-600 hover:bg-orange-50 rounded-lg font-medium transition-colors">
-                  View All Reports
+              {reports.length > 5 && !showAllReports && (
+                <button
+                  onClick={() => setShowAllReports(true)}
+                  className="w-full mt-6 py-3 text-orange-600 hover:bg-orange-50 rounded-lg font-medium transition-colors border border-dashed border-orange-200"
+                >
+                  View All {reports.length} Reports
                 </button>
               )}
             </div>
@@ -830,36 +1014,48 @@ const Profile = () => {
         );
 
       case 'notifications':
+        const notificationItems = [
+          { key: 'email', label: 'Email Notifications', description: 'Receive notifications via email' },
+          { key: 'reportReady', label: 'Report Ready', description: 'Get notified when your analysis reports are ready' },
+          { key: 'security', label: 'Security Alerts', description: 'Important security and account alerts' },
+          { key: 'promotional', label: 'Product Updates', description: 'New features and improvements' }
+        ];
+
         return (
           <div className="space-y-8">
             <div className="bg-white rounded-2xl border border-gray-200 p-6">
               <h3 className="text-lg font-semibold mb-6 text-gray-900">Notification Preferences</h3>
 
               <div className="space-y-4">
-                {[
-                  { label: 'Email Notifications', description: 'Receive notifications via email' },
-                  { label: 'Report Ready', description: 'Get notified when your analysis reports are ready' },
-                  { label: 'Security Alerts', description: 'Important security and account alerts' },
-                  { label: 'Weekly Digest', description: 'Summary of your weekly activity' },
-                  { label: 'Product Updates', description: 'New features and improvements' }
-                ].map((item, idx) => (
-                  <div key={idx} className="flex items-center justify-between p-4 hover:bg-gray-50 rounded-lg transition-colors border-b border-gray-200 last:border-0">
+                {notificationItems.map((item) => (
+                  <div key={item.key} className="flex items-center justify-between p-4 hover:bg-gray-50 rounded-lg transition-colors border-b border-gray-200 last:border-0">
                     <div>
                       <p className="font-medium text-gray-900">{item.label}</p>
                       <p className="text-sm text-gray-600 mt-1">{item.description}</p>
                     </div>
-                    <button className="relative inline-flex h-6 w-11 items-center rounded-full bg-orange-600">
-                      <span className="inline-block h-4 w-4 transform rounded-full bg-white translate-x-6" />
+                    <button
+                      onClick={() => handleNotificationToggle(item.key)}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${userData.notifications[item.key] ? 'bg-orange-600' : 'bg-gray-300'
+                        }`}
+                    >
+                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${userData.notifications[item.key] ? 'translate-x-6' : 'translate-x-1'
+                        }`} />
                     </button>
                   </div>
                 ))}
               </div>
 
               <div className="mt-8 flex justify-end gap-3 pt-6 border-t border-gray-200">
-                <button className="px-6 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-colors">
+                <button
+                  onClick={() => setUserData(prev => ({ ...prev, notifications: { email: true, reportReady: true, security: true, promotional: false } }))}
+                  className="px-6 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-colors"
+                >
                   Reset to Default
                 </button>
-                <button className="px-6 py-2 bg-gradient-to-r from-orange-500 to-amber-600 text-white rounded-lg font-semibold hover:shadow-lg hover:shadow-orange-500/30 transition-all">
+                <button
+                  onClick={() => handleSaveProfile()} // Using generic save for now as it updates whole user usually
+                  className="px-6 py-2 bg-gradient-to-r from-orange-500 to-amber-600 text-white rounded-lg font-semibold hover:shadow-lg hover:shadow-orange-500/30 transition-all"
+                >
                   Save Preferences
                 </button>
               </div>
@@ -1035,6 +1231,29 @@ const Profile = () => {
                 )}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Already Premium Modal */}
+      {showPremiumPopup && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-fade-in">
+          <div className="bg-white rounded-2xl max-w-sm w-full p-8 text-center shadow-2xl animate-scale-up border-[3px] border-amber-400/30 ring-4 ring-amber-100/50">
+            <div className="w-20 h-20 bg-gradient-to-br from-amber-100 to-orange-100 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner ring-1 ring-amber-200">
+              <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-500 drop-shadow-sm"><path d="m2 4 3 12h14l3-12-6 7-4-3-4 3-6-7z" /><circle cx="12" cy="19" r="2" /></svg>
+            </div>
+
+            <h3 className="text-2xl font-bold text-gray-900 mb-3 tracking-tight">You're All Set!</h3>
+            <p className="text-gray-600 mb-6 leading-relaxed">
+              You have already upgraded to the <span className="font-bold text-transparent bg-clip-text bg-gradient-to-r from-orange-600 to-amber-600">Premium Version</span>. Enjoy your exclusive features!
+            </p>
+
+            <button
+              onClick={() => setShowPremiumPopup(false)}
+              className="w-full py-3.5 bg-gradient-to-r from-gray-900 to-gray-800 text-white rounded-xl font-semibold hover:shadow-lg hover:shadow-gray-900/20 active:scale-[0.98] transition-all duration-200"
+            >
+              Start Using Premium
+            </button>
           </div>
         </div>
       )}

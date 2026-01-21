@@ -52,6 +52,19 @@ class PaymentController {
         });
       }
 
+      // Enforce Strict Single Tier Policy
+      const User = require('../../models/User');
+      const user = await User.findById(req.user?._id);
+
+      if (user && user.subscription && user.subscription.plan !== 'Free') {
+        if (user.subscription.credits > 0) {
+          return res.status(403).json({
+            success: false,
+            error: `You already have an active ${user.subscription.plan} plan with ${user.subscription.credits} unused reports. Please use your existing credits first.`
+          });
+        }
+      }
+
       // Create payment intent
       const paymentIntent = await stripeService.createPaymentIntent(
         job,
@@ -210,14 +223,45 @@ class PaymentController {
         return res.status(404).json({ success: false, error: 'User not found' });
       }
 
+      // Enforce Strict Single Tier Policy
+      if (user.subscription && user.subscription.plan !== 'Free') {
+        if (user.subscription.credits > 0) {
+          return res.status(403).json({
+            success: false,
+            error: `You already have an active ${user.subscription.plan} plan with ${user.subscription.credits} unused reports. Please use your existing credits first.`
+          });
+        }
+      }
+
       // Update subscription / Credits
       let creditsToAdd = 0;
-      if (tier === 'Standard') creditsToAdd = 1;
-      if (tier === 'Premium') creditsToAdd = 3; // "3 Reports per Buy"
+      if (tier === 'Standard') {
+        creditsToAdd = 1;
+        // RESET usage for Standard (Pay-per-report model)
+        // User gets exactly 1 report capacity total
+        user.subscription.credits = 1;
+        user.subscription.reportsTotal = 1;
+        user.subscription.reportsUsed = 0;
+      } else if (tier === 'Premium') {
+        creditsToAdd = 3; // "3 Reports per Buy"
+        // Accumulate or Reset? User wanted limitation.
+        // Let's treat Premium as a pack for now, but ensure it's set correctly.
+        // Typically Premium might be a subscription, but mock treats it as credits.
+        user.subscription.credits = (user.subscription.credits || 0) + creditsToAdd;
+        user.subscription.reportsTotal = (user.subscription.reportsTotal || 0) + creditsToAdd;
+        // Don't reset reportsUsed if accumulating, but if new cycle, maybe?
+        // Let's leave Premium accumulation as is for now, or strictly set it if desired.
+        // Safest is to accumulate for Premium, but strictly set Standard.
 
-      user.subscription.credits = (user.subscription.credits || 0) + creditsToAdd;
-      user.subscription.reportsTotal = (user.subscription.reportsTotal || 0) + creditsToAdd;
-      user.subscription.reportsUsed = 0; // Reset usage for the new purchased batch
+        // Actually, let's keep it simple: Add credits, but update Total to reflect CURRENT potential?
+        // No, reportsTotal is usually "Limit". 
+        // If I have 1 credit left and buy 3, I have 4.
+      }
+
+      // Special handling for Standard to enforce "Single Use" feel
+      if (tier !== 'Standard') {
+        // Existing logic for non-Standard (accummulation) which I already handled above for Premium
+      }
 
       // Update tier only if upgrading to a higher tier or stay in Premium
       const tierLevels = { 'Free': 0, 'Standard': 1, 'Premium': 2 };
@@ -244,7 +288,8 @@ class PaymentController {
         status: 'succeeded',
         provider: 'stripe', // Mocking stripe
         stripePaymentIntentId: 'mock_pi_' + Date.now(),
-        tier: tier // Already 'Standard' or 'Premium' from the check above
+        tier: tier, // Already 'Standard' or 'Premium' from the check above
+        receiptUrl: 'https://pay.stripe.com/receipt/test' // Mock receipt URL
       });
       await payment.save();
 

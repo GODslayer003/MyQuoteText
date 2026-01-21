@@ -204,6 +204,12 @@ const Pricing = () => {
       return;
     }
 
+    // STRICT CHECK: User cannot buy if they have active credits on a paid plan
+    if (user.subscription && user.subscription.plan !== 'Free' && user.subscription.credits > 0) {
+      toast.error(`You have ${user.subscription.credits} unused report(s) on your ${user.subscription.plan} plan. Please use them first.`);
+      return;
+    }
+
     setSelectedPlanForPayment(plan);
     setShowPaymentModal(true);
   };
