@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { Lock, Unlock, ChevronDown, ChevronUp, Zap, Crown, Star, Download, FileText, AlertTriangle } from 'lucide-react';
+import { Lock, Unlock, ChevronDown, ChevronUp, Zap, Crown, Star, Download, FileText, AlertTriangle, Search } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import quoteApi from '../services/quoteApi';
 import { toast } from 'react-hot-toast';
 
-const AnalysisResults = ({ jobResult, userTier = 'free' }) => {
+const AnalysisResults = ({ jobResult, userTier = 'free', onCompare }) => {
   const [expandedSections, setExpandedSections] = useState({
     summary: true,
     redFlags: false,
@@ -14,28 +14,11 @@ const AnalysisResults = ({ jobResult, userTier = 'free' }) => {
     benchmarking: false,
     recommendations: false
   });
-  const [rating, setRating] = useState(0);
-  const [hoveredRating, setHoveredRating] = useState(0);
-  const [isSubmittingRating, setIsSubmittingRating] = useState(false);
   const [isDownloadingReport, setIsDownloadingReport] = useState(false);
-  const [ratingSubmitted, setRatingSubmitted] = useState(false);
+  // Free tier text expansion state
+  const [showFullSummary, setShowFullSummary] = useState(false);
+  const [showFullVerdict, setShowFullVerdict] = useState(false);
 
-  const handleRatingSubmit = async (value) => {
-    if (!jobResult?.jobId || ratingSubmitted) return;
-
-    try {
-      setIsSubmittingRating(true);
-      await quoteApi.submitRating(jobResult.jobId, value);
-      setRating(value);
-      setRatingSubmitted(true);
-      toast.success('Thank you for your feedback!');
-    } catch (err) {
-      console.error('Failed to submit rating:', err);
-      toast.error('Failed to submit rating. Please try again.');
-    } finally {
-      setIsSubmittingRating(false);
-    }
-  };
 
   const handleDownloadReport = async () => {
     if (!jobResult?.jobId) return;
@@ -382,7 +365,12 @@ const AnalysisResults = ({ jobResult, userTier = 'free' }) => {
   };
 
   const isFeatureUnlocked = (featureKey) => {
-    return currentTierAccess.includes(featureKey);
+    // If the job itself was processed as a certain tier, prioritize that
+    const jobTier = jobResult?.tier?.toLowerCase() || 'free';
+    const effectiveTier = (jobTier === 'premium' || normalizedTier === 'premium') ? 'premium' :
+      (jobTier === 'standard' || normalizedTier === 'standard') ? 'standard' : 'free';
+
+    return tierAccess[effectiveTier].includes(featureKey);
   };
 
   const renderFeatureContent = (feature, featureKey) => {
@@ -672,6 +660,21 @@ const AnalysisResults = ({ jobResult, userTier = 'free' }) => {
           <div className="flex items-start gap-4 flex-1 text-left">
             <span className="text-3xl mt-1">{feature.icon}</span>
             <div className="flex-1">
+              {featureKey === 'verdict' && displayResult?.verdictDescription && (
+                <div className="mb-6">
+                  <p className={`text-gray-700 italic border-l-4 border-orange-200 pl-4 py-2 bg-orange-50 rounded-r-lg ${userTier === 'free' && !showFullVerdict ? 'line-clamp-3' : ''}`}>
+                    "{displayResult.verdictDescription || "Based on the analysis, this quote appears to be within standard market rates."}"
+                  </p>
+                  {userTier === 'free' && (
+                    <button
+                      onClick={() => setShowFullVerdict(!showFullVerdict)}
+                      className="text-orange-600 text-sm font-medium mt-2 hover:underline flex items-center gap-1"
+                    >
+                      {showFullVerdict ? 'Show Less' : 'Show More'} <ChevronDown className={`w-4 h-4 transition-transform ${showFullVerdict ? 'rotate-180' : ''}`} />
+                    </button>
+                  )}
+                </div>
+              )}
               <div className="flex items-center gap-3 mb-2">
                 <h3 className="text-lg font-bold text-gray-900">
                   {feature.title}
@@ -784,8 +787,19 @@ const AnalysisResults = ({ jobResult, userTier = 'free' }) => {
             )}
           </div>
 
-          <div className="text-xs text-gray-500 font-medium italic">
-            Ref ID: {jobResult?.jobId?.substring(0, 8).toUpperCase() || 'MOCK-RESULT'}
+          <div className="flex items-center gap-4">
+            <div className="text-xs text-gray-500 font-medium italic">
+              Ref ID: {jobResult?.jobId?.substring(0, 8).toUpperCase() || 'MOCK-RESULT'}
+            </div>
+            {normalizedTier === 'premium' && onCompare && (
+              <button
+                onClick={onCompare}
+                className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg text-xs font-bold hover:bg-blue-100 transition-all border border-blue-100"
+              >
+                <Search className="w-3.5 h-3.5" />
+                Compare with another Quote
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -848,33 +862,6 @@ const AnalysisResults = ({ jobResult, userTier = 'free' }) => {
         </div>
       )}
 
-      {/* Rating Section */}
-      {!displayResult?.isIrrelevant && (
-        <div className="mt-12 p-8 bg-white border border-gray-200 rounded-2xl text-center shadow-sm">
-          <h3 className="text-xl font-bold text-gray-900 mb-2">How helpful was this analysis?</h3>
-          <p className="text-gray-600 mb-6 font-normal">Your feedback helps us improve our AI insights.</p>
-
-          <div className="flex items-center justify-center gap-2 mb-4">
-            {[1, 2, 3, 4, 5].map((star) => (
-              <button
-                key={star}
-                disabled={ratingSubmitted || isSubmittingRating}
-                onMouseEnter={() => setHoveredRating(star)}
-                onMouseLeave={() => setHoveredRating(0)}
-                onClick={() => handleRatingSubmit(star)}
-                className={`p-1 transition-all transform hover:scale-110 ${(hoveredRating || rating) >= star ? 'text-orange-500' : 'text-gray-300'
-                  } ${(ratingSubmitted || isSubmittingRating) ? 'cursor-default' : 'cursor-pointer'}`}
-              >
-                <Star className={`w-10 h-10 ${((hoveredRating || rating) >= star) ? 'fill-current' : ''}`} />
-              </button>
-            ))}
-          </div>
-
-          {ratingSubmitted && (
-            <p className="text-green-600 font-medium">Feedback received! Thank you.</p>
-          )}
-        </div>
-      )}
 
       {/* Action Bar - Unified Professional Report */}
       <div className="mt-8 flex flex-wrap gap-4 items-center justify-between p-6 bg-white border border-gray-100 rounded-2xl shadow-sm">

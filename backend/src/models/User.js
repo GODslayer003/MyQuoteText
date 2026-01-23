@@ -212,7 +212,7 @@ userSchema.methods.incLoginAttempts = function () {
   this.loginAttempts += 1;
 
   if (this.loginAttempts >= 5 && !this.isLocked) {
-    this.lockUntil = new Date(Date.now() + 2 * 60 * 60 * 1000); // 2 hours
+    this.lockUntil = new Date(Date.now() + 5 * 60 * 60 * 1000); // 5 hours
   }
 
   return this.save();

@@ -99,11 +99,21 @@ class AuthController {
         });
       }
 
+      // ReCAPTCHA Verification (Optional but recommended)
+      const { captchaToken } = req.body;
+      if (captchaToken) {
+        // Verify with Google
+        // const isRecaptchaValid = await AuthService.verifyRecaptcha(captchaToken);
+        // if (!isRecaptchaValid) return res.status(400).json({ error: 'Invalid captcha' });
+      }
+
       // Check if account is locked
       if (user.isLocked) {
+        const remainingTime = Math.ceil((user.lockUntil - Date.now()) / (60 * 1000));
         return res.status(423).json({
           success: false,
-          error: 'Account is temporarily locked due to too many failed login attempts. Please try again later.'
+          error: `Account is locked. Try again in ${remainingTime} minutes.`,
+          lockUntil: user.lockUntil
         });
       }
 
@@ -113,17 +123,30 @@ class AuthController {
       if (!isPasswordValid) {
         await user.incLoginAttempts();
 
+        // Re-check lock status after increment
+        if (user.isLocked) {
+          const remainingTime = Math.ceil((user.lockUntil - Date.now()) / (60 * 1000));
+          return res.status(423).json({
+            success: false,
+            error: `Account is locked. Try again in ${remainingTime} minutes.`,
+            lockUntil: user.lockUntil
+          });
+        }
+
         return res.status(401).json({
           success: false,
           error: 'Invalid email or password'
         });
       }
 
-      // Reset login attempts
-      await user.resetLoginAttempts();
+      // Reset login attempts on success
+      if (user.loginAttempts > 0) {
+        await user.resetLoginAttempts();
+      }
 
       // Update last login
-      user.lastLoginAt = new Date();
+      // user.updateLastLogin(); // Use model method if available or manual:
+      user.security.lastLoginAt = new Date();
       await user.save();
 
       // Generate tokens

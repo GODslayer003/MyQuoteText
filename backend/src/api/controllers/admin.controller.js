@@ -279,14 +279,54 @@ class AdminController {
         }
     }
 
-    // Get Suppliers
+    // Get Suppliers (Sorted by Score)
     static async getSuppliers(req, res) {
         try {
-            const suppliers = await Supplier.find().sort({ 'intelligence.riskScore': -1 });
+            const { search = '' } = req.query;
+            const query = {};
+            if (search) {
+                query.$or = [
+                    { supplierName: { $regex: search, $options: 'i' } },
+                    { abn: { $regex: search, $options: 'i' } }
+                ];
+            }
+
+            const suppliers = await Supplier.find(query).sort({ score: -1 });
             return res.json({ success: true, data: suppliers });
         } catch (e) {
             console.error('Suppliers fetch error:', e);
             return res.status(500).json({ success: false, error: 'Failed to fetch suppliers' });
+        }
+    }
+
+    // Get Single Supplier Details
+    static async getSupplierDetails(req, res) {
+        try {
+            const { id } = req.params;
+            const SupplierQuote = require('../../models/SupplierQuote');
+            const SupplierStats = require('../../models/SupplierStats');
+
+            const [supplier, stats, quotes] = await Promise.all([
+                Supplier.findById(id),
+                SupplierStats.findOne({ supplierId: id }),
+                SupplierQuote.find({ supplierId: id }).sort({ createdAt: -1 }).limit(10)
+            ]);
+
+            if (!supplier) {
+                return res.status(404).json({ success: false, error: 'Supplier not found' });
+            }
+
+            return res.json({
+                success: true,
+                data: {
+                    supplier,
+                    stats,
+                    history: quotes
+                }
+            });
+        } catch (e) {
+            console.error('Supplier details error:', e);
+            return res.status(500).json({ success: false, error: 'Failed to fetch supplier details' });
         }
     }
 

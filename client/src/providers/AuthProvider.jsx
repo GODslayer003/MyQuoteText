@@ -166,11 +166,12 @@ export const AuthProvider = ({ children }) => {
       const data = await res.json();
 
       if (!res.ok) {
-        // Handle specific error cases
         if (res.status === 401) {
           throw new Error("Invalid email or password");
         } else if (res.status === 423) {
-          throw new Error("Account is locked. Please try again later.");
+          const err = new Error("Account is locked. Please try again later.");
+          err.lockUntil = data.lockUntil; // Attach lockUntil from response
+          throw err;
         } else {
           throw new Error(data.error || data.message || "Login failed");
         }
@@ -197,11 +198,18 @@ export const AuthProvider = ({ children }) => {
         setRedirectPath(null);
       }
 
-      return true;
+      return { success: true };
     } catch (err) {
       console.error('Login error:', err);
-      setError(err.message || "Login failed. Please try again.");
-      return false;
+      const errorMessage = err.message || "Login failed. Please try again.";
+      setError(errorMessage);
+
+      // Return error structure for UI components to handle specific cases (like locking)
+      return {
+        success: false,
+        error: errorMessage,
+        lockUntil: err.lockUntil
+      };
     } finally {
       setLoading(false);
     }

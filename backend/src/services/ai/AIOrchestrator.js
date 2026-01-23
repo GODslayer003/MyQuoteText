@@ -13,16 +13,16 @@ const logger = require('../../utils/logger');
  */
 const TIER_LIMITS = {
   free: {
-    maxInputChars: 6000,
-    maxOutputTokens: 6000
+    maxInputChars: 7000,
+    maxOutputTokens: 7000
   },
   standard: {
     maxInputChars: 20000,
-    maxOutputTokens: 15000
+    maxOutputTokens: 20000
   },
   premium: {
     maxInputChars: 40000,
-    maxOutputTokens: 30000
+    maxOutputTokens: 4000
   }
 };
 

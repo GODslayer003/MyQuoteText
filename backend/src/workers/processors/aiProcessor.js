@@ -4,9 +4,7 @@
 const Job = require('../../models/Job');
 const Result = require('../../models/Result');
 const User = require('../../models/User');
-const { Supplier } = require('../../models/Lead');
-const AIOrchestrator = require('../../services/ai/AIOrchestrator');
-const { emailQueue } = require('../../config/queue');
+const SupplierScoringService = require('../../services/supplier/SupplierScoringService');
 const logger = require('../../utils/logger');
 
 class AIProcessor {
@@ -74,12 +72,15 @@ class AIProcessor {
       await jobDoc.updateProcessingStep('analysis', 'completed');
       await jobDoc.save();
 
-      // Update supplier intelligence (internal only)
-      if (aiResult.analysis?.contractorProfile?.abn) {
-        await this.updateSupplierIntelligence(
-          aiResult.analysis.contractorProfile,
-          aiResult.analysis
-        );
+      // 5. Update Supplier Scoreboard (INTERNAL ONLY)
+      if (aiResult.supplierScoreboardData) {
+        await SupplierScoringService.processSupplierQuote(
+          jobDoc._id,
+          {
+            ...aiResult.supplierScoreboardData,
+            rawText: extractedText
+          }
+        ).catch(err => logger.error('Supplier scoring failed:', err));
       }
 
       // Send email notification
@@ -387,29 +388,6 @@ class AIProcessor {
     return merged;
   }
 
-  async updateSupplierIntelligence(contractorProfile, analysis) {
-    try {
-      if (!contractorProfile.abn) return;
-
-      let supplier = await Supplier.findOne({ abn: contractorProfile.abn });
-
-      if (!supplier) {
-        supplier = await Supplier.create({
-          name: contractorProfile.name,
-          abn: contractorProfile.abn,
-          intelligence: {
-            totalQuotesSeen: 1,
-            redFlagCount: analysis.redFlags?.length || 0,
-            lastSeenDate: new Date()
-          }
-        });
-      } else {
-        await supplier.updateIntelligence({ redFlags: analysis.redFlags });
-      }
-    } catch (error) {
-      logger.error('Failed to update supplier intelligence:', error);
-    }
-  }
 
   /**
    * Refund / Revert usage if document is irrelevant

@@ -94,18 +94,21 @@ class JobController {
           // Use Paid Credit
           user.subscription.credits -= 1;
           user.subscription.reportsUsed = (user.subscription.reportsUsed || 0) + 1;
+
+          // Determine Tier (Premium or Standard)
           jobTier = user.subscription.plan === 'Premium' ? 'Premium' : 'Standard';
 
-          // If no credits left, transition back to Free plan
+          // If no credits left, transition back to Free plan IMMEDIATELY
           if (user.subscription.credits === 0) {
             user.subscription.plan = 'Free';
-            user.subscription.reportsTotal = 1; // Back to monthly free limit
-            // Reset reportsUsed for the Free monthly cycle if needed, 
-            // but let's keep it honest: they just used their "credits"
+            user.subscription.reportsTotal = 1; // Revert to monthly free limit capacity
+            // Reset reportsUsed for the Free monthly cycle if needed
+            // But usually we keep it so they can't use a free one right after if they already used it this month?
+            // User requested: "if used then back to free version"
           }
 
           await user.save();
-          logger.info(`Used 1 paid credit for user ${user._id}. Remaining: ${user.subscription.credits}. Plan reset: ${user.subscription.plan === 'Free'}`);
+          logger.info(`Used 1 paid credit for user ${user._id} (${jobTier}). Remaining: ${user.subscription.credits}.`);
         } else {
           // Check Free Monthly Limit (1 per month)
           const now = new Date();
@@ -616,6 +619,18 @@ class JobController {
 
         const result = await aiProcessor.createResult(jobShim, aiOutcome, job.tier);
 
+        // 3.1 Update Supplier Scoreboard
+        if (aiOutcome.supplierScoreboardData) {
+          const SupplierScoringService = require('../../services/supplier/SupplierScoringService');
+          await SupplierScoringService.processSupplierQuote(
+            job._id,
+            {
+              ...aiOutcome.supplierScoreboardData,
+              rawText: cappedText
+            }
+          ).catch(err => logger.error('Inline Supplier scoring failed:', err));
+        }
+
         job.result = result._id;
         job.status = 'completed';
         await job.updateProcessingStep('analysis', 'completed');
@@ -694,6 +709,70 @@ class JobController {
     } catch (error) {
       logger.error('Failed to generate report:', error);
       res.status(500).json({ success: false, error: 'Failed to generate PDF report' });
+    }
+  }
+
+  /**
+   * Compare multiple quotes (Premium)
+   */
+  async compareQuotes(req, res, next) {
+    try {
+      const { jobIds } = req.body;
+      if (!jobIds || !Array.isArray(jobIds) || jobIds.length < 2) {
+        return res.status(400).json({
+          success: false,
+          error: 'At least two job IDs are required for comparison'
+        });
+      }
+
+      // 1. Fetch all jobs and their results
+      const jobs = await Job.find({ jobId: { $in: jobIds } }).populate('result');
+
+      if (jobs.length < jobIds.length) {
+        return res.status(404).json({
+          success: false,
+          error: 'One or more jobs not found'
+        });
+      }
+
+      // 2. Security: Check ownership for all jobs
+      if (req.user) {
+        const unauthorized = jobs.some(job => {
+          const jobUserId = job.userId?._id || job.userId;
+          return jobUserId && jobUserId.toString() !== req.user._id.toString();
+        });
+        if (unauthorized) {
+          return res.status(403).json({ success: false, error: 'Access denied: One or more jobs do not belong to you' });
+        }
+      }
+
+      // 3. Extract text from results for comparison
+      // We assume results are already processed. If not, we can't compare.
+      const processedResults = jobs.filter(j => j.result).map(j => ({
+        jobId: j.jobId,
+        name: j.metadata?.title || 'Quote',
+        cost: j.result.overallCost || 0,
+        rawText: j.result.detailedReview // Use detailedReview as a proxy for the full extracted text if full text isn't saved in Result
+      }));
+
+      if (processedResults.length < 2) {
+        return res.status(400).json({ success: false, error: 'Detailed results missing for one or more jobs' });
+      }
+
+      // 4. Call AI to compare
+      const AIOrchestrator = require('../../services/ai/AIOrchestrator');
+      const comparisonData = await AIOrchestrator.compareQuotes(processedResults);
+
+      res.json({
+        success: true,
+        data: {
+          jobIds,
+          comparison: comparisonData
+        }
+      });
+    } catch (error) {
+      logger.error('Comparison error:', error);
+      next(error);
     }
   }
 }

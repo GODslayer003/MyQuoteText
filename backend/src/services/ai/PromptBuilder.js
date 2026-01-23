@@ -78,6 +78,26 @@ OUTPUT JSON SCHEMA (FREE ONLY):
   "contractorProfile": {
     "name": "string or null",
     "abn": "string or null"
+  },
+  "supplierScoreboardData": {
+    "supplierName": "string",
+    "tradingName": "string or null",
+    "abn": "string or null",
+    "phone": "string or null",
+    "email": "string or null",
+    "address": "string or null",
+    "quoteDate": "ISO date string or null",
+    "quoteNumber": "string or null",
+    "totalAmount": number,
+    "tradeCategory": "string",
+    "breakdownPresent": "boolean",
+    "inclusionsPresent": "boolean",
+    "exclusionsPresent": "boolean",
+    "specificScope": "boolean",
+    "vaguePhrasesCount": "number",
+    "hasProvisionalSum": "boolean",
+    "isLumpSumOnlyForMultiStep": "boolean",
+    "hasBroadRiskExclusion": "boolean"
   }
 }
 `;
@@ -162,6 +182,26 @@ OUTPUT JSON SCHEMA (PAID TIERS):
         "percentile": 45
       }
     ]
+  },
+  "supplierScoreboardData": {
+    "supplierName": "string",
+    "tradingName": "string or null",
+    "abn": "string or null",
+    "phone": "string or null",
+    "email": "string or null",
+    "address": "string or null",
+    "quoteDate": "ISO date string or null",
+    "quoteNumber": "string or null",
+    "totalAmount": number,
+    "tradeCategory": "e.g., Plumbing, Electrical, General Renovation",
+    "breakdownPresent": "boolean",
+    "inclusionsPresent": "boolean",
+    "exclusionsPresent": "boolean",
+    "specificScope": "boolean",
+    "vaguePhrasesCount": "number",
+    "hasProvisionalSum": "boolean",
+    "isLumpSumOnlyForMultiStep": "boolean",
+    "hasBroadRiskExclusion": "boolean"
   }
 }
 
@@ -241,20 +281,24 @@ COMPARISON RULES (STRICT):
 
 OUTPUT JSON SCHEMA:
 {
-  "comparison": {
+    "comparison": {
     "quotes": [
       {
-        "quoteId": "string",
-        "contractorName": "string",
-        "totalAmount": number,
+        "index": number,
+        "name": "string",
+        "cost": number,
         "strengths": ["string"],
         "weaknesses": ["string"]
       }
     ],
-    "relativePricing": "short description",
-    "valueAssessment": "scope vs price comparison",
-    "keyDifferences": ["string"],
-    "disclaimer": "Comparison is informational only."
+    "winner": {
+      "index": number,
+      "reason": "Detailed justification why this quote offers the best overall value for the client."
+    },
+    "relativePricing": "Comparative analysis of prices",
+    "valueAssessment": "Deep dive into scope differences vs price",
+    "keyDifferences": ["List of technical or service differences"],
+    "disclaimer": "Comparison is informational and based on 2026 Australian market rates."
   }
 }
 `;
@@ -262,26 +306,31 @@ OUTPUT JSON SCHEMA:
 
   /**
    * Build comparison user prompt
-   * IMPORTANT: Expects STRUCTURED summaries, not raw OCR
    */
-  static buildComparisonUserPrompt(quotes = [], metadata = {}) {
-    let prompt = `QUOTE SUMMARIES FOR COMPARISON:\n\n`;
+  static buildComparisonUserPrompt(quoteResults = [], metadata = {}) {
+    let prompt = `QUOTE ANALYSES FOR COMPARISON (AU 2026 MARKET):\n\n`;
 
-    quotes.forEach((quote, index) => {
-      prompt += `QUOTE ${index + 1} (ID: ${quote.quoteId}):\n`;
-      prompt += JSON.stringify(quote.summary, null, 2);
+    quoteResults.forEach((quote, index) => {
+      prompt += `QUOTE ${index + 1} (Name: ${quote.name}):\n`;
+      // Pass the actual processed result content
+      prompt += JSON.stringify({
+        jobId: quote.jobId,
+        cost: quote.cost,
+        analysis: quote.rawText
+      }, null, 2);
       prompt += `\n\n`;
     });
 
     if (metadata.workCategory) {
-      prompt += `Work Category: ${metadata.workCategory}\n`;
+      prompt += `Project Category: ${metadata.workCategory}\n`;
     }
 
     prompt += `
-IMPORTANT:
-- Compare ONLY the provided summaries.
-- Do NOT reference original documents.
-- Return output strictly in JSON format.
+INSTRUCTIONS:
+1. Identify the 'Winner' based on scope coverage, pricing fairness, and risk level.
+2. Provide a side-by-side technical comparison.
+3. Use Australian context and 2026 labor/material rates.
+4. Return output strictly in the specified JSON format.
 `;
 
     return prompt;

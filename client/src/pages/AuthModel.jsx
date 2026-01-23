@@ -56,9 +56,32 @@ const AuthModal = ({ isOpen, onClose }) => {
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [resetSent, setResetSent] = useState(false);
 
-  // ---------------------------
-  // Effects
-  // ---------------------------
+  // Captcha State
+  const [captchaToken, setCaptchaToken] = useState(null);
+  const [mathCaptcha, setMathCaptcha] = useState({ q: '', a: '' });
+  const [mathAnswer, setMathAnswer] = useState('');
+  const [isMathVerified, setIsMathVerified] = useState(false);
+  const [useRecaptcha, setUseRecaptcha] = useState(true); // Toggle between systems if needed, or use both.
+
+  useEffect(() => {
+    generateMathCaptcha();
+  }, [isOpen]);
+
+  const generateMathCaptcha = () => {
+    const n1 = Math.floor(Math.random() * 10) + 1;
+    const n2 = Math.floor(Math.random() * 10) + 1;
+    setMathCaptcha({ q: `${n1} + ${n2}`, a: (n1 + n2).toString() });
+    setMathAnswer('');
+    setIsMathVerified(false);
+  };
+
+  const verifyMathCaptcha = () => {
+    if (mathAnswer.trim() === mathCaptcha.a) {
+      setIsMathVerified(true);
+      return true;
+    }
+    return false;
+  };
   useEffect(() => {
     if (!isOpen) {
       resetForms();
@@ -163,16 +186,28 @@ const AuthModal = ({ isOpen, onClose }) => {
       return;
     }
 
-    const success = await login(loginData);
+    // Verify Captcha interaction
+    if (!verifyMathCaptcha()) {
+      setFieldErrors(prev => ({ ...prev, password: 'Incorrect security answer. Please try again.' }));
+      generateMathCaptcha(); // Reset on failure
+      return;
+    }
 
-    if (!success) {
-      const newAttempts = loginAttempts + 1;
-      setLoginAttempts(newAttempts);
+    const result = await login(loginData);
 
-      if (newAttempts >= 5) {
-        const lockTime = Date.now() + (2 * 60 * 60 * 1000);
-        setLockUntil(lockTime);
+    if (!result.success) {
+      // Check for lock info from backend
+      if (result.lockUntil) {
+        setLockUntil(new Date(result.lockUntil).getTime());
         setIsLocked(true);
+        setLoginAttempts(5); // Force lock state locally
+      } else {
+        // Increment attempts locally for immediate feedback (optional, but good for UI consistency)
+        const newAttempts = loginAttempts + 1;
+        setLoginAttempts(newAttempts);
+
+        // If we hit 5 local attempts but backend didn't lock yet (async sync issue?), 
+        // we can warn user, but backend is source of truth.
       }
     } else {
       setLoginAttempts(0);
@@ -513,6 +548,10 @@ const AuthModal = ({ isOpen, onClose }) => {
               isLocked={isLocked}
               onForgotPassword={switchToForgotPassword}
               onSwitchToSignup={switchToSignup}
+              widthMathCaptcha={mathCaptcha}
+              widthMathAnswer={mathAnswer}
+              setMathAnswer={setMathAnswer}
+              setRecaptchaToken={setCaptchaToken}
             />
           )}
 
@@ -577,7 +616,10 @@ const LoginForm = ({
   loading,
   isLocked,
   onForgotPassword,
-  onSwitchToSignup
+  onSwitchToSignup,
+  widthMathCaptcha,
+  widthMathAnswer,
+  setMathAnswer
 }) => (
   <form onSubmit={handleLoginSubmit} className="space-y-4">
     {/* Email */}
@@ -652,6 +694,22 @@ const LoginForm = ({
       {fieldErrors.password && (
         <p className="mt-1 text-xs text-red-600">{fieldErrors.password}</p>
       )}
+    </div>
+
+    {/* Temporary Math Captcha */}
+    <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+      <label className="block text-sm font-medium text-gray-700 mb-2">
+        Security Check: What is {widthMathCaptcha?.q || '2+2'}?
+      </label>
+      <div className="flex gap-2">
+        <input
+          type="text"
+          value={widthMathAnswer}
+          onChange={(e) => setMathAnswer(e.target.value)}
+          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
+          placeholder="Answer"
+        />
+      </div>
     </div>
 
     {/* Submit button */}

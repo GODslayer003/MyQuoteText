@@ -37,11 +37,12 @@ const getUserKey = (req) => {
 const globalLimiter = rateLimit({
   ...baseConfig,
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100,
+  max: 500, // Increased from 100 to avoid frequent 429s
   keyGenerator: getUserKey,
   skip: (req) =>
     req.path === '/health' ||
-    req.path === '/health/detailed'
+    req.path === '/health/detailed' ||
+    req.path.includes('/pricing') // Skip limiting for pricing to avoid frontend blockers
 });
 
 /**

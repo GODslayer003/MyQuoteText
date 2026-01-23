@@ -405,8 +405,10 @@ const Profile = () => {
   };
 
   const calculateProgress = () => {
-    if (!userData.subscription.reportsTotal) return 0;
-    return (userData.subscription.reportsUsed / userData.subscription.reportsTotal) * 100;
+    const total = userData.subscription?.reportsTotal || 1;
+    const credits = userData.subscription?.credits || 0;
+    const used = Math.max(0, total - credits);
+    return (used / total) * 100;
   };
 
   const getAvatarInitials = () => {
@@ -421,9 +423,9 @@ const Profile = () => {
   const getSubscriptionData = () => {
     const plan = userData.subscription?.plan || 'Free';
     const plans = {
-      'Free': { price: '0', reportsTotal: 1, color: 'from-gray-500 to-gray-600' },
-      'Standard': { price: '7.99', reportsTotal: 1, color: 'from-orange-500 to-amber-600' },
-      'Premium': { price: '9.99', reportsTotal: 3, color: 'from-gray-800 to-gray-900' }
+      'Free': { price: '0', reportsTotal: 1, label: 'Free', color: 'from-gray-500 to-gray-600' },
+      'Standard': { price: '7.99', reportsTotal: 1, label: 'per report', color: 'from-orange-500 to-amber-600' },
+      'Premium': { price: '9.99', reportsTotal: 3, label: 'for 3 reports', color: 'from-gray-800 to-gray-900' }
     };
 
     return plans[plan] || plans['Free'];
@@ -740,7 +742,9 @@ const Profile = () => {
                 <div className="text-right">
                   <p className="text-3xl font-bold text-gray-900">
                     ${getSubscriptionData().price}
-                    <span className="text-lg text-gray-600">/month</span>
+                    <span className="text-lg text-gray-600 ml-1">
+                      {getSubscriptionData().label === 'Free' ? '' : `/ ${getSubscriptionData().label}`}
+                    </span>
                   </p>
                 </div>
               </div>
@@ -770,10 +774,10 @@ const Profile = () => {
               <div className="mb-6">
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-gray-700 font-medium">
-                    {userData.subscription?.reportsUsed || 0} of {userData.subscription?.reportsTotal || 1} reports used
+                    {userData.subscription?.credits || 0} reports available in current plan
                   </span>
                   <span className="text-orange-600 font-semibold">
-                    {Math.round((userData.subscription?.reportsUsed || 0) / (userData.subscription?.reportsTotal || 1) * 100)}%
+                    {Math.round(calculateProgress())}% used
                   </span>
                 </div>
 
@@ -787,13 +791,15 @@ const Profile = () => {
 
               <div className="grid grid-cols-3 gap-4">
                 <div className="text-center p-4 bg-gray-50 rounded-lg">
-                  <p className="text-gray-600 text-sm">Reports Used</p>
-                  <p className="text-2xl font-bold text-gray-900 mt-2">{userData.subscription?.reportsUsed || 0}</p>
+                  <p className="text-gray-600 text-sm">Credits Used</p>
+                  <p className="text-2xl font-bold text-gray-900 mt-2">
+                    {Math.max(0, (userData.subscription?.reportsTotal || 1) - (userData.subscription?.credits || 0))}
+                  </p>
                 </div>
                 <div className="text-center p-4 bg-gray-50 rounded-lg">
                   <p className="text-gray-600 text-sm">Remaining</p>
                   <p className="text-2xl font-bold text-orange-600 mt-2">
-                    {(userData.subscription?.reportsTotal || 1) - (userData.subscription?.reportsUsed || 0)}
+                    {userData.subscription?.credits || 0}
                   </p>
                 </div>
                 <div className="text-center p-4 bg-gray-50 rounded-lg">
@@ -809,12 +815,15 @@ const Profile = () => {
 
               <div className="space-y-4">
                 {[
-                  { feature: 'Document Analysis', included: true },
-                  { feature: 'Basic Reports', included: true },
-                  { feature: 'Email Support', included: true },
-                  { feature: 'Advanced Analytics', included: userData.subscription?.plan !== 'Free' },
-                  { feature: 'Priority Support', included: userData.subscription?.plan === 'Premium' },
-                  { feature: 'API Access', included: userData.subscription?.plan === 'Premium' }
+                  { feature: 'AI Summary Analysis', included: true },
+                  { feature: 'Fair Price Verdict', included: true },
+                  { feature: 'Detailed Cost Breakdown', included: userData.subscription?.plan !== 'Free' },
+                  { feature: 'Red Flag Detection', included: userData.subscription?.plan !== 'Free' },
+                  { feature: 'Questions to Ask Tradie', included: userData.subscription?.plan !== 'Free' },
+                  { feature: 'Professional PDF Reports', included: userData.subscription?.plan !== 'Free' },
+                  { feature: 'Multiple Quote Comparison', included: userData.subscription?.plan === 'Premium' },
+                  { feature: 'Market Benchmarking', included: userData.subscription?.plan === 'Premium' },
+                  { feature: 'Savings Recommendations', included: userData.subscription?.plan === 'Premium' }
                 ].map((item, idx) => (
                   <div key={idx} className="flex items-center gap-3 p-3 hover:bg-gray-50 rounded-lg transition-colors">
                     <div className={`w-5 h-5 rounded flex items-center justify-center ${item.included ? 'bg-green-100' : 'bg-gray-100'}`}>
@@ -1340,9 +1349,9 @@ const Profile = () => {
               <h3 className="font-semibold text-gray-900 mb-4">Quick Stats</h3>
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-600">Reports Used</span>
+                  <span className="text-gray-600">Credits Available</span>
                   <span className="font-semibold text-gray-900">
-                    {userData.subscription.reportsUsed}/{userData.subscription.reportsTotal}
+                    {userData.subscription.credits || 0}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">

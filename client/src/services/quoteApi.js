@@ -114,6 +114,12 @@ class QuoteApi {
     });
     return response.data;
   }
+
+  // Compare multiple quotes (Premium only)
+  async compareQuotes(jobIds) {
+    const response = await api.post('/jobs/compare', { jobIds });
+    return response.data.data;
+  }
 }
 
 export default new QuoteApi();

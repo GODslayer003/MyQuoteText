@@ -72,8 +72,8 @@ const Landing = () => {
   const trustIndicators = [
     { icon: <Clock className="w-5 h-5" />, text: "Results in seconds" },
     { icon: <Shield className="w-5 h-5" />, text: "Data encrypted & secure" },
-    { icon: <DollarSign className="w-5 h-5" />, text: "One-time $29.99 AUD" },
-    { icon: <CheckCircle className="w-5 h-5" />, text: "7-day satisfaction guarantee" }
+    { icon: <DollarSign className="w-5 h-5" />, text: "Tier features for Quotation" },
+    { icon: <CheckCircle className="w-5 h-5" />, text: "Trusted by Australians" }
   ];
 
   const testimonials = [
@@ -160,16 +160,16 @@ const Landing = () => {
             </div>
 
             {/* Trust Indicators */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 max-w-2xl mx-auto px-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 max-w-4xl mx-auto px-4 mt-8 sm:mt-12">
               {trustIndicators.map((indicator, index) => (
                 <div
                   key={index}
-                  className="flex items-center gap-2 sm:gap-3 bg-white/80 backdrop-blur-sm px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg border border-gray-200 hover:border-orange-300 transition-all duration-200 hover:shadow-sm"
+                  className="flex flex-col sm:flex-row items-center sm:items-start gap-2 sm:gap-3 bg-white/80 backdrop-blur-sm px-3 sm:px-4 py-3 sm:py-4 rounded-xl border border-gray-200 hover:border-orange-300 transition-all duration-200 hover:shadow-md hover:-translate-y-1"
                 >
-                  <div className="text-orange-500 bg-orange-50 p-1.5 sm:p-2 rounded-lg">
+                  <div className="text-orange-500 bg-orange-50 p-2 sm:p-2.5 rounded-xl shadow-sm shrink-0">
                     {indicator.icon}
                   </div>
-                  <span className="text-xs sm:text-sm text-gray-700 font-medium truncate">{indicator.text}</span>
+                  <span className="text-[10px] sm:text-xs text-gray-700 font-bold leading-tight uppercase tracking-wider">{indicator.text}</span>
                 </div>
               ))}
             </div>

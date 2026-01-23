@@ -78,6 +78,13 @@ router.patch(
   JobController.submitRating
 );
 
+// Compare multiple jobs (Premium)
+router.post(
+  '/compare',
+  authMiddleware.optionalAuth,
+  JobController.compareQuotes.bind(JobController)
+);
+
 // Generate Professional PDF Report
 router.get(
   '/:jobId/report',

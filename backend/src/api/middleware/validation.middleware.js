@@ -11,7 +11,7 @@ const validateRegistration = (req, res, next) => {
     password: Joi.string().min(8).required(),
     firstName: Joi.string().required(),
     lastName: Joi.string().required(),
-    phone: Joi.string().optional()
+    phone: Joi.string().required()
   });
 
   const { error, value } = schema.validate(req.body, { abortEarly: false, stripUnknown: true });

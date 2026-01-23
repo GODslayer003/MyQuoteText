@@ -75,19 +75,18 @@ const Pricing = () => {
       cta: "Get Started Free",
       icon: <Eye className="w-6 h-6" />,
       features: [
-        { included: true, text: "Basic AI summary analysis" },
-        { included: true, text: "Fair price verdict" },
-        { included: true, text: "Essential questions to ask" },
+        { included: true, text: "AI overview summary" },
+        { included: true, text: "Fair price verdict & score" },
         { included: false, text: "Red flag detection", premium: false },
+        { included: false, text: "Questions to ask tradie", premium: false },
         { included: false, text: "Detailed cost breakdown", premium: false },
-        { included: false, text: "Standard PDF reports", premium: false },
+        { included: false, text: "Professional PDF reports", premium: false },
         { included: false, text: "Market benchmarking", premium: true },
         { included: false, text: "Multiple quote comparison", premium: true },
-        { included: false, text: "Priority 24h processing", premium: true },
       ],
       limitations: [
-        "Summary-only reports",
-        "No detailed analysis",
+        "Basic overview only",
+        "No red flags/questions",
         "No PDF downloads"
       ],
       bestFor: "Quick checks, basic validation"
@@ -95,9 +94,9 @@ const Pricing = () => {
     {
       name: "Standard",
       tier: "standard",
-      tagline: "For confident decisions",
+      tagline: "One-time payment for 1 professional analysis",
       price: "7.99",
-      period: "per report",
+      period: "per payment",
       popular: true,
       color: "from-orange-500 to-amber-600",
       textColor: "text-orange-600",
@@ -106,7 +105,7 @@ const Pricing = () => {
       cta: "Buy 1 Report",
       icon: <Zap className="w-6 h-6" />,
       features: [
-        { included: true, text: "Complete AI analysis" },
+        { included: true, text: "Complete AI analysis (1 credit)" },
         { included: true, text: "Detailed cost breakdown" },
         { included: true, text: "Item-by-item assessment" },
         { included: true, text: "Standard PDF export" },
@@ -116,35 +115,35 @@ const Pricing = () => {
         { included: false, text: "Market benchmarking", premium: true },
         { included: false, text: "Priority 24h processing", premium: true },
       ],
-      savings: "One-time payment",
+      savings: "Reverts to Free after use",
       included: "Everything in Free, plus:",
       bestFor: "Single quotes, detailed analysis"
     },
     {
       name: "Premium",
       tier: "premium",
-      tagline: "Master complex projects",
+      tagline: "Total control over complex projects",
       price: "9.99",
-      period: "per report",
+      period: "per payment",
       popular: false,
       color: "from-black to-gray-900",
       textColor: "text-black",
       border: "border-gray-800",
       button: "bg-black hover:bg-gray-900 text-white",
-      cta: "Get Premium Report",
+      cta: "Buy 3 Reports",
       icon: <Crown className="w-6 h-6" />,
       features: [
-        { included: true, text: "Everything in Standard" },
-        { included: true, text: "Compare 2-3 quotes side-by-side" },
+        { included: true, text: "Credits for 3 analyses" },
+        { included: true, text: "Compare 3 quotes side-by-side" },
         { included: true, text: "Market rate benchmarking" },
         { included: true, text: "Advanced recommendations" },
         { included: true, text: "Priority 24h processing" },
         { included: true, text: "Bulk upload (up to 3 quotes)" },
-        { included: true, text: "Trend analysis reports" },
+        { included: true, text: "Detailed cost breakdown" },
         { included: true, text: "Dedicated support channel" },
         { included: true, text: "Export to spreadsheet" },
       ],
-      savings: "One-time payment",
+      savings: "Reverts to Free after 3 uses",
       included: "Everything in Standard, plus:",
       bestFor: "Multiple quotes, complex projects"
     }
@@ -235,15 +234,15 @@ const Pricing = () => {
 
 
   const tableData = [
-    { feature: "AI Summary Analysis", Free: "✓", Standard: "✓", Premium: "✓" },
-    { feature: "Detailed Cost Breakdown", Free: "—", Standard: "✓", Premium: "✓" },
-    { feature: "Standard PDF Export", Free: "—", Standard: "✓", Premium: "✓" },
-    { feature: "Save & Organize Quotes", Free: "—", Standard: "✓", Premium: "✓" },
+    { feature: "AI Overview Summary", Free: "✓", Standard: "✓", Premium: "✓" },
+    { feature: "Fair Price Verdict", Free: "✓", Standard: "✓", Premium: "✓" },
     { feature: "Red Flag Detection", Free: "—", Standard: "✓", Premium: "✓" },
+    { feature: "Sectioned Questions to Ask", Free: "—", Standard: "✓", Premium: "✓" },
+    { feature: "Detailed Cost Breakdown", Free: "—", Standard: "✓", Premium: "✓" },
+    { feature: "Professional PDF Export", Free: "—", Standard: "✓", Premium: "✓" },
     { feature: "Multiple Quote Comparison", Free: "—", Standard: "—", Premium: "✓" },
     { feature: "Market Rate Benchmarking", Free: "—", Standard: "—", Premium: "✓" },
-    { feature: "Priority 24h Processing", Free: "—", Standard: "—", Premium: "✓" },
-    { feature: "Bulk Upload (3 quotes)", Free: "—", Standard: "—", Premium: "✓" },
+    { feature: "Bulk Upload (Up to 3 quotes)", Free: "—", Standard: "—", Premium: "✓" },
     { feature: "Trend Analysis Reports", Free: "—", Standard: "—", Premium: "✓" }
   ];
 
@@ -325,7 +324,7 @@ const Pricing = () => {
   const faqs = [
     {
       question: "What's the difference between Free and Standard?",
-      answer: "Free gives you a basic summary and red flag detection for free. Standard provides complete, detailed analysis with cost breakdowns and PDF reports."
+      answer: "Free gives you a basic overview and a price verdict. Standard provides deep analysis including red flags, a line-by-line cost breakdown, and professional PDF reports."
     },
     {
       question: "Do I need to sign up to use the free Free plan?",
@@ -606,19 +605,19 @@ const Pricing = () => {
                   {/* Price Row */}
                   <div className="grid grid-cols-4 border-b border-gray-200 bg-gray-50">
                     <div className="p-3 text-sm text-gray-500 font-medium">
-                      Monthly Price
+                      Price
                     </div>
                     <div className="p-3 text-center">
                       <div className="text-2xl font-bold text-gray-900">$0</div>
-                      <div className="text-xs text-gray-500">Free forever</div>
+                      <div className="text-xs text-gray-500">Pay nothing</div>
                     </div>
                     <div className="p-3 text-center bg-orange-50">
                       <div className="text-2xl font-bold text-orange-600">$7.99</div>
-                      <div className="text-xs text-orange-500">Most popular</div>
+                      <div className="text-xs text-orange-500">Per Report</div>
                     </div>
                     <div className="p-3 text-center">
                       <div className="text-2xl font-bold text-gray-900">$9.99</div>
-                      <div className="text-xs text-gray-500">Best value</div>
+                      <div className="text-xs text-gray-500">For 3 Reports</div>
                     </div>
                   </div>
 

@@ -26,8 +26,10 @@ import {
   Download,
   FileUp,
   AlertCircle,
-  Zap
+  Zap,
+  Mail
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../providers/AuthProvider';
 import { toast } from 'react-hot-toast';
 import quoteApi from '../services/quoteApi';
@@ -35,6 +37,7 @@ import jobPollingService from '../services/jobPollingService';
 import AnalysisResults from '../components/AnalysisResults';
 
 const CheckQuote = () => {
+  const navigate = useNavigate();
   const { user, isAuthenticated, requestLogin } = useAuth();
   const [isVisible, setIsVisible] = useState(false);
   const [uploadMethod, setUploadMethod] = useState('file'); // 'file' or 'text'
@@ -51,6 +54,11 @@ const CheckQuote = () => {
   const [jobStatus, setJobStatus] = useState(null);
   const [jobResult, setJobResult] = useState(null);
   const [limitError, setLimitError] = useState(null);
+  const [showGuestModal, setShowGuestModal] = useState(false);
+  const [guestEmail, setGuestEmail] = useState('');
+  const [guestEmailError, setGuestEmailError] = useState('');
+  const [comparisonQuotes, setComparisonQuotes] = useState([]);
+  const [isComparisonMode, setIsComparisonMode] = useState(false);
 
   const fileInputRef = useRef(null);
 
@@ -237,24 +245,73 @@ const CheckQuote = () => {
   };
 
   const handleAnalyzeQuote = async () => {
-    if (!isAuthenticated) return handleSignIn();
     if (!validateForm()) return;
 
+    if (!isAuthenticated) {
+      setShowGuestModal(true);
+      return;
+    }
+
+    // Authenticated users go straight to analysis
+    setError(null);
+    setSuccess(null);
+    setIsAnalyzing(true);
+    performAnalysis();
+  };
+
+  const resetToUpload = () => {
+    setPhase('upload');
+    setFile(null);
+    setQuoteText('');
+    setExtractedText('');
+    setCurrentJob(null);
+    setJobStatus(null);
+    setJobResult(null);
+    setError(null);
+    setLimitError(null);
+    setSuccess(null);
+
+    // Stop any polling
+    if (currentJob?.jobId) {
+      jobPollingService.stopPolling(currentJob.jobId);
+    }
+  };
+
+  const handleGuestSubmit = (e) => {
+    e.preventDefault();
+    if (!guestEmail || !guestEmail.includes('@')) {
+      setGuestEmailError('Please enter a valid email address');
+      return;
+    }
+    setGuestEmailError('');
+    setShowGuestModal(false);
+
+    // Proceed with analysis after modal closure
     setError(null);
     setSuccess(null);
     setIsAnalyzing(true);
 
+    // Tiny delay to ensure modal closure is smooth before starting heavy logic
+    setTimeout(() => {
+      performAnalysis();
+    }, 300);
+  };
+
+  const performAnalysis = async () => {
+    // Moved the core logic from handleAnalyzeQuote here
     try {
       let jobData;
+      const analysisEmail = isAuthenticated ? user?.email : guestEmail;
+      const analysisTier = isAuthenticated ? (user?.subscription?.plan?.toLowerCase() || 'free') : 'free';
 
       if (uploadMethod === 'file' && file) {
         // Upload PDF file
         jobData = await quoteApi.createJob({
-          email: user?.email,
+          email: analysisEmail,
           file,
-          tier: user?.subscription?.plan?.toLowerCase() || 'free',
+          tier: analysisTier,
           metadata: {
-            source: 'web_upload',
+            source: isAuthenticated ? 'web_upload' : 'guest_upload',
             title: file.name.replace('.pdf', ''),
             method: 'file_upload'
           }
@@ -265,11 +322,11 @@ const CheckQuote = () => {
         const textFile = new File([textBlob], 'quote-text.txt', { type: 'text/plain' });
 
         jobData = await quoteApi.createJob({
-          email: user?.email,
+          email: analysisEmail,
           file: textFile,
-          tier: user?.subscription?.plan?.toLowerCase() || 'free',
+          tier: analysisTier,
           metadata: {
-            source: 'web_upload',
+            source: isAuthenticated ? 'web_upload' : 'guest_upload',
             title: 'Text Quote Analysis',
             method: 'text_input',
             textLength: quoteText.length
@@ -289,7 +346,34 @@ const CheckQuote = () => {
             console.log('Job status update:', status);
           },
           async (result) => {
-            setJobResult(result);
+            // Enhanced logic for Premium Comparison
+            if (isComparisonMode && comparisonQuotes.length > 0) {
+              const loadingToast = toast.loading('Analyzing & Comparing quotes...');
+              try {
+                // We have one more result now, add it to the comparison set
+                const currentResults = [...comparisonQuotes, result];
+
+                // If we have at least 2 quotes, call the comparison API
+                const comparisonResult = await quoteApi.compareQuotes(currentResults.map(q => q.jobId));
+
+                // Update final result to include comparison details
+                const combinedResult = {
+                  ...result,
+                  quoteComparison: comparisonResult.comparison
+                };
+
+                setJobResult(combinedResult);
+                setComparisonQuotes(currentResults); // Update the set with new one
+                toast.success('Quotes compared successfully!', { id: loadingToast });
+              } catch (err) {
+                console.error('Comparison error:', err);
+                toast.error('Could not compare quotes, showing single result.', { id: loadingToast });
+                setJobResult(result);
+              }
+            } else {
+              setJobResult(result);
+            }
+
             setSuccess('Analysis completed successfully!');
             setPhase('result');
             setIsAnalyzing(false);
@@ -302,15 +386,17 @@ const CheckQuote = () => {
         );
 
         // Add to history
-        const newHistoryItem = {
-          id: jobData.jobId,
-          name: file ? file.name.replace('.pdf', '') : 'Text Quote Analysis',
-          date: 'Just now',
-          quote: quoteText.substring(0, 50) + '...',
-          status: 'processing',
-          jobData
-        };
-        setChatHistory(prev => [newHistoryItem, ...prev]);
+        if (isAuthenticated) {
+          const newHistoryItem = {
+            id: jobData.jobId,
+            name: file ? file.name.replace('.pdf', '') : 'Text Quote Analysis',
+            date: 'Just now',
+            quote: quoteText.substring(0, 50) + '...',
+            status: 'processing',
+            jobData
+          };
+          setChatHistory(prev => [newHistoryItem, ...prev]);
+        }
       }
     } catch (err) {
       console.error('Analysis error:', err);
@@ -330,24 +416,6 @@ const CheckQuote = () => {
         setLimitError(null);
       }
       setIsAnalyzing(false);
-    }
-  };
-
-  const resetToUpload = () => {
-    setPhase('upload');
-    setFile(null);
-    setQuoteText('');
-    setExtractedText('');
-    setCurrentJob(null);
-    setJobStatus(null);
-    setJobResult(null);
-    setError(null);
-    setLimitError(null);
-    setSuccess(null);
-
-    // Stop any polling
-    if (currentJob?.jobId) {
-      jobPollingService.stopPolling(currentJob.jobId);
     }
   };
 
@@ -465,6 +533,22 @@ INSURANCE: $20M Public Liability
 WARRANTY: 6 years on workmanship`
     }
   ];
+
+  const handleStartComparison = () => {
+    // Save current job result to comparison array
+    if (jobResult && !comparisonQuotes.find(q => q.jobId === jobResult.jobId)) {
+      setComparisonQuotes(prev => [...prev, jobResult]);
+    }
+
+    // Switch back to upload phase for the next quote
+    setPhase('upload');
+    setIsComparisonMode(true);
+    setFile(null);
+    setQuoteText('');
+    setSuccess(null);
+    setError(null);
+    setLimitError(null);
+  };
 
   const insertSampleQuote = (text) => {
     setQuoteText(text);
@@ -943,6 +1027,69 @@ WARRANTY: 6 years on workmanship`
                       </div>
                     </div>
 
+                    {/* Comparison Mode Active Banner */}
+                    {isComparisonMode && (
+                      <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-xl flex items-center justify-between animate-in fade-in slide-in-from-top-2 duration-300">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 bg-blue-500 rounded-lg">
+                            <Search className="w-5 h-5 text-white" />
+                          </div>
+                          <div>
+                            <p className="font-bold text-blue-900">Multi-Quote Comparison Active</p>
+                            <p className="text-sm text-blue-700">
+                              Next quote will be compared with <span className="font-black">{comparisonQuotes.length}</span> previous quote{comparisonQuotes.length !== 1 ? 's' : ''}.
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => {
+                            setIsComparisonMode(false);
+                            setComparisonQuotes([]);
+                            toast.success('Comparison mode cleared');
+                          }}
+                          className="text-xs font-bold text-blue-600 hover:text-blue-800 underline uppercase tracking-wider"
+                        >
+                          Done Comparing
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Limit Error State */}
+                    {limitError && (
+                      <div className="mb-8 p-6 bg-amber-50 border border-amber-200 rounded-2xl animate-in slide-in-from-bottom-4 duration-300">
+                        <div className="flex items-start gap-4">
+                          <div className="p-3 bg-amber-100 rounded-xl">
+                            <Clock className="w-6 h-6 text-amber-600" />
+                          </div>
+                          <div className="flex-1">
+                            <h3 className="text-xl font-bold text-gray-900 mb-2">{limitError.title}</h3>
+                            <p className="text-gray-700 mb-6 leading-relaxed">
+                              {limitError.message} You can use our free analysis tool again in{" "}
+                              <span className="font-bold text-amber-700">
+                                {Math.ceil((limitError.nextDate - new Date()) / (1024 * 60 * 60 * 24))} days
+                              </span>.
+                            </p>
+
+                            <div className="flex flex-col sm:flex-row gap-3">
+                              <button
+                                onClick={() => navigate('/pricing')}
+                                className="flex-1 py-4 bg-gray-900 text-white rounded-xl font-bold hover:bg-gray-800 transition-all flex items-center justify-center gap-2"
+                              >
+                                <Zap className="w-5 h-5 text-orange-400" />
+                                Upgrade for Instant Access
+                              </button>
+                              <button
+                                onClick={resetToUpload}
+                                className="px-6 py-4 border border-gray-200 text-gray-600 rounded-xl font-semibold hover:bg-white transition-all"
+                              >
+                                Got it
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
                     {/* Analyze Button */}
                     <button
                       onClick={handleAnalyzeQuote}
@@ -1038,10 +1185,28 @@ WARRANTY: 6 years on workmanship`
                     </div>
 
                     {jobResult && (
-                      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm">
+                      <div className="mt-12">
+                        {!isAuthenticated && (
+                          <div className="mb-6 p-4 bg-orange-100 border border-orange-200 rounded-xl flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <Shield className="w-5 h-5 text-orange-600" />
+                              <div>
+                                <p className="font-bold text-gray-900">Guest Analysis Mode</p>
+                                <p className="text-sm text-gray-700">Create an account to save this analysis to your history!</p>
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => requestLogin('/check-quote')}
+                              className="px-4 py-2 bg-orange-500 text-white rounded-lg font-bold text-sm hover:bg-orange-600 transition-colors"
+                            >
+                              Sign Up Now
+                            </button>
+                          </div>
+                        )}
                         <AnalysisResults
                           jobResult={jobResult}
-                          userTier={user?.subscription?.plan?.toLowerCase() || 'free'}
+                          userTier={isAuthenticated ? (user?.subscription?.plan?.toLowerCase() || 'free') : 'free'}
+                          onCompare={handleStartComparison}
                         />
                       </div>
                     )}
@@ -1113,6 +1278,64 @@ WARRANTY: 6 years on workmanship`
           </div>
         </div>
       </section>
+
+      {/* Guest Email Modal */}
+      {showGuestModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl w-full max-w-md p-8 shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="flex justify-between items-start mb-6">
+              <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
+                <Mail className="w-6 h-6 text-orange-600" />
+              </div>
+              <button
+                onClick={() => setShowGuestModal(false)}
+                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+              >
+                <X className="w-5 h-5 text-gray-400" />
+              </button>
+            </div>
+
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Analyzing as Guest</h2>
+            <p className="text-gray-600 mb-6">
+              Enter your email address to receive your free analysis results and get notified when it's ready.
+            </p>
+
+            <form onSubmit={handleGuestSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Email Address
+                </label>
+                <input
+                  type="email"
+                  value={guestEmail}
+                  onChange={(e) => setGuestEmail(e.target.value)}
+                  placeholder="name@example.com"
+                  className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-orange-500 focus:outline-none transition-all ${guestEmailError ? 'border-red-500 bg-red-50' : 'border-gray-200 bg-gray-50'
+                    }`}
+                  autoFocus
+                />
+                {guestEmailError && (
+                  <p className="mt-1.5 text-sm text-red-600 font-medium flex items-center gap-1">
+                    <AlertCircle className="w-4 h-4" />
+                    {guestEmailError}
+                  </p>
+                )}
+              </div>
+
+              <button
+                type="submit"
+                className="w-full py-4 bg-gradient-to-r from-orange-500 to-amber-600 text-white rounded-xl font-bold text-lg hover:shadow-xl hover:shadow-orange-500/30 transition-all"
+              >
+                Start Analysis
+              </button>
+
+              <p className="text-center text-xs text-gray-500 mt-4">
+                By continuing, you agree to our Terms of Service and Privacy Policy. We'll only email you about your analysis.
+              </p>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Custom Animations */}
 
