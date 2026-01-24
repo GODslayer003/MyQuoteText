@@ -9,7 +9,7 @@ import PaymentsTable from '../components/PaymentsTable';
 
 const DashboardPage = () => {
   const dispatch = useDispatch();
-  const { stats, users, payments, loading, error } = useSelector(state => state.dashboard);
+  const { stats, users, payments, loading, error, pagination } = useSelector(state => state.dashboard);
 
   useEffect(() => {
     refreshData();
@@ -17,8 +17,8 @@ const DashboardPage = () => {
 
   const refreshData = () => {
     dispatch(fetchAdminStats());
-    dispatch(fetchUsers({ page: 1, limit: 10 }));
-    dispatch(fetchPayments({ page: 1, limit: 10 }));
+    dispatch(fetchUsers({ page: 1, limit: 5 }));
+    dispatch(fetchPayments({ page: 1, limit: 5 }));
   };
 
   if (loading && !stats.totalUsers) {
@@ -31,6 +31,10 @@ const DashboardPage = () => {
       </div>
     );
   }
+
+  // Get dynamic names if available
+  const standardInfo = stats.pricing?.find(p => p.tier === 'standard');
+  const premiumInfo = stats.pricing?.find(p => p.tier === 'premium');
 
   return (
     <div className="space-y-8 pb-8">
@@ -64,36 +68,46 @@ const DashboardPage = () => {
           value={stats.totalUsers || 0}
           icon={<Users className="w-8 h-8" />}
           color="orange"
-          trend="+12% this month"
+          trend={stats.userGrowth !== undefined ? `${stats.userGrowth >= 0 ? '+' : ''}${stats.userGrowth}% this month` : 'Loading...'}
         />
         <StatCard
           title="Total Jobs"
           value={stats.totalJobs || 0}
           icon={<FileText className="w-8 h-8" />}
           color="indigo"
-          trend="Active now"
+          trend={stats.jobGrowth !== undefined ? `${stats.jobGrowth >= 0 ? '+' : ''}${stats.jobGrowth}% this month` : 'Loading...'}
         />
         <StatCard
-          title="Standard Purchases"
+          title={`${standardInfo?.name || 'Standard'} ($${standardInfo?.price || '7.99'})`}
           value={stats.standardPurchases || 0}
           icon={<CreditCard className="w-8 h-8" />}
           color="blue"
-          trend="+8% this month"
+          trend={stats.standardGrowth !== undefined ? `${stats.standardGrowth >= 0 ? '+' : ''}${stats.standardGrowth}% this month` : 'Loading...'}
         />
         <StatCard
-          title="Premium Purchases"
+          title={`${premiumInfo?.name || 'Premium'} ($${premiumInfo?.price || '9.99'})`}
           value={stats.premiumPurchases || 0}
           icon={<TrendingUp className="w-8 h-8" />}
           color="green"
-          trend="+5% this month"
+          trend={stats.premiumGrowth !== undefined ? `${stats.premiumGrowth >= 0 ? '+' : ''}${stats.premiumGrowth}% this month` : 'Loading...'}
         />
       </div>
 
       {/* Users Table */}
-      <UsersTable users={users} loading={loading} />
+      <UsersTable
+        users={users}
+        loading={loading}
+        pagination={pagination.users}
+        onPageChange={(page) => dispatch(fetchUsers({ page, limit: 5 }))}
+      />
 
       {/* Payments Table */}
-      <PaymentsTable payments={payments} loading={loading} />
+      <PaymentsTable
+        payments={payments}
+        loading={loading}
+        pagination={pagination.payments}
+        onPageChange={(page) => dispatch(fetchPayments({ page, limit: 5 }))}
+      />
     </div>
   );
 };

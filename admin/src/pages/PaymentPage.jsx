@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, DollarSign, Loader2 } from 'lucide-react';
 import api from '../services/api';
+import PaymentsTable from '../components/PaymentsTable';
 
 const PaymentPage = () => {
   const [pricing, setPricing] = useState([]);
@@ -17,10 +18,14 @@ const PaymentPage = () => {
   });
   const [revenueStats, setRevenueStats] = useState({ totalRevenue: 0, transactionCount: 0 });
   const [newFeature, setNewFeature] = useState('');
+  const [payments, setPayments] = useState([]);
+  const [paymentsPagination, setPaymentsPagination] = useState({ page: 1, limit: 10, total: 0 });
+  const [paymentsLoading, setPaymentsLoading] = useState(false);
 
   useEffect(() => {
     fetchPricing();
     fetchRevenueStats();
+    fetchPayments(1);
   }, []);
 
   const fetchRevenueStats = async () => {
@@ -42,6 +47,21 @@ const PaymentPage = () => {
       setError(err.response?.data?.error || 'Failed to fetch pricing');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchPayments = async (page = 1) => {
+    try {
+      setPaymentsLoading(true);
+      const response = await api.get('/admin/payments', {
+        params: { page, limit: 10 }
+      });
+      setPayments(response.data.data);
+      setPaymentsPagination(response.data.pagination || { page, limit: 10, total: response.data.data.length });
+    } catch (err) {
+      console.error('Failed to fetch payments:', err);
+    } finally {
+      setPaymentsLoading(false);
     }
   };
 
@@ -320,6 +340,16 @@ const PaymentPage = () => {
           ))}
         </div>
       )}
+
+      {/* Payments Table */}
+      <div className="mt-12">
+        <PaymentsTable
+          payments={payments}
+          loading={paymentsLoading}
+          pagination={paymentsPagination}
+          onPageChange={fetchPayments}
+        />
+      </div>
     </div>
   );
 };

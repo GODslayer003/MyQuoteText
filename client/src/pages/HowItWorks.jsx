@@ -65,8 +65,8 @@ const HowItWorks = () => {
     },
     {
       icon: <DollarSign className="w-6 h-6" />,
-      title: "One-Time Fee",
-      description: "Only $29.99 AUD per quote analysis - no subscriptions"
+      title: "Flexible Pricing",
+      description: "From $7.99 AUD per report, or $9.99 for 3 reports - no subscriptions"
     },
     {
       icon: <CheckCircle2 className="w-6 h-6" />,

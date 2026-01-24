@@ -88,20 +88,67 @@ class AdminController {
     // Get Dashboard Stats
     static async getStats(req, res) {
         try {
-            const [totalUsers, standardCount, premiumCount, totalJobs] = await Promise.all([
+            const now = new Date();
+            const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+            const sixtyDaysAgo = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
+
+            const [
+                totalUsers,
+                usersLastMonth,
+                usersPreviousMonth,
+                standardCount,
+                standardLastMonth,
+                standardPreviousMonth,
+                premiumCount,
+                premiumLastMonth,
+                premiumPreviousMonth,
+                totalJobs,
+                jobsLastMonth,
+                jobsPreviousMonth,
+                pricing
+            ] = await Promise.all([
                 User.countDocuments({ accountStatus: { $ne: 'deleted' } }),
+                User.countDocuments({ accountStatus: { $ne: 'deleted' }, createdAt: { $gte: thirtyDaysAgo } }),
+                User.countDocuments({ accountStatus: { $ne: 'deleted' }, createdAt: { $gte: sixtyDaysAgo, $lt: thirtyDaysAgo } }),
                 Payment.countDocuments({ status: { $in: ['succeeded', 'partially_refunded', 'refunded'] }, tier: 'standard' }),
+                Payment.countDocuments({ status: { $in: ['succeeded', 'partially_refunded', 'refunded'] }, tier: 'standard', createdAt: { $gte: thirtyDaysAgo } }),
+                Payment.countDocuments({ status: { $in: ['succeeded', 'partially_refunded', 'refunded'] }, tier: 'standard', createdAt: { $gte: sixtyDaysAgo, $lt: thirtyDaysAgo } }),
                 Payment.countDocuments({ status: { $in: ['succeeded', 'partially_refunded', 'refunded'] }, tier: 'premium' }),
-                Job.countDocuments({ deletedAt: null })
+                Payment.countDocuments({ status: { $in: ['succeeded', 'partially_refunded', 'refunded'] }, tier: 'premium', createdAt: { $gte: thirtyDaysAgo } }),
+                Payment.countDocuments({ status: { $in: ['succeeded', 'partially_refunded', 'refunded'] }, tier: 'premium', createdAt: { $gte: sixtyDaysAgo, $lt: thirtyDaysAgo } }),
+                Job.countDocuments({ deletedAt: null }),
+                Job.countDocuments({ deletedAt: null, createdAt: { $gte: thirtyDaysAgo } }),
+                Job.countDocuments({ deletedAt: null, createdAt: { $gte: sixtyDaysAgo, $lt: thirtyDaysAgo } }),
+                Pricing.find({ tier: { $in: ['standard', 'premium'] } })
             ]);
+
+            // Calculate growth rates
+            const calculateGrowth = (current, previous) => {
+                if (previous === 0) return current > 0 ? 100 : 0;
+                return Math.round(((current - previous) / previous) * 100);
+            };
+
+            const userGrowth = calculateGrowth(usersLastMonth, usersPreviousMonth);
+            const jobGrowth = calculateGrowth(jobsLastMonth, jobsPreviousMonth);
+            const standardGrowth = calculateGrowth(standardLastMonth, standardPreviousMonth);
+            const premiumGrowth = calculateGrowth(premiumLastMonth, premiumPreviousMonth);
 
             return res.json({
                 success: true,
                 data: {
                     totalUsers,
+                    userGrowth,
                     standardPurchases: standardCount,
+                    standardGrowth,
                     premiumPurchases: premiumCount,
-                    totalJobs
+                    premiumGrowth,
+                    totalJobs,
+                    jobGrowth,
+                    pricing: pricing.map(p => ({
+                        tier: p.tier,
+                        name: p.name,
+                        price: p.price
+                    }))
                 }
             });
         } catch (e) {
@@ -282,7 +329,9 @@ class AdminController {
     // Get Suppliers (Sorted by Score)
     static async getSuppliers(req, res) {
         try {
-            const { search = '' } = req.query;
+            const { page = 1, limit = 10, search = '' } = req.query;
+            const skip = (parseInt(page) - 1) * parseInt(limit);
+
             const query = {};
             if (search) {
                 query.$or = [
@@ -291,8 +340,19 @@ class AdminController {
                 ];
             }
 
-            const suppliers = await Supplier.find(query).sort({ score: -1 });
-            return res.json({ success: true, data: suppliers });
+            const [suppliers, total] = await Promise.all([
+                Supplier.find(query)
+                    .sort({ score: -1 })
+                    .skip(skip)
+                    .limit(parseInt(limit)),
+                Supplier.countDocuments(query)
+            ]);
+
+            return res.json({
+                success: true,
+                data: suppliers,
+                pagination: { page: parseInt(page), limit: parseInt(limit), total }
+            });
         } catch (e) {
             console.error('Suppliers fetch error:', e);
             return res.status(500).json({ success: false, error: 'Failed to fetch suppliers' });

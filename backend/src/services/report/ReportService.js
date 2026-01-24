@@ -8,7 +8,7 @@ const logger = require('../../utils/logger');
 class ReportService {
     constructor() {
         // Logo path - corrected to match actual location
-        this.logoPath = path.join(__dirname, '..', '..', '..', 'client', 'src', 'assets', 'logo.png');
+        this.logoPath = path.join(__dirname, '..', '..', '..', '..', 'client', 'src', 'assets', 'logo.png');
 
         // Color schemes for tiers
         this.colors = {
@@ -78,6 +78,107 @@ class ReportService {
         }
 
         doc.polygon(...points).fill();
+        doc.restore();
+    }
+
+    /**
+     * Draw a donut chart to visualize categorical data
+     */
+    drawDonutChart(doc, x, y, radius, data, colors) {
+        const total = data.reduce((sum, item) => sum + item.value, 0);
+        if (total === 0) {
+            // Placeholder for no data
+            doc.save();
+            doc.fillColor('#f3f4f6')
+                .circle(x, y, radius)
+                .fill();
+            doc.fillColor('#9ca3af')
+                .font('Helvetica')
+                .fontSize(10)
+                .text('No risks detected', x - 40, y - 5, { width: 80, align: 'center' });
+            doc.restore();
+            return;
+        }
+
+        let startAngle = -Math.PI / 2;
+        const thickness = radius * 0.4;
+
+        data.forEach((item, idx) => {
+            const sliceAngle = (item.value / total) * 2 * Math.PI;
+            const endAngle = startAngle + sliceAngle;
+
+            // Draw segment using a series of lines/curves to simulate an arc if needed, 
+            // but PDFKit has arc methods.
+            doc.save();
+            doc.fillColor(item.color || '#cbd5e1');
+
+            // Path for the arc segment
+            const innerRadius = radius - thickness;
+
+            // Outer arc
+            doc.moveTo(x + radius * Math.cos(startAngle), y + radius * Math.sin(startAngle))
+                .arc(x, y, radius, startAngle, endAngle, false)
+                // Line to inner arc
+                .lineTo(x + innerRadius * Math.cos(endAngle), y + innerRadius * Math.sin(endAngle))
+                // Inner arc (reverse)
+                .arc(x, y, innerRadius, endAngle, startAngle, true)
+                .fill();
+
+            doc.restore();
+            startAngle = endAngle;
+        });
+
+        // Center text (Total)
+        doc.fillColor('#111827')
+            .font('Helvetica-Bold')
+            .fontSize(16)
+            .text(total.toString(), x - 20, y - 10, { width: 40, align: 'center' });
+        doc.fillColor('#6b7280')
+            .font('Helvetica')
+            .fontSize(8)
+            .text('TOTAL RISKS', x - 30, y + 8, { width: 60, align: 'center' });
+    }
+
+    /**
+     * Draw a risk spectrum (Low to High)
+     */
+    drawRiskSpectrum(doc, x, y, width, height, value) {
+        // Linear gradient simulated with segments
+        const segments = 20;
+        const segWidth = width / segments;
+
+        doc.save();
+        for (let i = 0; i < segments; i++) {
+            const ratio = i / segments;
+            // Green to Red interpolation
+            const r = Math.floor(16 + ratio * (239 - 16));
+            const g = Math.floor(185 + ratio * (68 - 185));
+            const b = Math.floor(129 + ratio * (68 - 129));
+            const color = `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+
+            doc.fillColor(color)
+                .rect(x + i * segWidth, y, segWidth, height)
+                .fill();
+        }
+
+        // Marker
+        const markerX = x + (value / 100) * width;
+        doc.fillColor('#111827')
+            .strokeColor('#ffffff')
+            .lineWidth(2)
+            .moveTo(markerX, y - 5)
+            .lineTo(markerX - 6, y - 15)
+            .lineTo(markerX + 6, y - 15)
+            .closePath()
+            .fillAndStroke();
+
+        // Labels
+        doc.fillColor('#6b7280')
+            .font('Helvetica')
+            .fontSize(8)
+            .text('LOW RISK', x, y + height + 5)
+            .text('HIGH RISK', x + width - 50, y + height + 5, { align: 'right' });
+
         doc.restore();
     }
 
@@ -214,26 +315,34 @@ class ReportService {
     addHeader(doc, pageNum, tier, colors) {
         const pageWidth = doc.page.width;
 
+        // Header Background bar
+        doc.save();
+        doc.fillColor(colors.primary)
+            .fillOpacity(0.03)
+            .rect(0, 0, pageWidth, 80)
+            .fill();
+        doc.restore();
+
         // Logo
         if (fs.existsSync(this.logoPath)) {
             try {
-                doc.image(this.logoPath, 40, 25, { height: 35 });
+                doc.image(this.logoPath, 40, 15, { height: 50 });
             } catch (err) {
                 // Fallback to text
                 doc.fillColor(colors.primary)
                     .font('Helvetica-Bold')
-                    .fontSize(18)
+                    .fontSize(22)
                     .text('MyQuoteMate', 40, 30);
             }
         } else {
             doc.fillColor(colors.primary)
                 .font('Helvetica-Bold')
-                .fontSize(18)
+                .fontSize(22)
                 .text('MyQuoteMate', 40, 30);
         }
 
         // Page number badge
-        const badgeWidth = 80;
+        const badgeWidth = 90;
         doc.save();
         doc.fillColor(colors.primary)
             .fillOpacity(0.1)
@@ -242,19 +351,19 @@ class ReportService {
         doc.restore();
 
         doc.fillColor(colors.primary)
-            .font('Helvetica')
+            .font('Helvetica-Bold')
             .fontSize(10)
-            .text(`Page ${pageNum}`, pageWidth - 40 - badgeWidth, 34, {
+            .text(`SECTION ${pageNum}`, pageWidth - 40 - badgeWidth, 35, {
                 width: badgeWidth,
                 align: 'center'
             });
 
         // Header line
-        doc.moveTo(40, 70)
-            .lineTo(pageWidth - 40, 70)
-            .lineWidth(2)
+        doc.moveTo(40, 75)
+            .lineTo(pageWidth - 40, 75)
+            .lineWidth(1.5)
             .strokeColor(colors.primary)
-            .strokeOpacity(0.3)
+            .strokeOpacity(0.2)
             .stroke();
     }
 
@@ -319,7 +428,7 @@ class ReportService {
         // Logo (larger on cover)
         if (fs.existsSync(this.logoPath)) {
             try {
-                doc.image(this.logoPath, centerX - 80, 120, { width: 160 });
+                doc.image(this.logoPath, centerX - 110, 100, { width: 220 });
             } catch (err) {
                 doc.fillColor(colors.primary)
                     .font('Helvetica-Bold')
@@ -741,10 +850,75 @@ class ReportService {
             .strokeColor(colors.primary)
             .stroke();
 
-        currentY += 70;
+        currentY += 60;
 
-        // Red flags
+        // --- Graphical Analysis Section ---
         const redFlags = result.redFlags || [];
+        const riskCounts = {
+            critical: redFlags.filter(f => f.severity === 'critical').length,
+            high: redFlags.filter(f => f.severity === 'high').length,
+            medium: redFlags.filter(f => f.severity === 'medium').length,
+            low: redFlags.filter(f => f.severity === 'low').length || (redFlags.length === 0 ? 0 : 0)
+        };
+
+        const donutData = [
+            { label: 'Critical', value: riskCounts.critical, color: '#dc2626' },
+            { label: 'High', value: riskCounts.high, color: '#ef4444' },
+            { label: 'Medium', value: riskCounts.medium, color: '#f59e0b' },
+            { label: 'Low', value: riskCounts.low, color: '#10b981' }
+        ].filter(d => d.value > 0);
+
+        // Sidebar for Graphical analysis
+        doc.save();
+        doc.fillColor('#f8fafc')
+            .roundedRect(40, currentY, pageWidth - 80, 160, 12)
+            .fill()
+            .strokeColor('#e2e8f0')
+            .lineWidth(1)
+            .stroke();
+        doc.restore();
+
+        // 1. Donut Chart
+        this.drawDonutChart(doc, 140, currentY + 80, 55, donutData.length > 0 ? donutData : [{ value: 1, color: '#e2e8f0' }], colors);
+
+        // 2. Risk Spectrum
+        const riskScore = Math.min(100, (riskCounts.critical * 40 + riskCounts.high * 25 + riskCounts.medium * 10) || 5);
+        doc.fillColor(this.colors.neutral.dark)
+            .font('Helvetica-Bold')
+            .fontSize(11)
+            .text('OVERALL RISK EXPOSURE', 250, currentY + 30);
+
+        this.drawRiskSpectrum(doc, 250, currentY + 55, pageWidth - 320, 15, riskScore);
+
+        // Legend for donut
+        let legendY = currentY + 90;
+        if (donutData.length > 0) {
+            donutData.forEach(item => {
+                doc.fillColor(item.color)
+                    .circle(255, legendY + 4, 4)
+                    .fill();
+                doc.fillColor(this.colors.neutral.gray)
+                    .font('Helvetica')
+                    .fontSize(9)
+                    .text(`${item.label}: ${item.value}`, 265, legendY);
+                legendY += 15;
+            });
+        } else {
+            doc.fillColor('#10b981')
+                .font('Helvetica-Bold')
+                .fontSize(10)
+                .text('SYSTEM HEALTH: OPTIMAL', 250, currentY + 90);
+        }
+
+        currentY += 190;
+
+        // Red flags list title
+        doc.fillColor(this.colors.neutral.dark)
+            .font('Helvetica-Bold')
+            .fontSize(14)
+            .text('Identified Risk Items', 40, currentY);
+
+        currentY += 25;
 
         if (redFlags.length > 0) {
             redFlags.slice(0, 8).forEach((flag, idx) => {

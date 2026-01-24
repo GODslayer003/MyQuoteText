@@ -3,6 +3,7 @@ import { Lock, Unlock, ChevronDown, ChevronUp, Zap, Crown, Star, Download, FileT
 import { Link } from 'react-router-dom';
 import quoteApi from '../services/quoteApi';
 import { toast } from 'react-hot-toast';
+import Swal from 'sweetalert2';
 
 const AnalysisResults = ({ jobResult, userTier = 'free', onCompare }) => {
   const [expandedSections, setExpandedSections] = useState({
@@ -19,6 +20,22 @@ const AnalysisResults = ({ jobResult, userTier = 'free', onCompare }) => {
   const [showFullSummary, setShowFullSummary] = useState(false);
   const [showFullVerdict, setShowFullVerdict] = useState(false);
 
+  // Helper for alert replacement
+  const showTierAlert = () => {
+    Swal.fire({
+      title: 'Premium Feature',
+      text: 'Professional PDF Reports are available for Standard and Premium users.',
+      icon: 'info',
+      showCancelButton: true,
+      confirmButtonText: 'View Plans',
+      confirmButtonColor: '#f97316',
+      cancelButtonText: 'Maybe Later'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        window.location.href = '/pricing';
+      }
+    });
+  };
 
   const handleDownloadReport = async () => {
     if (!jobResult?.jobId) return;
@@ -33,10 +50,21 @@ const AnalysisResults = ({ jobResult, userTier = 'free', onCompare }) => {
       document.body.appendChild(link);
       link.click();
       link.parentNode.removeChild(link);
-      toast.success('Professional Report downloaded successfully!');
+
+      Swal.fire({
+        title: 'Success!',
+        text: 'Professional Report downloaded successfully!',
+        icon: 'success',
+        confirmButtonColor: '#f97316'
+      });
     } catch (err) {
       console.error('Report download error:', err);
-      toast.error('Failed to generate professional report');
+      Swal.fire({
+        title: 'Download Failed',
+        text: 'Failed to generate professional report. Please try again.',
+        icon: 'error',
+        confirmButtonColor: '#f97316'
+      });
     } finally {
       setIsDownloadingReport(false);
     }
@@ -788,6 +816,28 @@ const AnalysisResults = ({ jobResult, userTier = 'free', onCompare }) => {
           </div>
 
           <div className="flex items-center gap-4">
+            {/* Floating/Top Download Button */}
+            <button
+              onClick={normalizedTier === 'free' ? showTierAlert : handleDownloadReport}
+              disabled={isDownloadingReport}
+              className={`group relative flex items-center justify-center gap-2 px-3 py-1.5 rounded-lg font-bold transition-all overflow-hidden ${isDownloadingReport ? 'bg-blue-100 text-blue-400' :
+                normalizedTier === 'free' ? 'bg-gray-100 text-gray-400 cursor-not-allowed border-gray-200' :
+                  'bg-blue-600 text-white hover:bg-blue-700 shadow-sm hover:shadow-md'
+                }`}
+              title={normalizedTier === 'free' ? 'Unlock Professional Report' : 'Download Professional PDF'}
+            >
+              {isDownloadingReport ? (
+                <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
+              ) : (
+                <>
+                  {normalizedTier === 'free' ? <Lock className="w-3.5 h-3.5" /> : <Download className="w-3.5 h-3.5" />}
+                  <span className="w-0 opacity-0 overflow-hidden group-hover:w-14 group-hover:opacity-100 transition-all duration-300 text-xs ml-0 group-hover:ml-1">
+                    Report
+                  </span>
+                </>
+              )}
+            </button>
+
             <div className="text-xs text-gray-500 font-medium italic">
               Ref ID: {jobResult?.jobId?.substring(0, 8).toUpperCase() || 'MOCK-RESULT'}
             </div>
@@ -797,7 +847,7 @@ const AnalysisResults = ({ jobResult, userTier = 'free', onCompare }) => {
                 className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg text-xs font-bold hover:bg-blue-100 transition-all border border-blue-100"
               >
                 <Search className="w-3.5 h-3.5" />
-                Compare with another Quote
+                Compare
               </button>
             )}
           </div>
@@ -805,132 +855,110 @@ const AnalysisResults = ({ jobResult, userTier = 'free', onCompare }) => {
       )}
 
       {/* Tier Information Banner */}
-      {normalizedTier === 'free' && (
-        <div className="mb-8 p-4 sm:p-6 bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-200 rounded-xl">
-          <div className="flex items-start gap-3">
-            <Zap className="w-5 h-5 text-orange-600 mt-0.5 flex-shrink-0" />
-            <div>
-              <h3 className="font-bold text-gray-900 mb-1">You're on the Free Tier</h3>
-              <p className="text-sm text-gray-700 mb-3">
-                Upgrade to Standard or Premium to unlock detailed analysis, red flag detection, and more.
-              </p>
-              <Link
-                to="/pricing"
-                className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-500 to-amber-600 text-white rounded-lg text-sm font-semibold hover:shadow-lg transition-all"
-              >
-                <Zap className="w-4 h-4" />
-                View Plans
-              </Link>
+      {
+        normalizedTier === 'free' && (
+          <div className="mb-8 p-4 sm:p-6 bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-200 rounded-xl">
+            <div className="flex items-start gap-3">
+              <Zap className="w-5 h-5 text-orange-600 mt-0.5 flex-shrink-0" />
+              <div>
+                <h3 className="font-bold text-gray-900 mb-1">You're on the Free Tier</h3>
+                <p className="text-sm text-gray-700 mb-3">
+                  Upgrade to Standard or Premium to unlock detailed analysis, red flag detection, and more.
+                </p>
+                <Link
+                  to="/pricing"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-500 to-amber-600 text-white rounded-lg text-sm font-semibold hover:shadow-lg transition-all"
+                >
+                  <Zap className="w-4 h-4" />
+                  View Plans
+                </Link>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      }
 
-      {normalizedTier === 'standard' && (
-        <div className="mb-8 p-4 sm:p-6 bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-200 rounded-xl">
-          <div className="flex items-start gap-3">
-            <Zap className="w-5 h-5 text-orange-600 mt-0.5 flex-shrink-0" />
-            <div>
-              <h3 className="font-bold text-gray-900 mb-1">You're on the Standard Plan</h3>
-              <p className="text-sm text-gray-700 mb-3">
-                Unlock Advanced Recommendations and Quote Comparison with the Premium plan.
-              </p>
-              <Link
-                to="/pricing"
-                className="inline-flex items-center gap-2 px-4 py-2 bg-black text-white rounded-lg text-sm font-semibold hover:bg-gray-900 transition-all"
-              >
-                <Crown className="w-4 h-4" />
-                Upgrade to Premium
-              </Link>
+      {
+        normalizedTier === 'standard' && (
+          <div className="mb-8 p-4 sm:p-6 bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-200 rounded-xl">
+            <div className="flex items-start gap-3">
+              <Zap className="w-5 h-5 text-orange-600 mt-0.5 flex-shrink-0" />
+              <div>
+                <h3 className="font-bold text-gray-900 mb-1">You're on the Standard Plan</h3>
+                <p className="text-sm text-gray-700 mb-3">
+                  Unlock Advanced Recommendations and Quote Comparison with the Premium plan.
+                </p>
+                <Link
+                  to="/pricing"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-black text-white rounded-lg text-sm font-semibold hover:bg-gray-900 transition-all"
+                >
+                  <Crown className="w-4 h-4" />
+                  Upgrade to Premium
+                </Link>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      }
 
       {/* Features Grid */}
-      {!displayResult?.isIrrelevant && (
-        <div className="space-y-4">
-          {renderFeatureCard('summary', features.summary)}
-          {renderFeatureCard('verdict', features.verdict)}
-          {renderFeatureCard('costBreakdown', features.costBreakdown)}
-          {renderFeatureCard('redFlags', features.redFlags)}
-          {renderFeatureCard('detailedReview', features.detailedReview)}
-          {renderFeatureCard('questions', features.questions)}
-          {renderFeatureCard('comparison', features.comparison)}
-          {renderFeatureCard('benchmarking', features.benchmarking)}
-          {renderFeatureCard('recommendations', features.recommendations)}
-        </div>
-      )}
+      {
+        !displayResult?.isIrrelevant && (
+          <div className="space-y-4">
+            {renderFeatureCard('summary', features.summary)}
+            {renderFeatureCard('verdict', features.verdict)}
+            {renderFeatureCard('costBreakdown', features.costBreakdown)}
+            {renderFeatureCard('redFlags', features.redFlags)}
+            {renderFeatureCard('detailedReview', features.detailedReview)}
+            {renderFeatureCard('questions', features.questions)}
+            {renderFeatureCard('comparison', features.comparison)}
+            {renderFeatureCard('benchmarking', features.benchmarking)}
+            {renderFeatureCard('recommendations', features.recommendations)}
+          </div>
+        )
+      }
 
 
-      {/* Action Bar - Unified Professional Report */}
-      <div className="mt-8 flex flex-wrap gap-4 items-center justify-between p-6 bg-white border border-gray-100 rounded-2xl shadow-sm">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
-            <FileText className="w-6 h-6 text-blue-600" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h4 className="font-bold text-gray-900">Professional Report</h4>
-            </div>
-            <p className="text-sm text-gray-600">Download a comprehensive report including the original document and AI analysis.</p>
-          </div>
-        </div>
-        <button
-          onClick={normalizedTier === 'free' ? () => toast.error('Professional Report is available for Standard and Premium users.') : handleDownloadReport}
-          disabled={isDownloadingReport}
-          className={`px-6 py-2.5 rounded-xl font-bold transition-all shadow-md active:scale-95 flex items-center gap-2 ${normalizedTier === 'free'
-            ? 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200 shadow-none'
-            : 'bg-blue-600 text-white hover:bg-blue-700'
-            }`}
-        >
-          {isDownloadingReport ? (
-            'Preparing...'
-          ) : (
-            <>
-              {normalizedTier === 'free' ? <Lock className="w-4 h-4" /> : <Download className="w-4 h-4" />}
-              {normalizedTier === 'free' ? 'Unlock Professional Report' : 'Download Report'}
-            </>
-          )}
-        </button>
-      </div>
+      {/* Action Bar Removed - Moved to Top */}
 
       {/* Footer CTA */}
-      {(normalizedTier === 'free' || normalizedTier === 'standard') && (
-        <div className="mt-8 p-6 sm:p-8 bg-gradient-to-br from-gray-50 to-gray-100 border border-gray-200 rounded-xl text-center">
-          <Crown className="w-8 h-8 text-gray-900 mx-auto mb-3" />
-          <h3 className="text-xl font-bold text-gray-900 mb-2">
-            {normalizedTier === 'free'
-              ? 'Get Full Analysis with Standard or Premium'
-              : 'Unlock Advanced Features with Premium'}
-          </h3>
-          <p className="text-gray-600 mb-6 max-w-2xl mx-auto">
-            {normalizedTier === 'free'
-              ? 'Upgrade to see red flags, detailed cost breakdown, questions to ask, and more.'
-              : 'Upgrade to Premium to compare multiple quotes and get market benchmarking.'}
-          </p>
-          <Link
-            to="/pricing"
-            className={`inline-flex items-center gap-2 px-8 py-3 text-white rounded-xl font-bold text-lg transition-all hover:shadow-lg ${normalizedTier === 'free'
-              ? 'bg-gradient-to-r from-orange-500 to-amber-600 hover:shadow-orange-500/30'
-              : 'bg-black hover:bg-gray-900'
-              }`}
-          >
-            {normalizedTier === 'free' ? (
-              <>
-                <Zap className="w-5 h-5" />
-                Upgrade Now
-              </>
-            ) : (
-              <>
-                <Crown className="w-5 h-5" />
-                Go Premium
-              </>
-            )}
-          </Link>
-        </div>
-      )}
-    </div>
+      {
+        (normalizedTier === 'free' || normalizedTier === 'standard') && (
+          <div className="mt-8 p-6 sm:p-8 bg-gradient-to-br from-gray-50 to-gray-100 border border-gray-200 rounded-xl text-center">
+            <Crown className="w-8 h-8 text-gray-900 mx-auto mb-3" />
+            <h3 className="text-xl font-bold text-gray-900 mb-2">
+              {normalizedTier === 'free'
+                ? 'Get Full Analysis with Standard or Premium'
+                : 'Unlock Advanced Features with Premium'}
+            </h3>
+            <p className="text-gray-600 mb-6 max-w-2xl mx-auto">
+              {normalizedTier === 'free'
+                ? 'Upgrade to see red flags, detailed cost breakdown, questions to ask, and more.'
+                : 'Upgrade to Premium to compare multiple quotes and get market benchmarking.'}
+            </p>
+            <Link
+              to="/pricing"
+              className={`inline-flex items-center gap-2 px-8 py-3 text-white rounded-xl font-bold text-lg transition-all hover:shadow-lg ${normalizedTier === 'free'
+                ? 'bg-gradient-to-r from-orange-500 to-amber-600 hover:shadow-orange-500/30'
+                : 'bg-black hover:bg-gray-900'
+                }`}
+            >
+              {normalizedTier === 'free' ? (
+                <>
+                  <Zap className="w-5 h-5" />
+                  Upgrade Now
+                </>
+              ) : (
+                <>
+                  <Crown className="w-5 h-5" />
+                  Go Premium
+                </>
+              )}
+            </Link>
+          </div>
+        )
+      }
+    </div >
   );
 };
 

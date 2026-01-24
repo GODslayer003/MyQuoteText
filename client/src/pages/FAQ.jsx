@@ -125,11 +125,11 @@ const FAQ = () => {
       },
       {
         question: 'What\'s the difference between Standard and Premium?',
-        answer: 'Standard ($29.99/month): Unlimited analyses, detailed breakdowns, red flags, questions, and extended chat access. Premium ($99.99/month): All Standard features PLUS benchmarking, recommendations, advanced comparisons, and priority support.'
+        answer: 'Standard ($7.99 one-time): Detailed breakdowns, red flags, questions, and extended chat access. Premium ($9.99 one-time): All Standard features PLUS benchmarking, recommendations, advanced comparisons, and priority support.'
       },
       {
         question: 'Can I pay per analysis instead of monthly?',
-        answer: 'Yes! You can purchase single analyses: $5.99 for basic analysis or $14.99 for premium analysis. Perfect if you only need occasional quotes analyzed. No subscription required.'
+        answer: 'Yes! You can purchase single analyses: $7.99 for standard analysis or $9.99 for premium analysis. Perfect if you only need occasional quotes analyzed. No subscription required.'
       },
       {
         question: 'Is there a discount for annual billing?',
@@ -307,8 +307,8 @@ const FAQ = () => {
                     key={cat.id}
                     onClick={() => setActiveCategory(cat.id)}
                     className={`p-4 rounded-lg font-medium transition-all ${activeCategory === cat.id
-                        ? `bg-gradient-to-r ${cat.color} text-white shadow-lg`
-                        : 'bg-white border border-gray-200 text-gray-900 hover:border-orange-300'
+                      ? `bg-gradient-to-r ${cat.color} text-white shadow-lg`
+                      : 'bg-white border border-gray-200 text-gray-900 hover:border-orange-300'
                       }`}
                   >
                     <div className="flex items-center gap-2 justify-center">

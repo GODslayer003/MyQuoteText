@@ -93,7 +93,7 @@ const PaymentModal = ({ isOpen, onClose, plan = 'Standard', price = 7.99, onSucc
                                         }`}
                                 >
                                     <CreditCard className={`w-5 h-5 ${paymentMethod === 'card' ? 'text-orange-600' : 'text-gray-400'}`} />
-                                    <span className="font-medium text-gray-900">Credit / Debit Card</span>
+                                    <span className="font-medium text-gray-900">Stripe</span>
                                     <div className="ml-auto flex gap-1">
                                         <div className="w-8 h-5 bg-gray-200 rounded"></div>
                                         <div className="w-8 h-5 bg-gray-200 rounded"></div>

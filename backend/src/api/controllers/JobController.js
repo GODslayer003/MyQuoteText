@@ -54,6 +54,23 @@ class JobController {
         });
       }
 
+      // Check if email already exists in User model (for guest uploads)
+      if (!req.user) {
+        const existingUser = await User.findOne({
+          email: email.toLowerCase(),
+          accountStatus: { $ne: 'deleted' }
+        });
+
+        if (existingUser) {
+          return res.status(409).json({
+            success: false,
+            error: 'Email already registered',
+            message: 'This email is already associated with an account. Please sign in to continue.',
+            code: 'EMAIL_EXISTS'
+          });
+        }
+      }
+
       const allowedMimes = ['application/pdf', 'text/plain', 'image/jpeg', 'image/png', 'image/webp'];
       if (!allowedMimes.includes(file.mimetype)) {
         return res.status(400).json({
@@ -74,9 +91,21 @@ class JobController {
       if (!lead) {
         lead = await Lead.create({
           email: email.toLowerCase(),
-          source: metadata.source || 'free_upload'
+          source: metadata.source || 'free_upload',
+          isGuest: !req.user, // Mark as guest if no authenticated user
+          guestUploadedAt: !req.user ? new Date() : undefined,
+          metadata: {
+            ipAddress: req.ip,
+            userAgent: req.get('user-agent'),
+            referrer: req.get('referer')
+          }
         });
-        logger.info(`New lead created: ${email}`);
+        logger.info(`New lead created: ${email} (guest: ${!req.user})`);
+      } else if (!req.user && !lead.isGuest) {
+        // Update existing lead to mark as guest
+        lead.isGuest = true;
+        lead.guestUploadedAt = new Date();
+        await lead.save();
       }
 
       // Create job
@@ -143,10 +172,14 @@ class JobController {
         }
       } else {
         // Guest User - Allow Free Tier for now
-        // In a real app, we might check IP rate limits here
         jobTier = 'Free';
         logger.info(`Guest upload using email: ${email}`);
       }
+
+      // Calculate expiration date based on tier
+      const now = new Date();
+      const retentionDays = jobTier === 'Free' ? 7 : 90;
+      const expiresAt = new Date(now.getTime() + retentionDays * 24 * 60 * 60 * 1000);
 
       const jobPublicId = uuidv4();
       const job = await Job.create({
@@ -155,6 +188,7 @@ class JobController {
         userId: req.user?._id,
         tier: jobTier, // Use calculated tier
         status: 'pending',
+        expiresAt, // Set expiration date
         processingSteps: [
           { step: 'upload', status: 'in_progress' },
           { step: 'extraction', status: 'pending' },
@@ -164,11 +198,19 @@ class JobController {
           ...metadata,
           filename: file.originalname,
           fileSize: file.size,
-          uploadedAt: new Date()
+          uploadedAt: now
         }
       });
 
       logger.info(`Job created: ${jobPublicId} for ${email}`);
+
+      // Link job to lead for guest users
+      if (!req.user && lead) {
+        if (!lead.linkedJobs) lead.linkedJobs = [];
+        lead.linkedJobs.push(job._id);
+        await lead.save();
+        logger.info(`Job ${jobPublicId} linked to guest lead ${email}`);
+      }
 
       try {
         // Upload file
@@ -179,7 +221,7 @@ class JobController {
           userId: req.user?._id?.toString()
         });
 
-        logger.info(`File uploaded to storage: ${uploadResult.storageKey}`);
+        logger.info(`File uploaded to storage: ${uploadResult.storageKey} `);
 
         // Create document
         const document = await Document.create({
@@ -199,7 +241,7 @@ class JobController {
         await job.updateProcessingStep('upload', 'completed');
         await job.save();
 
-        logger.info(`Document created: ${document._id}`);
+        logger.info(`Document created: ${document._id} `);
 
         // Queue for production processing
         const { documentProcessingQueue } = require('../../config/queue');
@@ -219,7 +261,7 @@ class JobController {
           });
           logger.info(`Job ${jobPublicId} queued for processing`);
         } else {
-          logger.warn(`Redis queue not available. Falling back to inline processing for Job ${jobPublicId}`);
+          logger.warn(`Redis queue not available.Falling back to inline processing for Job ${jobPublicId}`);
 
           // CRITICAL: The DocumentProcessor relies on 'aiAnalysisQueue'.
           // If Redis is down, that queue is also null.
@@ -591,7 +633,7 @@ class JobController {
 
         // 2. AI Phase
         await job.updateProcessingStep('analysis', 'in_progress');
-        logger.info(`Starting AI analysis for job ${job._id} (${cappedText.length} chars)`);
+        logger.info(`Starting AI analysis for job ${job._id}(${cappedText.length} chars)`);
 
         // Pass imageUrl if available
         const aiOutcome = await AIOrchestrator.analyzeQuote(
@@ -648,7 +690,7 @@ class JobController {
         } catch (e) { logger.warn('Email failed', e); }
 
       } catch (error) {
-        logger.error(`Inline job failed: ${job._id}`, error);
+        logger.error(`Inline job failed: ${job._id} `, error);
         job.status = 'failed';
         await job.updateProcessingStep('analysis', 'failed', error.message);
         await job.save();
@@ -702,7 +744,7 @@ class JobController {
       const pdfBuffer = await ReportService.generateProfessionalReport(job, job.result, effectiveTier);
 
       res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', `attachment; filename=Analysis_Report_${jobId}.pdf`);
+      res.setHeader('Content-Disposition', `attachment; filename = Analysis_Report_${jobId}.pdf`);
       res.setHeader('Content-Length', pdfBuffer.length);
       res.send(pdfBuffer);
 

@@ -138,8 +138,18 @@ const userSchema = new mongoose.Schema({
   lockUntil: {
     type: Date
   },
+  googleId: {
+    type: String,
+    sparse: true,
+    index: true
+  },
+  authProvider: {
+    type: String,
+    enum: ['local', 'google'],
+    default: 'local'
+  },
   metadata: {
-    registrationSource: String, // 'free_upload', 'payment', 'manual'
+    registrationSource: String, // 'free_upload', 'payment', 'manual', 'google_oauth'
     ipAddress: String,
     userAgent: String
   }

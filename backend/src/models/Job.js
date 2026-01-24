@@ -116,6 +116,10 @@ const jobSchema = new mongoose.Schema(
       type: Date,
       default: null,
       index: true
+    },
+    expiresAt: {
+      type: Date,
+      index: true
     }
   },
   {

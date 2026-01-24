@@ -170,18 +170,27 @@ const SuppliersPage = () => {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedSupplierId, setSelectedSupplierId] = useState(null);
+    const [pagination, setPagination] = useState({ page: 1, limit: 5, total: 0 });
+    const [viewAllOpen, setViewAllOpen] = useState(false);
+    const [allSuppliers, setAllSuppliers] = useState([]);
+    const [loadingAll, setLoadingAll] = useState(false);
 
     useEffect(() => {
-        fetchSuppliers();
+        fetchSuppliers(1);
     }, []);
 
-    const fetchSuppliers = async () => {
+    const fetchSuppliers = async (page = 1) => {
         try {
             setLoading(true);
             const response = await api.get('/admin/suppliers', {
-                params: { search: searchTerm }
+                params: {
+                    search: searchTerm,
+                    page,
+                    limit: 5
+                }
             });
             setSuppliers(response.data.data);
+            setPagination(response.data.pagination || { page, limit: 5, total: response.data.data.length });
         } catch (err) {
             console.error('Failed to fetch suppliers:', err);
         } finally {
@@ -189,9 +198,48 @@ const SuppliersPage = () => {
         }
     };
 
+    const handleViewAll = async () => {
+        setViewAllOpen(true);
+        setLoadingAll(true);
+        try {
+            const response = await api.get('/admin/suppliers', { params: { limit: 100 } });
+            setAllSuppliers(response.data.data);
+        } catch (err) {
+            console.error('Failed to fetch all suppliers:', err);
+        } finally {
+            setLoadingAll(false);
+        }
+    };
+
     const handleSearch = (e) => {
         e.preventDefault();
-        fetchSuppliers();
+        fetchSuppliers(1);
+    };
+
+    const renderPagination = () => {
+        if (!pagination || pagination.total <= pagination.limit) return null;
+        const totalPages = Math.ceil(pagination.total / pagination.limit);
+        const pages = [];
+        for (let i = 1; i <= Math.min(totalPages, 5); i++) {
+            pages.push(i);
+        }
+
+        return (
+            <div className="flex items-center gap-2 mt-6">
+                {pages.map(p => (
+                    <button
+                        key={p}
+                        onClick={() => fetchSuppliers(p)}
+                        className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold transition-all ${pagination.page === p
+                            ? 'bg-orange-600 text-white shadow-lg shadow-orange-200'
+                            : 'bg-white text-gray-600 hover:bg-orange-50 border border-gray-100'
+                            }`}
+                    >
+                        {p}
+                    </button>
+                ))}
+            </div>
+        );
     };
 
     const getScoreColor = (score) => {
@@ -218,6 +266,13 @@ const SuppliersPage = () => {
                     </h1>
                     <p className="text-gray-600 mt-2">Internal intelligence ranking contractors based on quote transparency and risk.</p>
                 </div>
+                <button
+                    onClick={handleViewAll}
+                    className="px-6 py-2 bg-orange-600 text-white rounded-xl font-bold hover:bg-orange-700 shadow-lg shadow-orange-100 transition-all flex items-center gap-2"
+                >
+                    <Users className="w-4 h-4" />
+                    View All Suppliers
+                </button>
             </div>
 
             {/* Stats Overview */}
@@ -337,6 +392,70 @@ const SuppliersPage = () => {
                     </tbody>
                 </table>
             </div>
+            {renderPagination()}
+
+            {/* View All Modal */}
+            {viewAllOpen && (
+                <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4">
+                    <div className="bg-white rounded-3xl w-full max-w-5xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+                        <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-gray-50">
+                            <h3 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
+                                <Users className="w-6 h-6 text-orange-600" />
+                                Master Supplier database ({pagination?.total || 0})
+                            </h3>
+                            <button
+                                onClick={() => setViewAllOpen(false)}
+                                className="p-2 hover:bg-gray-200 rounded-full transition-colors"
+                            >
+                                <X className="w-6 h-6 text-gray-500" />
+                            </button>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto p-6 scrollbar-thin scrollbar-thumb-gray-300">
+                            {loadingAll ? (
+                                <div className="flex flex-col items-center justify-center py-20">
+                                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mb-4"></div>
+                                    <p className="text-gray-500 font-medium">Scanning all contractor data...</p>
+                                </div>
+                            ) : (
+                                <table className="w-full">
+                                    <thead className="sticky top-0 bg-white z-10">
+                                        <tr className="border-b border-gray-200 text-left">
+                                            <th className="py-3 px-4 text-xs font-bold text-gray-400 uppercase">Supplier</th>
+                                            <th className="py-3 px-4 text-xs font-bold text-gray-400 uppercase">ABN Info</th>
+                                            <th className="py-3 px-4 text-xs font-bold text-gray-400 uppercase">Score</th>
+                                            <th className="py-3 px-4 text-xs font-bold text-gray-400 uppercase">Last Contact</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-100">
+                                        {allSuppliers.map(s => (
+                                            <tr key={s._id} className="hover:bg-gray-50 group">
+                                                <td className="py-4 px-4 font-bold text-gray-800">{s.supplierName}</td>
+                                                <td className="py-4 px-4 text-gray-500 text-sm font-mono">{s.abn || 'N/A'}</td>
+                                                <td className="py-4 px-4">
+                                                    <span className={`px-2 py-1 rounded-lg text-xs font-black ${getScoreColor(s.score)}`}>
+                                                        {s.score}
+                                                    </span>
+                                                </td>
+                                                <td className="py-4 px-4 text-sm text-gray-400">{new Date(s.lastSeenAt).toLocaleDateString()}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            )}
+                        </div>
+
+                        <div className="p-4 bg-gray-50 border-t border-gray-100 text-right">
+                            <button
+                                onClick={() => setViewAllOpen(false)}
+                                className="px-6 py-2 bg-gray-900 text-white rounded-xl font-bold hover:bg-black transition-colors"
+                            >
+                                Done Exploring
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Details Modal */}
             {selectedSupplierId && (

@@ -18,6 +18,7 @@ import {
   Key
 } from 'lucide-react';
 import { useAuth } from "../hooks/useAuth";
+import Swal from 'sweetalert2';
 
 const AuthModal = ({ isOpen, onClose }) => {
   const { login, signup, loading, error, clearError } = useAuth();
@@ -176,7 +177,12 @@ const AuthModal = ({ isOpen, onClose }) => {
 
     if (isLocked) {
       const remainingTime = getRemainingLockTime();
-      alert(`Account is locked. Please try again in ${remainingTime} minute(s).`);
+      Swal.fire({
+        title: 'Account Locked',
+        text: `Account is locked. Please try again in ${remainingTime} minute(s).`,
+        icon: 'warning',
+        confirmButtonColor: '#f97316'
+      });
       return;
     }
 

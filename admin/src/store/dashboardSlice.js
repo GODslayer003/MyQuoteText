@@ -13,8 +13,8 @@ const initialState = {
   loading: false,
   error: null,
   pagination: {
-    users: { page: 1, limit: 10, total: 0 },
-    payments: { page: 1, limit: 10, total: 0 }
+    users: { page: 1, limit: 5, total: 0 },
+    payments: { page: 1, limit: 5, total: 0 }
   }
 };
 

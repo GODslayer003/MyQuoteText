@@ -5,6 +5,7 @@ import { ArrowLeft, Loader2, Download, Shield, Printer, Share2 } from 'lucide-re
 import quoteApi from '../services/quoteApi';
 import AnalysisResults from '../components/AnalysisResults';
 import { useAuth } from '../providers/AuthProvider';
+import Swal from 'sweetalert2';
 
 const AnalysisPage = () => {
     const { jobId } = useParams();
@@ -49,7 +50,12 @@ const AnalysisPage = () => {
             }
         } catch (err) {
             console.error('Download failed:', err);
-            alert('Failed to download document. Please try again.');
+            Swal.fire({
+                title: 'Download Failed',
+                text: 'Failed to download original document. Please try again.',
+                icon: 'error',
+                confirmButtonColor: '#f97316'
+            });
         }
     };
 
@@ -74,11 +80,11 @@ const AnalysisPage = () => {
                     <h2 className="text-2xl font-bold text-gray-900 mb-2">Error</h2>
                     <p className="text-gray-600 mb-6">{error || 'Analysis results not found.'}</p>
                     <button
-                        onClick={() => navigate('/check-quote')}
+                        onClick={() => navigate(-1)}
                         className="w-full py-3 bg-orange-500 text-white rounded-xl font-bold hover:bg-orange-600 transition-colors flex items-center justify-center gap-2"
                     >
                         <ArrowLeft className="w-5 h-5" />
-                        Back to Checker
+                        Back to My Reports
                     </button>
                 </div>
             </div>
@@ -91,28 +97,19 @@ const AnalysisPage = () => {
                 {/* Navigation */}
                 <div className="flex items-center justify-between mb-8">
                     <button
-                        onClick={() => navigate('/check-quote')}
+                        onClick={() => navigate(-1)}
                         className="flex items-center gap-2 text-gray-600 hover:text-orange-600 transition-colors font-medium"
                     >
                         <ArrowLeft className="w-5 h-5" />
-                        Back to Checker
+                        Back to Reports
                     </button>
-                    <div className="flex items-center gap-3">
-                        <button
-                            onClick={() => window.print()}
-                            className="p-2 text-gray-500 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-all"
-                            title="Print Report"
-                        >
-                            <Printer className="w-5 h-5" />
-                        </button>
-                        <button
-                            onClick={handleDownloadPDF}
-                            className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-lg hover:border-orange-500 hover:text-orange-600 transition-all shadow-sm"
-                        >
-                            <Download className="w-4 h-4" />
-                            Download Original
-                        </button>
-                    </div>
+                    <button
+                        onClick={() => window.print()}
+                        className="p-2 text-gray-500 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-all"
+                        title="Print Report"
+                    >
+                        <Printer className="w-5 h-5" />
+                    </button>
                 </div>
 
                 {/* Header */}

@@ -1,7 +1,9 @@
 const express = require('express');
 const router = express.Router();
+const passport = require('../../config/passport');
 
 const AuthController = require('../controllers/AuthController');
+const OAuthController = require('../controllers/auth.controller');
 const authMiddleware = require('../middleware/auth.middleware');
 const validationMiddleware = require('../middleware/validation.middleware');
 const rateLimitMiddleware = require('../middleware/rateLimit.middleware');
@@ -36,6 +38,32 @@ router.post(
   '/reset-password',
   rateLimitMiddleware.strictLimiter,
   AuthController.resetPassword
+);
+
+// Google OAuth routes
+router.get('/google',
+  passport.authenticate('google', {
+    scope: ['profile', 'email'],
+    session: false
+  })
+);
+
+router.get('/google/callback',
+  passport.authenticate('google', {
+    session: false,
+    failureRedirect: `${process.env.FRONTEND_URL}/login?error=oauth_failed`
+  }),
+  OAuthController.googleCallback
+);
+
+// Email verification routes
+router.post('/send-verification',
+  authMiddleware.authenticate,
+  OAuthController.sendVerificationEmail
+);
+
+router.post('/verify-email',
+  OAuthController.verifyEmail
 );
 
 // Protected routes

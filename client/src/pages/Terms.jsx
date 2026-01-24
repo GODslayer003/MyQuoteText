@@ -191,14 +191,14 @@ const Terms = () => {
             <p class="text-sm text-gray-600">Basic quote analysis with limited features</p>
           </div>
           <div class="p-4 bg-gradient-to-br from-orange-50 to-amber-50 border border-orange-200 rounded-lg">
-            <div class="text-2xl font-bold text-gray-900 mb-2">$29.99</div>
+            <div class="text-2xl font-bold text-gray-900 mb-2">$7.99</div>
             <h4 class="font-medium text-gray-900 mb-1">Single Analysis</h4>
             <p class="text-sm text-gray-600">One comprehensive quote analysis</p>
           </div>
           <div class="p-4 bg-gray-50 rounded-lg">
-            <div class="text-2xl font-bold text-gray-900 mb-2">$99.99</div>
-            <h4 class="font-medium text-gray-900 mb-1">Monthly Pro</h4>
-            <p class="text-sm text-gray-600">Unlimited analyses & premium features</p>
+            <div class="text-2xl font-bold text-gray-900 mb-2">$9.99</div>
+            <h4 class="font-medium text-gray-900 mb-1">Premium Package</h4>
+            <p class="text-sm text-gray-600">Credits for 3 analyses & premium features</p>
           </div>
         </div>
       </div>

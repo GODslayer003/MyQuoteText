@@ -14,6 +14,18 @@ const leadSchema = new mongoose.Schema({
     enum: ['free_upload', 'landing_page', 'referral', 'other'],
     default: 'free_upload'
   },
+  isGuest: {
+    type: Boolean,
+    default: false,
+    index: true
+  },
+  guestUploadedAt: {
+    type: Date
+  },
+  linkedJobs: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Job'
+  }],
   status: {
     type: String,
     enum: ['new', 'engaged', 'converted', 'bounced'],
@@ -49,4 +61,5 @@ const leadSchema = new mongoose.Schema({
 leadSchema.index({ email: 1, status: 1 });
 leadSchema.index({ createdAt: -1 });
 leadSchema.index({ convertedToUserId: 1 });
-module.exports=mongoose.model('Lead', leadSchema);
+leadSchema.index({ isGuest: 1, email: 1 });
+module.exports = mongoose.model('Lead', leadSchema);
