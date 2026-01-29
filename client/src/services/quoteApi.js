@@ -120,6 +120,14 @@ class QuoteApi {
     const response = await api.post('/jobs/compare', { jobIds });
     return response.data.data;
   }
+
+  // Generate Technical Text Report
+  async generateTextReport(jobId) {
+    const response = await api.get(`/jobs/${jobId}/text-report`, {
+      responseType: 'blob'
+    });
+    return response.data;
+  }
 }
 
 export default new QuoteApi();

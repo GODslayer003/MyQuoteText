@@ -215,16 +215,66 @@ IMPORTANT:
   - description: 'EXPLAIN IN 3-4 SENTENCES why the quote is structurally sound, mentioning specific lack of hidden costs, clear itemization, and standard pricing found in this document.'
   - recommendation: 'Proceed with standard administrative caution.'
 ${tier === 'premium' ? `
-- PREMIUM TIER REQUIREMENTS (MANDATORY):
-  - 'recommendations' array MUST contain 3-5 actionable negotiation tips or cost-saving strategies based on the quote analysis.
-  - 'benchmarking' array MUST contain 3-7 items comparing key quote elements (labor rates, material costs, markup percentages) against 2026 Australian market averages.
-  - For benchmarking, use realistic 2026 Australian construction market data:
-    * Skilled labor: $80-$120/hr (avg $95/hr)
-    * General labor: $50-$75/hr (avg $60/hr)
-    * Materials markup: 15-35% (avg 25%)
-    * Project management fee: 10-20% (avg 15%)
-  - Each recommendation should include realistic potential savings (e.g., $200-$2000 depending on the quote size).
-  - Benchmarking percentiles should reflect where the quote sits in the market (0-100, where 50 is average).
+🚨 PREMIUM TIER REQUIREMENTS (ABSOLUTELY MANDATORY - NO EXCEPTIONS) 🚨
+
+YOU MUST GENERATE THESE FIELDS. THEY ARE NOT OPTIONAL. THE SYSTEM WILL REJECT YOUR RESPONSE IF THESE ARE MISSING OR INSUFFICIENT.
+
+1. ADVANCED RECOMMENDATIONS (MANDATORY):
+   - MUST contain EXACTLY 4-5 actionable negotiation strategies
+   - MINIMUM 200 words per recommendation in the 'description' field
+   - EACH recommendation MUST include:
+     * WHY this strategy works (market psychology, contractor incentives)
+     * HOW to implement it (specific conversation starters, negotiation tactics)
+     * MARKET CONTEXT (2026 Australian construction market trends, typical contractor margins)
+     * SPECIFIC SAVINGS CALCULATION based on the actual quote total
+   - Use the EXACT quote total to calculate realistic savings (e.g., if quote is $15,000, show "$1,200 savings" not "$500")
+   - Reference real Australian suppliers: Bunnings Trade, Reece, Beaumont Tiles, Mitre 10 Trade
+   - Example topics to cover:
+     * Material sourcing and markup transparency
+     * Payment schedule optimization for cash flow leverage
+     * Off-peak scheduling strategies (May-August in Australia)
+     * Value engineering without quality compromise
+     * Multi-project bundling for volume discounts
+   - potentialSavings must be realistic: 5-18% of total depending on strategy complexity
+   - difficulty: must match the implementation complexity ('easy', 'moderate', 'complex')
+
+2. MARKET BENCHMARKING (MANDATORY - AUSTRALIAN MARKET DATA):
+   - MUST contain EXACTLY 5-7 detailed market comparisons
+   - Compare THIS SPECIFIC QUOTE to 2026 Australian construction market rates
+   - REQUIRED benchmark categories (analyze the quote and pick 5-7):
+     a) Skilled Labor Rate ($/hour) - Extract from quote, compare to AU market $85-$125/hr
+     b) Materials Cost (% of total) - Calculate from breakdown, compare to market 28-48%
+     c) Project Management Fee (%) - Identify in quote, compare to market 8-22%
+     d) Total Project Cost (with m² estimation) - Estimate space, compare to $1,800-$3,000/m²
+     e) Cost per Square Meter - Calculate rate, compare to market averages
+     f) Labor-to-Materials Ratio - Calculate ratio, compare to market 1.2-2.2
+     g) Contractor Profit Margin (%) - Estimate, compare to market 10-25%
+   - Each benchmark MUST include:
+     * item: Clear description of what's being benchmarked
+     * quotePrice: Actual value from THIS quote (extracted or calculated)
+     * marketMin: 2026 Australian market minimum (realistic)
+     * marketAvg: 2026 Australian market average (realistic)
+     * marketMax: 2026 Australian market maximum (realistic)
+     * percentile: Where this quote sits (5-95th percentile)
+   - Use REAL 2026 Australian market data:
+     * Skilled trades: $95-$120/hr (electricians, plumbers)
+     * General labor: $60-$75/hr
+     * Materials markup: 20-35% above wholesale
+     * PM fees: 12-18% for residential renovations
+     * Bathroom renovation: $2,200-$3,500/m²
+     * Kitchen renovation: $2,500-$4,000/m²
+     * General renovation: $1,800-$2,800/m²
+   - DO NOT use generic percentages - CALCULATE based on the actual quote data
+   - Percentile must be meaningful: if labor is $110/hr and market is $85-$125, percentile = 62.5
+
+VALIDATION RULES:
+- If recommendations.length < 4 OR any description.length < 200: RESPONSE REJECTED
+- If benchmarking.length < 5: RESPONSE REJECTED
+- If any benchmark missing marketMin/marketAvg/marketMax/percentile: RESPONSE REJECTED
+- If potentialSavings not customized to quote total: RESPONSE REJECTED
+
+YOU ARE ANALYZING A REAL AUSTRALIAN CONSTRUCTION QUOTE IN 2026. PROVIDE PROFESSIONAL, DETAILED, MARKET-ACCURATE INSIGHTS.
+USE AS MANY TOKENS AS NEEDED TO GENERATE HIGH-QUALITY CONTENT. DO NOT TAKE SHORTCUTS.
 ` : ''}
 - Return EXACTLY this JSON structure.
 - Be precise, technical, and helpful.
@@ -293,9 +343,10 @@ OUTPUT JSON SCHEMA:
     ],
     "winner": {
       "index": number,
-      "reason": "Detailed justification why this quote offers the best overall value for the client."
+      "reason": "PROVIDE A MASTERCLASS ANALYSIS. Explain in 3-4 paragraphs why this specific quote's approach, material quality, and labor allocation offer the best strategic value for the 2026 AU market. AT THE END OF YOUR ANALYSIS, EXPRESS A DEFINITIVE PROFESSIONAL OPINION: 'In my opinion, this quote is [good/bad/excellent] relative to the others because...', and explicitly state if it is a safe or risky choice."
     },
-    "relativePricing": "Comparative analysis of prices",
+    "betterApproach": "Analyze which contractor has a better technical approach/methodology based on the document text.",
+    "relativePricing": "Comparative analysis of prices vs value",
     "valueAssessment": "Deep dive into scope differences vs price",
     "keyDifferences": ["List of technical or service differences"],
     "disclaimer": "Comparison is informational and based on 2026 Australian market rates."

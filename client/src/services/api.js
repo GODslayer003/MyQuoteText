@@ -7,7 +7,7 @@ const API_VERSION = import.meta.env.VITE_API_VERSION || 'v1';
 const api = axios.create({
   baseURL: `${API_BASE}/api/${API_VERSION}`,
   withCredentials: true,
-  timeout: 30000, // 30 second timeout
+  timeout: 60000, // 60 second timeout
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json'

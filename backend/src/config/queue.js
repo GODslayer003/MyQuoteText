@@ -24,23 +24,35 @@ class QueueManager {
         password: process.env.REDIS_PASSWORD,
         db: parseInt(process.env.REDIS_DB) || 0,
         retryStrategy: (times) => {
-          // Stop retrying after 5 attempts to prevent log spam when running without Redis
-          if (times > 5) {
-            logger.warn('Redis connection failed too many times. Disabling background jobs.');
+          // Stop retrying after 3 attempts to prevent log spam
+          if (times > 3) {
+            logger.warn('⚠️  Redis not available. Background jobs disabled. App will continue without queues.');
             return null; // Stop retrying
           }
-          const delay = Math.min(times * 100, 3000);
+          const delay = Math.min(times * 100, 1000);
           return delay;
         },
-        maxRetriesPerRequest: 3,
+        maxRetriesPerRequest: 1,
         enableReadyCheck: true,
-        autoResubscribe: true,
-        autoResendUnfulfilledCommands: true
+        autoResubscribe: false,
+        autoResendUnfulfilledCommands: false,
+        lazyConnect: true, // Don't connect immediately
+        enableOfflineQueue: false, // Don't queue commands when offline
+        showFriendlyErrorStack: false
       };
 
       // Create Redis clients
       this.redisClient = new Redis(redisConfig);
       this.redisSubscriber = new Redis(redisConfig);
+
+      // Suppress error logging
+      this.redisClient.on('error', () => {
+        // Silently ignore errors to prevent console spam
+      });
+
+      this.redisSubscriber.on('error', () => {
+        // Silently ignore errors
+      });
 
       // Test connection
       await this.redisClient.ping();

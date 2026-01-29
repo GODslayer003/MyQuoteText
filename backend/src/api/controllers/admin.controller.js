@@ -483,6 +483,122 @@ class AdminController {
             return res.status(500).json({ success: false, error: 'Failed to delete user' });
         }
     }
+
+    // Get Suppliers with pagination and search
+    static async getSuppliers(req, res) {
+        try {
+            const { search = '', page = 1, limit = 5 } = req.query;
+            const skip = (parseInt(page) - 1) * parseInt(limit);
+
+            // Build search query
+            const searchQuery = search
+                ? {
+                    $or: [
+                        { supplierName: { $regex: search, $options: 'i' } },
+                        { tradingName: { $regex: search, $options: 'i' } },
+                        { abn: { $regex: search, $options: 'i' } }
+                    ]
+                }
+                : {};
+
+            // Get suppliers with pagination
+            const suppliers = await Supplier.find(searchQuery)
+                .sort({ score: -1, createdAt: -1 })
+                .skip(skip)
+                .limit(parseInt(limit))
+                .lean();
+
+            const total = await Supplier.countDocuments(searchQuery);
+
+            return res.json({
+                success: true,
+                data: suppliers,
+                pagination: {
+                    page: parseInt(page),
+                    limit: parseInt(limit),
+                    total,
+                    pages: Math.ceil(total / parseInt(limit))
+                }
+            });
+        } catch (e) {
+            console.error('Get suppliers error:', e);
+            return res.status(500).json({ success: false, error: 'Failed to fetch suppliers' });
+        }
+    }
+
+    // Get Supplier Details with stats
+    static async getSupplierDetails(req, res) {
+        try {
+            const { id } = req.params;
+
+            // Get supplier
+            const supplier = await Supplier.findById(id).lean();
+            if (!supplier) {
+                return res.status(404).json({ success: false, error: 'Supplier not found' });
+            }
+
+            // Calculate stats from supplier's quote history
+            const stats = {
+                totalQuotes: supplier.quoteHistory?.length || 0,
+                medianTotalAmount: 0,
+                priceChangePctVsLast: 0,
+                averageScore: supplier.score || 0
+            };
+
+            if (supplier.quoteHistory && supplier.quoteHistory.length > 0) {
+                // Calculate median
+                const amounts = supplier.quoteHistory.map(q => q.totalAmount).sort((a, b) => a - b);
+                const mid = Math.floor(amounts.length / 2);
+                stats.medianTotalAmount = amounts.length % 2 === 0
+                    ? (amounts[mid - 1] + amounts[mid]) / 2
+                    : amounts[mid];
+
+                // Calculate price change
+                if (supplier.quoteHistory.length >= 2) {
+                    const latest = supplier.quoteHistory[supplier.quoteHistory.length - 1];
+                    const previous = supplier.quoteHistory[supplier.quoteHistory.length - 2];
+                    stats.priceChangePctVsLast = ((latest.totalAmount - previous.totalAmount) / previous.totalAmount) * 100;
+                }
+            }
+
+            return res.json({
+                success: true,
+                data: {
+                    supplier,
+                    stats,
+                    history: supplier.quoteHistory || []
+                }
+            });
+        } catch (e) {
+            console.error('Get supplier details error:', e);
+            return res.status(500).json({ success: false, error: 'Failed to fetch supplier details' });
+        }
+    }
+
+    // Get Overall Supplier Stats
+    static async getSupplierStats(req, res) {
+        try {
+            // Get all suppliers for stats calculation
+            const allSuppliers = await Supplier.find({}).lean();
+
+            const stats = {
+                totalSuppliers: allSuppliers.length,
+                avgScore: allSuppliers.length > 0
+                    ? Math.round(allSuppliers.reduce((sum, s) => sum + (s.score || 0), 0) / allSuppliers.length)
+                    : 0,
+                quotesTracked: allSuppliers.reduce((sum, s) => sum + (s.quoteHistory?.length || 0), 0),
+                highConfidence: allSuppliers.filter(s => s.confidence === 'HIGH').length
+            };
+
+            return res.json({
+                success: true,
+                data: stats
+            });
+        } catch (e) {
+            console.error('Get supplier stats error:', e);
+            return res.status(500).json({ success: false, error: 'Failed to fetch supplier stats' });
+        }
+    }
 }
 
 module.exports = AdminController;

@@ -18,6 +18,7 @@ router.put('/me', AdminController.updateProfile);
 
 router.get('/stats', AdminController.getStats);
 router.get('/revenue', AdminController.getRevenueStats);
+router.get('/suppliers/stats', AdminController.getSupplierStats);
 router.get('/suppliers', AdminController.getSuppliers);
 router.get('/suppliers/:id', AdminController.getSupplierDetails);
 router.get('/discounts/history', AdminController.getDiscountHistory);

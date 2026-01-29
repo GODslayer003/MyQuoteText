@@ -51,13 +51,13 @@ const Reports = () => {
   // Filter reports based on search and status
   const filteredReports = reports
     .filter(report => {
-      const matchesSearch = 
+      const matchesSearch =
         report.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         report.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         report.documentType?.toLowerCase().includes(searchTerm.toLowerCase());
-      
+
       const matchesStatus = filterStatus === 'all' || report.status === filterStatus;
-      
+
       return matchesSearch && matchesStatus;
     })
     .sort((a, b) => {
@@ -95,7 +95,7 @@ const Reports = () => {
         icon: <AlertCircle className="w-4 h-4" />
       }
     };
-    
+
     const config = statusConfig[status] || statusConfig['pending'];
     return config;
   };
@@ -273,39 +273,80 @@ const Reports = () => {
           </div>
         )}
 
+
         {/* Reports List */}
         {!loading && filteredReports.length > 0 && (
           <div className="space-y-4">
             {filteredReports.map((report) => {
               const statusConfig = getStatusBadge(report.status);
+
+              // Tier-based card styling
+              const getTierCardClass = (tier) => {
+                switch (tier?.toLowerCase()) {
+                  case 'premium':
+                    return 'bg-gradient-to-br from-gray-900 via-gray-800 to-black text-white border-gray-700';
+                  case 'standard':
+                    return 'bg-gradient-to-br from-orange-50 to-amber-50 border-orange-200';
+                  default:
+                    return 'bg-white border-gray-200';
+                }
+              };
+
+              const getTierIconBg = (tier) => {
+                switch (tier?.toLowerCase()) {
+                  case 'premium':
+                    return 'bg-gradient-to-r from-yellow-400 to-amber-500';
+                  case 'standard':
+                    return 'bg-gradient-to-r from-orange-100 to-amber-100';
+                  default:
+                    return 'bg-gradient-to-r from-gray-100 to-gray-200';
+                }
+              };
+
+              const getTierTextColor = (tier) => {
+                return tier?.toLowerCase() === 'premium' ? 'text-gray-200' : 'text-gray-600';
+              };
+
               return (
                 <div
                   key={report._id}
-                  className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-md transition-shadow"
+                  className={`${getTierCardClass(report.tier)} rounded-xl border p-6 hover:shadow-xl transition-all duration-300`}
                 >
                   <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                     {/* Report Info */}
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
-                        <div className="w-10 h-10 bg-gradient-to-r from-orange-100 to-amber-100 rounded-lg flex items-center justify-center">
-                          <FileText className="w-5 h-5 text-orange-600" />
+                        <div className={`w-10 h-10 ${getTierIconBg(report.tier)} rounded-lg flex items-center justify-center shadow-sm`}>
+                          <FileText className={`w-5 h-5 ${report.tier?.toLowerCase() === 'premium' ? 'text-white' : 'text-orange-600'}`} />
                         </div>
                         <div className="flex-1">
-                          <h3 className="font-semibold text-gray-900 text-lg">
-                            {report.title || 'Untitled Report'}
-                          </h3>
-                          <p className="text-sm text-gray-500">
+                          <div className="flex items-center gap-2">
+                            <h3 className={`font-semibold text-lg ${report.tier?.toLowerCase() === 'premium' ? 'text-white' : 'text-gray-900'}`}>
+                              {report.title || 'Untitled Report'}
+                            </h3>
+                            {report.tier && (
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${report.tier.toLowerCase() === 'premium'
+                                  ? 'bg-gradient-to-r from-yellow-400 to-amber-500 text-black'
+                                  : report.tier.toLowerCase() === 'standard'
+                                    ? 'bg-orange-500 text-white'
+                                    : 'bg-gray-400 text-white'
+                                }`}>
+                                {report.tier}
+                              </span>
+                            )}
+                          </div>
+                          <p className={`text-sm ${getTierTextColor(report.tier)}`}>
                             {report.documentType || 'Document Analysis'}
                           </p>
                         </div>
                       </div>
 
                       {report.description && (
-                        <p className="text-gray-600 text-sm mt-2">{report.description}</p>
+                        <p className={`text-sm mt-2 ${getTierTextColor(report.tier)}`}>{report.description}</p>
                       )}
 
                       <div className="flex flex-wrap items-center gap-4 mt-4 text-sm">
-                        <div className="flex items-center gap-2 text-gray-600">
+                        <div className={`flex items-center gap-2 ${getTierTextColor(report.tier)}`}>
                           <Calendar className="w-4 h-4" />
                           <span>{formatDate(report.createdAt)}</span>
                         </div>
@@ -318,7 +359,7 @@ const Reports = () => {
                         </div>
 
                         {report.score && (
-                          <div className="flex items-center gap-2 text-gray-600">
+                          <div className={`flex items-center gap-2 ${getTierTextColor(report.tier)}`}>
                             <BarChart className="w-4 h-4" />
                             <span>Score: {report.score}%</span>
                           </div>

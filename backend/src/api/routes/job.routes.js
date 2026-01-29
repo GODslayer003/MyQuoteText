@@ -92,4 +92,11 @@ router.get(
   JobController.generateReport.bind(JobController)
 );
 
+// Generate Professional Text Report (Word Style)
+router.get(
+  '/:jobId/text-report',
+  authMiddleware.optionalAuth,
+  JobController.generateTextReport.bind(JobController)
+);
+
 module.exports = router;

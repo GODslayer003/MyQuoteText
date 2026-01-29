@@ -22,7 +22,7 @@ const TIER_LIMITS = {
   },
   premium: {
     maxInputChars: 40000,
-    maxOutputTokens: 4000
+    maxOutputTokens: 16000
   }
 };
 

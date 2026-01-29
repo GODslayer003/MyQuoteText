@@ -755,6 +755,38 @@ class JobController {
   }
 
   /**
+   * Generate professional text-only report (Word Docs style)
+   */
+  async generateTextReport(req, res, next) {
+    try {
+      const { jobId } = req.params;
+      const job = await this.resolveJob(jobId);
+
+      if (!job || !job.result) {
+        return res.status(404).json({ success: false, error: 'Job or result not found' });
+      }
+
+      // Tier check (Premium Only for this format)
+      if (job.tier.toLowerCase() !== 'premium') {
+        return res.status(403).json({
+          success: false,
+          error: 'Technical reports are a Premium feature'
+        });
+      }
+
+      const pdfBuffer = await ReportService.generateProfessionalTextReport(job, job.result, 'premium');
+
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename=Technical_Report_${jobId}.pdf`);
+      res.setHeader('Content-Length', pdfBuffer.length);
+      res.send(pdfBuffer);
+    } catch (error) {
+      logger.error('Failed to generate text report:', error);
+      res.status(500).json({ success: false, error: 'Failed to generate technical report' });
+    }
+  }
+
+  /**
    * Compare multiple quotes (Premium)
    */
   async compareQuotes(req, res, next) {
@@ -803,18 +835,20 @@ class JobController {
 
       // 4. Call AI to compare
       const AIOrchestrator = require('../../services/ai/AIOrchestrator');
-      const comparisonData = await AIOrchestrator.compareQuotes(processedResults);
+      const comparisonData = await AIOrchestrator.compareQuotes(processedResults, {
+        workCategory: jobs[0].metadata?.workCategory
+      });
 
       res.json({
         success: true,
         data: {
           jobIds,
-          comparison: comparisonData
+          ...comparisonData
         }
       });
     } catch (error) {
       logger.error('Comparison error:', error);
-      next(error);
+      res.status(500).json({ success: false, error: 'Failed to compare quotes' });
     }
   }
 }
