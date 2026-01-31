@@ -343,13 +343,24 @@ class AIProcessor {
    * Ensure Premium users always get recommendations
    */
   ensureRecommendations(aiRecommendations, tier, totalCost) {
-    if (tier !== 'premium') return [];
+    const normalizedTier = (tier || 'free').toLowerCase();
+    if (normalizedTier !== 'premium' && normalizedTier !== 'standard') return [];
 
-    logger.info(`[PREMIUM] Ensuring recommendations for tier: ${tier}, totalCost: ${totalCost}`);
-    logger.info(`[PREMIUM] AI provided ${(aiRecommendations || []).length} recommendations`);
+    logger.info(`[PAID] Ensuring recommendations for tier: ${normalizedTier}, totalCost: ${totalCost}`);
+    logger.info(`[PAID] AI provided ${(aiRecommendations || []).length} recommendations`);
 
-    // TEMPORARILY FORCE FALLBACKS TO TEST
-    // Use fallbacks immediately to ensure content ALWAYS appears
+    // Prioritize AI results if they exist and are useful
+    if (Array.isArray(aiRecommendations) && aiRecommendations.length >= 3) {
+      logger.info(`[PAID] Using ${aiRecommendations.length} AI-generated recommendations`);
+      return aiRecommendations.map(rec => ({
+        title: rec.title || 'Negotiation Recommendation',
+        description: rec.description || 'Deep technical advice provided by AI analysis.',
+        potentialSavings: rec.potentialSavings || Math.round((totalCost || 10000) * 0.05),
+        difficulty: rec.difficulty || 'moderate'
+      }));
+    }
+
+    // Use fallbacks as safety net if AI provides insufficient data
     const baseCost = totalCost || 10000;
     const fallbacks = [
       {
@@ -384,7 +395,7 @@ class AIProcessor {
       }
     ];
 
-    logger.info(`[PREMIUM] Returning ${fallbacks.length} fallback recommendations`);
+    logger.info(`[PAID] Returning ${fallbacks.length} fallback recommendations`);
     return fallbacks.slice(0, 5);
   }
 
@@ -392,13 +403,26 @@ class AIProcessor {
    * Ensure Premium users always get benchmarking data
    */
   ensureBenchmarking(aiBenchmarking, tier, totalCost, costBreakdown) {
-    if (tier !== 'premium') return [];
+    const normalizedTier = (tier || 'free').toLowerCase();
+    if (normalizedTier !== 'premium' && normalizedTier !== 'standard') return [];
 
-    logger.info(`[PREMIUM] Ensuring benchmarking for tier: ${tier}, totalCost: ${totalCost}`);
-    logger.info(`[PREMIUM] AI provided ${(aiBenchmarking || []).length} benchmarks`);
+    logger.info(`[PAID] Ensuring benchmarking for tier: ${normalizedTier}, totalCost: ${totalCost}`);
+    logger.info(`[PAID] AI provided ${(aiBenchmarking || []).length} benchmarks`);
 
-    // TEMPORARILY FORCE FALLBACKS TO TEST
-    // Use fallbacks immediately to ensure content ALWAYS appears
+    // Prioritize AI results if they exist
+    if (Array.isArray(aiBenchmarking) && aiBenchmarking.length >= 3) {
+      logger.info(`[PAID] Using ${aiBenchmarking.length} AI-generated benchmarks`);
+      return aiBenchmarking.map(b => ({
+        item: b.item || 'Market Comparison',
+        quotePrice: b.quotePrice || 0,
+        marketMin: b.marketMin || 0,
+        marketAvg: b.marketAvg || 0,
+        marketMax: b.marketMax || 0,
+        percentile: b.percentile || 50
+      }));
+    }
+
+    // Use fallbacks as safety net if AI provides insufficient data
     const baseCost = totalCost || 10000;
     const fallbacks = [];
 
@@ -495,7 +519,7 @@ class AIProcessor {
       percentile: Math.min(95, Math.max(5, Math.round(((laborMaterialRatio - 1.2) / (2.2 - 1.2)) * 100)))
     });
 
-    logger.info(`[PREMIUM] Returning ${fallbacks.length} fallback benchmarks`);
+    logger.info(`[PAID] Returning ${fallbacks.length} fallback benchmarks`);
     return fallbacks.slice(0, 6);
   }
 

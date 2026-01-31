@@ -226,12 +226,17 @@ class AIOrchestrator {
       throw new Error('Invalid AI response format');
     }
 
-    if (tier === 'free' && !parsed.freeSummary) {
-      throw new Error('Invalid free-tier response');
-    }
+    // Validation: Irrelevant documents are allowed to have null/missing summaries/analysis
+    const isIrrelevant = parsed.relevance?.isRelevant === false;
 
-    if (tier !== 'free' && !parsed.analysis) {
-      throw new Error('Invalid paid-tier response');
+    if (!isIrrelevant) {
+      if (tier === 'free' && !parsed.freeSummary) {
+        throw new Error('Invalid free-tier response: missing freeSummary');
+      }
+
+      if (tier !== 'free' && !parsed.analysis) {
+        throw new Error(`Invalid ${tier}-tier response: missing analysis`);
+      }
     }
 
     return {

@@ -26,6 +26,8 @@ import {
   Download,
   FileUp,
   AlertCircle,
+  Image as ImageIcon,
+  Crown,
   Zap,
   Mail
 } from 'lucide-react';
@@ -141,6 +143,7 @@ const CheckQuote = () => {
         date: formatRelativeTime(job.createdAt),
         quote: job.documents?.[0]?.originalFilename || 'Quote analysis',
         status: job.status,
+        tier: job.tier || 'free',
         jobData: job
       }));
       setChatHistory(history);
@@ -364,8 +367,9 @@ const CheckQuote = () => {
             id: jobData.jobId,
             name: file ? file.name.replace('.pdf', '') : 'Text Quote Analysis',
             date: 'Just now',
-            quote: quoteText.substring(0, 50) + '...',
+            quote: (file ? file.name : quoteText.substring(0, 50)) + '...',
             status: 'processing',
+            tier: analysisTier,
             jobData
           };
           setChatHistory(prev => [newHistoryItem, ...prev]);
@@ -776,39 +780,67 @@ WARRANTY: 6 years on workmanship`
                           <button
                             key={item.id}
                             onClick={() => loadHistoryItem(item)}
-                            className="w-full text-left p-3 bg-gray-50 hover:bg-orange-50 border border-gray-200 hover:border-orange-300 rounded-xl transition-all duration-200 group hover:shadow-sm"
+                            className={`w-full text-left p-3 bg-white border border-gray-100 rounded-xl transition-all duration-300 group hover:shadow-sm relative overflow-hidden mb-2 ${item.tier?.toLowerCase() === 'premium'
+                                ? 'hover:bg-slate-50 hover:border-slate-300'
+                                : item.tier?.toLowerCase() === 'standard'
+                                  ? 'hover:bg-orange-50/50 hover:border-orange-200'
+                                  : 'hover:border-gray-200' // Free tier: Keep bg as is, only subtle border change
+                              }`}
                           >
-                            <div className="flex items-start justify-between mb-1">
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 mb-1">
-                                  <span className="font-medium text-gray-900 group-hover:text-orange-600 truncate">
-                                    {item.name}
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex flex-wrap gap-1">
+                                {item.status === 'processing' && (
+                                  <span className="inline-flex items-center px-1.5 py-0.5 bg-blue-50 text-blue-600 text-[9px] font-bold rounded border border-blue-100/50">
+                                    <Loader2 className="w-2.5 h-2.5 mr-1 animate-spin" />
+                                    Analyzing
                                   </span>
-                                  {item.status === 'processing' && (
-                                    <span className="inline-flex items-center px-2 py-0.5 bg-orange-100 text-orange-700 text-xs rounded-full">
-                                      <Loader2 className="w-3 h-3 mr-1 animate-spin" />
-                                      Processing
-                                    </span>
-                                  )}
-                                  {item.status === 'completed' && (
-                                    <span className="inline-flex items-center px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full">
-                                      <Star className="w-3 h-3 mr-1" />
-                                      Completed
-                                    </span>
-                                  )}
-                                </div>
-                                <p className="text-sm text-gray-600 truncate">{item.quote}</p>
-                              </div>
-                              <Clock className="w-4 h-4 text-gray-400 ml-2 flex-shrink-0" />
-                            </div>
-                            <div className="flex items-center justify-between mt-2">
-                              <div className="flex items-center gap-1">
-                                <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-700 rounded-full">
-                                  {item.date}
+                                )}
+                                {item.status === 'completed' && (
+                                  <span className="inline-flex items-center px-1.5 py-0.5 bg-green-50 text-green-600 text-[9px] font-bold rounded border border-green-100/50">
+                                    <Star className="w-2.5 h-2.5 mr-1" />
+                                    Completed
+                                  </span>
+                                )}
+                                <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider shadow-sm border ${item.tier?.toLowerCase() === 'premium'
+                                    ? 'bg-gradient-to-r from-gray-900 to-black text-amber-400 border-amber-500/30'
+                                    : item.tier?.toLowerCase() === 'standard'
+                                      ? 'bg-orange-500 text-white border-orange-600/20'
+                                      : 'bg-white text-gray-400 border-gray-100'
+                                  }`}>
+                                  {item.tier?.toLowerCase() === 'premium' && <Crown className="w-2.5 h-2.5" />}
+                                  {item.tier?.toLowerCase() === 'standard' && <Zap className="w-2.5 h-2.5" />}
+                                  {item.tier || 'Free'}
                                 </span>
                               </div>
-                              <div className="flex items-center gap-2">
-                                <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-orange-500 transition-colors" />
+                              <span className="text-[9px] text-gray-400 font-medium whitespace-nowrap ml-2">
+                                {item.date}
+                              </span>
+                            </div>
+
+                            <div className="mb-1">
+                              <h4 className={`font-bold text-sm transition-colors truncate ${item.tier?.toLowerCase() === 'premium' ? 'text-gray-900 group-hover:text-black' :
+                                  item.tier?.toLowerCase() === 'standard' ? 'text-gray-900 group-hover:text-orange-600' :
+                                    'text-gray-900'
+                                }`}>
+                                {item.name}
+                              </h4>
+                              <p className="text-[11px] text-gray-500 truncate mt-0.5 opacity-80">{item.quote}</p>
+                            </div>
+
+                            <div className="flex items-center justify-between pt-2 border-t border-gray-50 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <div className="flex items-center gap-1 text-[9px] text-gray-400">
+                                <FileText className="w-3 h-3" />
+                                <span className="font-mono">ID: {item.id.substring(0, 8)}</span>
+                              </div>
+                              <div className={`flex items-center gap-1 text-[9px] font-bold ${item.tier?.toLowerCase() === 'premium' ? 'text-gray-900' :
+                                  item.tier?.toLowerCase() === 'standard' ? 'text-orange-600' :
+                                    'text-gray-600'
+                                }`}>
+                                View Report
+                                <ChevronRight className={`w-3 h-3 transform group-hover:translate-x-1 transition-transform ${item.tier?.toLowerCase() === 'premium' ? 'text-gray-900' :
+                                    item.tier?.toLowerCase() === 'standard' ? 'text-orange-600' :
+                                      'text-gray-600'
+                                  }`} />
                               </div>
                             </div>
                           </button>

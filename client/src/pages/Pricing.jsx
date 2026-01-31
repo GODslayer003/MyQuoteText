@@ -107,12 +107,12 @@ const Pricing = () => {
       features: [
         { included: true, text: "Complete AI analysis (1 credit)" },
         { included: true, text: "Detailed cost breakdown" },
-        { included: true, text: "Item-by-item assessment" },
+        { included: true, text: "Market rate benchmarking" },
+        { included: true, text: "Advanced recommendations" },
+        { included: true, text: "Red Flag detection" },
         { included: true, text: "Standard PDF export" },
         { included: true, text: "Save & organize quotes" },
-        { included: true, text: "Red Flag detection" },
         { included: false, text: "Multiple quote comparison", premium: true },
-        { included: false, text: "Market benchmarking", premium: true },
         { included: false, text: "Priority 24h processing", premium: true },
       ],
       savings: "Reverts to Free after use",
@@ -240,10 +240,10 @@ const Pricing = () => {
     { feature: "Sectioned Questions to Ask", Free: "—", Standard: "✓", Premium: "✓" },
     { feature: "Detailed Cost Breakdown", Free: "—", Standard: "✓", Premium: "✓" },
     { feature: "Professional PDF Export", Free: "—", Standard: "✓", Premium: "✓" },
+    { feature: "Market Rate Benchmarking", Free: "—", Standard: "✓", Premium: "✓" },
+    { feature: "Advanced Recommendations", Free: "—", Standard: "✓", Premium: "✓" },
     { feature: "Multiple Quote Comparison", Free: "—", Standard: "—", Premium: "✓" },
-    { feature: "Market Rate Benchmarking", Free: "—", Standard: "—", Premium: "✓" },
-    { feature: "Bulk Upload (Up to 3 quotes)", Free: "—", Standard: "—", Premium: "✓" },
-    { feature: "Trend Analysis Reports", Free: "—", Standard: "—", Premium: "✓" }
+    { feature: "Bulk Upload (Up to 3 quotes)", Free: "—", Standard: "—", Premium: "✓" }
   ];
 
   const useCases = [

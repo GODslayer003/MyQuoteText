@@ -30,7 +30,9 @@ import {
   Loader2,
   AlertCircle,
   Image as ImageIcon,
-  Trash2
+  Trash2,
+  Crown,
+  Zap
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth'; // or use your AuthContext
 import api from '../services/api';
@@ -108,7 +110,6 @@ const Profile = () => {
 
   const tabs = [
     { id: 'personal', label: 'Personal Info', icon: <User className="w-4 h-4" /> },
-    { id: 'subscription', label: 'Subscription', icon: <CreditCard className="w-4 h-4" /> },
     { id: 'reports', label: 'My Reports', icon: <FileText className="w-4 h-4" /> },
     { id: 'notifications', label: 'Notifications', icon: <Bell className="w-4 h-4" /> }
   ];
@@ -431,7 +432,7 @@ const Profile = () => {
     return plans[plan] || plans['Free'];
   };
 
-  // Render functions for each tab (only showing updated personal info tab for brevity)
+  // Render functions for each tab
   const renderTabContent = () => {
     switch (activeTab) {
       case 'personal':
@@ -525,9 +526,6 @@ const Profile = () => {
                   <h2 className="text-2xl font-bold text-gray-900">{userData.name || 'User'}</h2>
                   <p className="text-gray-600">{userData.email || 'No email provided'}</p>
                   <div className="flex items-center gap-2 mt-1">
-                    <div className="px-2 py-1 bg-orange-100 text-orange-800 rounded-full text-xs font-medium capitalize">
-                      {user?.subscription?.tier || 'Free'} Member
-                    </div>
                     <div className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">
                       Member since {user?.createdAt ? new Date(user.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
                     </div>
@@ -729,197 +727,6 @@ const Profile = () => {
           </div>
         );
 
-      case 'subscription':
-        return (
-          <div className="space-y-8">
-            {/* Current Plan Card */}
-            <div className="bg-gradient-to-r from-orange-50 to-amber-50 rounded-2xl border border-orange-200 p-8">
-              <div className="flex items-start justify-between mb-6">
-                <div>
-                  <p className="text-orange-700 font-semibold uppercase text-sm">Your Plan</p>
-                  <h2 className="text-3xl font-bold text-gray-900 mt-2">{userData.subscription?.plan || 'Free'}</h2>
-                </div>
-                <div className="text-right">
-                  <p className="text-3xl font-bold text-gray-900">
-                    ${getSubscriptionData().price}
-                    <span className="text-lg text-gray-600 ml-1">
-                      {getSubscriptionData().label === 'Free' ? '' : `/ ${getSubscriptionData().label}`}
-                    </span>
-                  </p>
-                </div>
-              </div>
-
-              <p className="text-gray-700 mb-6">
-                Manage your subscription plan, view billing history, and update payment methods.
-              </p>
-
-              <button
-                onClick={() => {
-                  if (userData.subscription?.plan === 'Premium') {
-                    setShowPremiumPopup(true);
-                  } else {
-                    navigate('/pricing');
-                  }
-                }}
-                className="px-6 py-3 bg-gradient-to-r from-orange-500 to-amber-600 text-white rounded-lg font-semibold hover:shadow-lg hover:shadow-orange-500/30 transition-all"
-              >
-                Upgrade Plan
-              </button>
-            </div>
-
-            {/* Reports Usage */}
-            <div className="bg-white rounded-2xl border border-gray-200 p-6">
-              <h3 className="text-lg font-semibold mb-6 text-gray-900">Reports Usage</h3>
-
-              <div className="mb-6">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-gray-700 font-medium">
-                    {userData.subscription?.credits || 0} reports available in current plan
-                  </span>
-                  <span className="text-orange-600 font-semibold">
-                    {Math.round(calculateProgress())}% used
-                  </span>
-                </div>
-
-                <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
-                  <div
-                    className="bg-gradient-to-r from-orange-500 to-amber-600 h-full transition-all duration-500"
-                    style={{ width: `${calculateProgress()}%` }}
-                  ></div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-4">
-                <div className="text-center p-4 bg-gray-50 rounded-lg">
-                  <p className="text-gray-600 text-sm">Credits Used</p>
-                  <p className="text-2xl font-bold text-gray-900 mt-2">
-                    {Math.max(0, (userData.subscription?.reportsTotal || 1) - (userData.subscription?.credits || 0))}
-                  </p>
-                </div>
-                <div className="text-center p-4 bg-gray-50 rounded-lg">
-                  <p className="text-gray-600 text-sm">Remaining</p>
-                  <p className="text-2xl font-bold text-orange-600 mt-2">
-                    {userData.subscription?.credits || 0}
-                  </p>
-                </div>
-                <div className="text-center p-4 bg-gray-50 rounded-lg">
-                  <p className="text-gray-600 text-sm">Total Quota</p>
-                  <p className="text-2xl font-bold text-gray-900 mt-2">{userData.subscription?.reportsTotal || 1}</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Plan Features */}
-            <div className="bg-white rounded-2xl border border-gray-200 p-6">
-              <h3 className="text-lg font-semibold mb-6 text-gray-900">Plan Features</h3>
-
-              <div className="space-y-4">
-                {[
-                  { feature: 'AI Summary Analysis', included: true },
-                  { feature: 'Fair Price Verdict', included: true },
-                  { feature: 'Detailed Cost Breakdown', included: userData.subscription?.plan !== 'Free' },
-                  { feature: 'Red Flag Detection', included: userData.subscription?.plan !== 'Free' },
-                  { feature: 'Questions to Ask Tradie', included: userData.subscription?.plan !== 'Free' },
-                  { feature: 'Professional PDF Reports', included: userData.subscription?.plan !== 'Free' },
-                  { feature: 'Multiple Quote Comparison', included: userData.subscription?.plan === 'Premium' },
-                  { feature: 'Market Benchmarking', included: userData.subscription?.plan === 'Premium' },
-                  { feature: 'Savings Recommendations', included: userData.subscription?.plan === 'Premium' }
-                ].map((item, idx) => (
-                  <div key={idx} className="flex items-center gap-3 p-3 hover:bg-gray-50 rounded-lg transition-colors">
-                    <div className={`w-5 h-5 rounded flex items-center justify-center ${item.included ? 'bg-green-100' : 'bg-gray-100'}`}>
-                      {item.included ? (
-                        <CheckCircle className="w-4 h-4 text-green-600" />
-                      ) : (
-                        <X className="w-4 h-4 text-gray-400" />
-                      )}
-                    </div>
-                    <span className={item.included ? 'text-gray-900 font-medium' : 'text-gray-500'}>{item.feature}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Billing History */}
-            <div className="bg-white rounded-2xl border border-gray-200 p-6">
-              <h3 className="text-lg font-semibold mb-6 text-gray-900">Billing History</h3>
-
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-gray-200">
-                      <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Date</th>
-                      <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Amount</th>
-                      <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Plan</th>
-                      <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Status</th>
-                      <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Invoice</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {loadingPayments ? (
-                      <tr>
-                        <td colSpan="5" className="py-6 text-center text-gray-500">
-                          <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2" />
-                          Loading payments...
-                        </td>
-                      </tr>
-                    ) : payments.length === 0 ? (
-                      <tr>
-                        <td colSpan="5" className="py-6 text-center text-gray-500">
-                          No payment history found
-                        </td>
-                      </tr>
-                    ) : (
-                      payments.map((payment) => (
-                        <tr key={payment.id} className="border-b border-gray-200 hover:bg-gray-50 last:border-0">
-                          <td className="py-3 px-4 text-gray-900">
-                            {new Date(payment.createdAt).toLocaleDateString('en-US', {
-                              year: 'numeric',
-                              month: 'short',
-                              day: 'numeric'
-                            })}
-                          </td>
-                          <td className="py-3 px-4 text-gray-900">
-                            ${payment.amount} {payment.currency?.toUpperCase() || 'AUD'}
-                          </td>
-                          <td className="py-3 px-4 text-gray-900 capitalize">
-                            {payment.tier || 'Standard'}
-                          </td>
-                          <td className="py-3 px-4">
-                            <span className={`px-3 py-1 rounded-full text-xs font-medium ${payment.status === 'succeeded' ? 'bg-green-100 text-green-800' :
-                              payment.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                                'bg-red-100 text-red-800'
-                              }`}>
-                              {payment.status === 'succeeded' ? 'Paid' : payment.status}
-                            </span>
-                          </td>
-                          <td className="py-3 px-4">
-                            {payment.receiptUrl ? (
-                              <a
-                                href={payment.receiptUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-orange-600 hover:text-orange-700 font-medium flex items-center gap-1 text-sm hover:underline"
-                              >
-                                <Download className="w-4 h-4" />
-                                Receipt
-                              </a>
-                            ) : (
-                              <span className="text-gray-400 text-sm flex items-center gap-1 cursor-not-allowed">
-                                <Download className="w-4 h-4" />
-                                Unavailable
-                              </span>
-                            )}
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        );
-
       case 'reports':
         return (
           <div className="space-y-8">
@@ -973,37 +780,61 @@ const Profile = () => {
                   </Link>
                 </div>
               ) : (
-                <div className="space-y-4">
+                <div className="space-y-3">
                   {(showAllReports ? reports : reports.slice(0, 5)).map(report => (
                     <Link
                       to={`/analysis/${report.jobId}`}
                       key={report._id}
-                      className="flex items-center justify-between p-4 hover:bg-gray-50 rounded-lg transition-colors border-b border-gray-200 last:border-0 block group"
+                      className={`group flex items-center gap-3 p-3 bg-white border border-gray-100 rounded-xl transition-all duration-300 hover:shadow-sm ${report.tier?.toLowerCase() === 'premium'
+                        ? 'hover:bg-slate-50 hover:border-slate-300'
+                        : report.tier?.toLowerCase() === 'standard'
+                          ? 'hover:bg-orange-50/50 hover:border-orange-200'
+                          : 'hover:border-gray-200' // Free tier: Keep bg as is
+                        }`}
                     >
-                      <div className="flex items-center gap-3 flex-1">
-                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${report.status === 'completed' ? 'bg-green-100 text-green-600' :
-                          report.status === 'processing' ? 'bg-blue-100 text-blue-600' :
-                            'bg-yellow-100 text-yellow-600'
-                          }`}>
-                          <FileText className="w-5 h-5" />
+                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-300 group-hover:scale-105 ${report.status === 'completed' ? 'bg-green-50 text-green-600' :
+                        report.status === 'processing' ? 'bg-blue-50 text-blue-600' :
+                          'bg-amber-50 text-amber-600'
+                        }`}>
+                        <FileText className="w-5 h-5" />
+                      </div>
+
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-0.5">
+                          <h4 className={`font-bold text-sm transition-colors truncate ${report.tier?.toLowerCase() === 'premium' ? 'text-gray-900 group-hover:text-black' :
+                            report.tier?.toLowerCase() === 'standard' ? 'text-gray-900 group-hover:text-orange-600' :
+                              'text-gray-900'
+                            }`}>
+                            {report.title || 'Quote Analysis'}
+                          </h4>
                         </div>
-                        <div>
-                          <p className="font-medium text-gray-900 group-hover:text-orange-600 transition-colors">{report.title || 'Quote Analysis'}</p>
-                          <div className="flex items-center gap-2 text-sm text-gray-500">
-                            <span>{new Date(report.createdAt).toLocaleDateString()}</span>
-                            <span>•</span>
-                            <span className="capitalize">{report.tier || 'Free'}</span>
-                          </div>
+                        <div className="flex items-center gap-2.5">
+                          <span className="text-[11px] text-gray-400 font-medium">{new Date(report.createdAt).toLocaleDateString()}</span>
+                          <span className="w-1 h-1 bg-gray-200 rounded-full"></span>
+                          <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider shadow-sm border ${report.tier?.toLowerCase() === 'premium'
+                            ? 'bg-gradient-to-r from-gray-900 to-black text-amber-400 border-amber-500/30'
+                            : report.tier?.toLowerCase() === 'standard'
+                              ? 'bg-orange-500 text-white border-orange-600/20'
+                              : 'bg-white text-gray-400 border-gray-100'
+                            }`}>
+                            {report.tier?.toLowerCase() === 'premium' && <Crown className="w-2.5 h-2.5" />}
+                            {report.tier?.toLowerCase() === 'standard' && <Zap className="w-2.5 h-2.5" />}
+                            {report.tier || 'Free'}
+                          </span>
                         </div>
                       </div>
-                      <div className="flex items-center gap-4">
-                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${report.status === 'completed' ? 'bg-green-100 text-green-800' :
-                          report.status === 'processing' ? 'bg-blue-100 text-blue-800' :
-                            'bg-yellow-100 text-yellow-800'
+
+                      <div className="flex flex-col items-end gap-1.5">
+                        <span className={`px-2 py-0.5 rounded-md text-[9px] font-bold border transition-colors ${report.status === 'completed' ? 'bg-green-50 text-green-700 border-green-100' :
+                          report.status === 'processing' ? 'bg-blue-50 text-blue-700 border-blue-100' :
+                            'bg-amber-50 text-amber-700 border-amber-100'
                           }`}>
-                          {report.status || 'Pending'}
+                          {report.status?.toUpperCase() || 'PENDING'}
                         </span>
-                        <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-orange-500 transition-colors" />
+                        <ChevronRight className={`w-4 h-4 transition-all transform group-hover:translate-x-1 ${report.tier?.toLowerCase() === 'premium' ? 'text-gray-500 group-hover:text-black' :
+                          report.tier?.toLowerCase() === 'standard' ? 'text-gray-300 group-hover:text-orange-500' :
+                            'text-gray-400'
+                          }`} />
                       </div>
                     </Link>
                   ))}
@@ -1071,8 +902,6 @@ const Profile = () => {
             </div>
           </div>
         );
-
-
 
       default:
         return null;
@@ -1344,28 +1173,7 @@ const Profile = () => {
               </button>
             </div>
 
-            {/* Quick Stats */}
-            <div className="mt-6 bg-white rounded-2xl border border-gray-200 p-6">
-              <h3 className="font-semibold text-gray-900 mb-4">Quick Stats</h3>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-600">Credits Available</span>
-                  <span className="font-semibold text-gray-900">
-                    {userData.subscription.credits || 0}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-600">Plan</span>
-                  <span className="font-semibold text-orange-600">{userData.subscription.plan}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-600">Member Since</span>
-                  <span className="font-semibold text-gray-900">
-                    {user?.createdAt ? new Date(user.createdAt).getFullYear() : '2024'}
-                  </span>
-                </div>
-              </div>
-            </div>
+            {/* Quick Stats Removed */}
           </div>
 
           {/* Main Content */}

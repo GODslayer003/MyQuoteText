@@ -295,7 +295,7 @@ const AnalysisResults = ({ jobResult, userTier = 'free', onCompare }) => {
   // Tier access mapping
   const tierAccess = {
     free: ['summary', 'verdict'],
-    standard: ['summary', 'verdict', 'costBreakdown', 'redFlags', 'detailedReview', 'questions'],
+    standard: ['summary', 'verdict', 'costBreakdown', 'redFlags', 'detailedReview', 'questions', 'benchmarking', 'recommendations'],
     premium: ['summary', 'verdict', 'costBreakdown', 'redFlags', 'detailedReview', 'questions', 'comparison', 'benchmarking', 'recommendations']
   };
 
@@ -382,7 +382,7 @@ const AnalysisResults = ({ jobResult, userTier = 'free', onCompare }) => {
       title: 'Market Benchmarking',
       description: 'Compare against local market rates',
       icon: '📈',
-      tier: 'premium',
+      tier: 'standard',
       content: displayResult?.benchmarking || [],
       isList: true
     },
@@ -390,7 +390,7 @@ const AnalysisResults = ({ jobResult, userTier = 'free', onCompare }) => {
       title: 'Advanced Recommendations',
       description: 'AI-powered negotiation tips and savings opportunities',
       icon: '💡',
-      tier: 'premium',
+      tier: 'standard',
       content: displayResult?.recommendations || [],
       isList: true
     }
@@ -1134,7 +1134,7 @@ const AnalysisResults = ({ jobResult, userTier = 'free', onCompare }) => {
               <div>
                 <h3 className="font-bold text-gray-900 mb-1">You're on the Standard Plan</h3>
                 <p className="text-sm text-gray-700 mb-3">
-                  Unlock Advanced Recommendations and Quote Comparison with the Premium plan.
+                  Unlock Quote Comparison and Professional Technical Reports with the Premium plan.
                 </p>
                 <Link
                   to="/pricing"
@@ -1181,8 +1181,8 @@ const AnalysisResults = ({ jobResult, userTier = 'free', onCompare }) => {
             </h3>
             <p className="text-gray-600 mb-6 max-w-2xl mx-auto">
               {normalizedTier === 'free'
-                ? 'Upgrade to see red flags, detailed cost breakdown, questions to ask, and more.'
-                : 'Upgrade to Premium to compare multiple quotes and get market benchmarking.'}
+                ? 'Upgrade to see red flags, detailed cost breakdown, benchmarking, and more.'
+                : 'Upgrade to Premium to compare multiple quotes and get technical reports.'}
             </p>
             <Link
               to="/pricing"

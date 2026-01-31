@@ -214,6 +214,17 @@ IMPORTANT:
   - title: 'Quote Integrity Verified'
   - description: 'EXPLAIN IN 3-4 SENTENCES why the quote is structurally sound, mentioning specific lack of hidden costs, clear itemization, and standard pricing found in this document.'
   - recommendation: 'Proceed with standard administrative caution.'
+${tier === 'standard' ? `
+🚨 STANDARD TIER REQUIREMENTS (MANDATORY) 🚨
+
+1. ADVANCED RECOMMENDATIONS (MANDATORY):
+   - MUST contain 3-4 actionable negotiation strategies.
+   - Summarize market context and potential savings for each.
+
+2. MARKET BENCHMARKING (MANDATORY):
+   - MUST contain 4-5 market comparisons based on 2026 Australian rates.
+   - Include price range and percentile.
+` : ''}
 ${tier === 'premium' ? `
 🚨 PREMIUM TIER REQUIREMENTS (ABSOLUTELY MANDATORY - NO EXCEPTIONS) 🚨
 
