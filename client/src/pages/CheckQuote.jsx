@@ -174,9 +174,9 @@ const CheckQuote = () => {
   };
 
   const validateFile = (selectedFile) => {
-    const validTypes = ['application/pdf'];
+    const validTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
     if (!validTypes.includes(selectedFile.type)) {
-      throw new Error('Please upload a PDF file only. We currently support PDF format for analysis.');
+      throw new Error('Please upload a PDF or an image (JPG, PNG, WEBP). We support both formats for analysis.');
     }
 
     if (selectedFile.size > 10 * 1024 * 1024) {
@@ -208,7 +208,7 @@ const CheckQuote = () => {
 
   const validateForm = () => {
     if (!quoteText.trim() && !file) {
-      setError('Please upload a PDF file or enter quote text to analyze.');
+      setError('Please upload a PDF/Image or enter quote text to analyze.');
       return false;
     }
 
@@ -281,14 +281,14 @@ const CheckQuote = () => {
       const analysisTier = isAuthenticated ? (user?.subscription?.plan?.toLowerCase() || 'free') : 'free';
 
       if (uploadMethod === 'file' && file) {
-        // Upload PDF file
+        // Upload File (PDF or Image)
         jobData = await quoteApi.createJob({
           email: analysisEmail,
           file,
           tier: analysisTier,
           metadata: {
             source: isAuthenticated ? 'web_upload' : 'guest_upload',
-            title: file.name.replace('.pdf', ''),
+            title: file.name.replace(/\.[^/.]+$/, ""),
             method: 'file_upload'
           }
         });
@@ -365,9 +365,9 @@ const CheckQuote = () => {
         if (isAuthenticated) {
           const newHistoryItem = {
             id: jobData.jobId,
-            name: file ? file.name.replace('.pdf', '') : 'Text Quote Analysis',
+            name: file ? file.name.replace(/\.[^/.]+$/, "") : 'Text Quote Analysis',
             date: 'Just now',
-            quote: (file ? file.name : quoteText.substring(0, 50)) + '...',
+            quote: (file ? file.name : quoteText.substring(0, 50)) + (file ? '' : '...'),
             status: 'processing',
             tier: analysisTier,
             jobData
@@ -781,10 +781,10 @@ WARRANTY: 6 years on workmanship`
                             key={item.id}
                             onClick={() => loadHistoryItem(item)}
                             className={`w-full text-left p-3 bg-white border border-gray-100 rounded-xl transition-all duration-300 group hover:shadow-sm relative overflow-hidden mb-2 ${item.tier?.toLowerCase() === 'premium'
-                                ? 'hover:bg-slate-50 hover:border-slate-300'
-                                : item.tier?.toLowerCase() === 'standard'
-                                  ? 'hover:bg-orange-50/50 hover:border-orange-200'
-                                  : 'hover:border-gray-200' // Free tier: Keep bg as is, only subtle border change
+                              ? 'hover:bg-slate-50 hover:border-slate-300'
+                              : item.tier?.toLowerCase() === 'standard'
+                                ? 'hover:bg-orange-50/50 hover:border-orange-200'
+                                : 'hover:border-gray-200' // Free tier: Keep bg as is, only subtle border change
                               }`}
                           >
                             <div className="flex items-center justify-between mb-2">
@@ -802,10 +802,10 @@ WARRANTY: 6 years on workmanship`
                                   </span>
                                 )}
                                 <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider shadow-sm border ${item.tier?.toLowerCase() === 'premium'
-                                    ? 'bg-gradient-to-r from-gray-900 to-black text-amber-400 border-amber-500/30'
-                                    : item.tier?.toLowerCase() === 'standard'
-                                      ? 'bg-orange-500 text-white border-orange-600/20'
-                                      : 'bg-white text-gray-400 border-gray-100'
+                                  ? 'bg-gradient-to-r from-gray-900 to-black text-amber-400 border-amber-500/30'
+                                  : item.tier?.toLowerCase() === 'standard'
+                                    ? 'bg-orange-500 text-white border-orange-600/20'
+                                    : 'bg-white text-gray-400 border-gray-100'
                                   }`}>
                                   {item.tier?.toLowerCase() === 'premium' && <Crown className="w-2.5 h-2.5" />}
                                   {item.tier?.toLowerCase() === 'standard' && <Zap className="w-2.5 h-2.5" />}
@@ -819,8 +819,8 @@ WARRANTY: 6 years on workmanship`
 
                             <div className="mb-1">
                               <h4 className={`font-bold text-sm transition-colors truncate ${item.tier?.toLowerCase() === 'premium' ? 'text-gray-900 group-hover:text-black' :
-                                  item.tier?.toLowerCase() === 'standard' ? 'text-gray-900 group-hover:text-orange-600' :
-                                    'text-gray-900'
+                                item.tier?.toLowerCase() === 'standard' ? 'text-gray-900 group-hover:text-orange-600' :
+                                  'text-gray-900'
                                 }`}>
                                 {item.name}
                               </h4>
@@ -833,13 +833,13 @@ WARRANTY: 6 years on workmanship`
                                 <span className="font-mono">ID: {item.id.substring(0, 8)}</span>
                               </div>
                               <div className={`flex items-center gap-1 text-[9px] font-bold ${item.tier?.toLowerCase() === 'premium' ? 'text-gray-900' :
-                                  item.tier?.toLowerCase() === 'standard' ? 'text-orange-600' :
-                                    'text-gray-600'
+                                item.tier?.toLowerCase() === 'standard' ? 'text-orange-600' :
+                                  'text-gray-600'
                                 }`}>
                                 View Report
                                 <ChevronRight className={`w-3 h-3 transform group-hover:translate-x-1 transition-transform ${item.tier?.toLowerCase() === 'premium' ? 'text-gray-900' :
-                                    item.tier?.toLowerCase() === 'standard' ? 'text-orange-600' :
-                                      'text-gray-600'
+                                  item.tier?.toLowerCase() === 'standard' ? 'text-orange-600' :
+                                    'text-gray-600'
                                   }`} />
                               </div>
                             </div>
@@ -935,7 +935,7 @@ WARRANTY: 6 years on workmanship`
                           }`}
                       >
                         <Upload className="w-4 h-4" />
-                        Upload PDF
+                        Upload PDF/Image
                       </button>
                       <button
                         onClick={() => setUploadMethod('text')}
@@ -966,7 +966,7 @@ WARRANTY: 6 years on workmanship`
                                   <div className="text-left">
                                     <p className="font-medium text-gray-900">{file.name}</p>
                                     <p className="text-sm text-gray-600">
-                                      {(file.size / 1024 / 1024).toFixed(2)} MB • PDF
+                                      {(file.size / 1024 / 1024).toFixed(2)} MB • {file.type.split('/')[1].toUpperCase()}
                                     </p>
                                   </div>
                                 </div>
@@ -984,10 +984,10 @@ WARRANTY: 6 years on workmanship`
                                 <Upload className="w-8 h-8 text-orange-500" />
                               </div>
                               <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                                Upload Your Quote PDF
+                                Upload Your Quote
                               </h3>
                               <p className="text-gray-600 mb-4">
-                                PDF format only • Max 10MB
+                                PDF or Images (JPG, PNG) • Max 10MB
                               </p>
                               <button
                                 onClick={(e) => {
@@ -996,17 +996,17 @@ WARRANTY: 6 years on workmanship`
                                 }}
                                 className="px-6 py-3 bg-gradient-to-r from-orange-500 to-amber-600 text-white rounded-lg font-semibold hover:shadow-lg hover:shadow-orange-500/30 transition-all"
                               >
-                                Choose PDF File
+                                Choose Quote File
                               </button>
                               <p className="text-sm text-gray-500 mt-3">
-                                or drag and drop PDF file here
+                                or drag and drop file here
                               </p>
                             </>
                           )}
                           <input
                             ref={fileInputRef}
                             type="file"
-                            accept=".pdf"
+                            accept=".pdf,image/jpeg,image/png,image/webp"
                             onChange={handleFileUpload}
                             className="hidden"
                           />

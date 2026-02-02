@@ -581,7 +581,7 @@ class JobController {
               method: 'text_input'
             };
           } else {
-            extractionResult = await ocrService.extractTextFromPDF(file.buffer);
+            extractionResult = await ocrService.extractText(file.buffer, file.mimetype);
           }
           logger.info('Text extracted (inline)', {
             length: extractionResult?.text?.length,

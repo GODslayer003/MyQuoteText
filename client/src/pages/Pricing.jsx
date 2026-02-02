@@ -232,7 +232,6 @@ const Pricing = () => {
   };
 
 
-
   const tableData = [
     { feature: "AI Overview Summary", Free: "✓", Standard: "✓", Premium: "✓" },
     { feature: "Fair Price Verdict", Free: "✓", Standard: "✓", Premium: "✓" },

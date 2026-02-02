@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Lock, Unlock, ChevronDown, ChevronUp, Zap, Crown, Star, Download, FileText, AlertTriangle, Search } from 'lucide-react';
+import { Lock, Unlock, ChevronDown, ChevronUp, Zap, Crown, Star, Download, FileText, AlertTriangle, Search, X, Database } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import quoteApi from '../services/quoteApi';
 import { toast } from 'react-hot-toast';
@@ -18,7 +18,7 @@ const AnalysisResults = ({ jobResult, userTier = 'free', onCompare }) => {
   const [isDownloadingReport, setIsDownloadingReport] = useState(false);
   const [showFullSummary, setShowFullSummary] = useState(false);
   const [showFullVerdict, setShowFullVerdict] = useState(false);
-  const [isDownloadingTextReport, setIsDownloadingTextReport] = useState(false);
+  const [showTechnicalModal, setShowTechnicalModal] = useState(false);
 
   // Multi-Quote State
   const [comparisonQuotes, setComparisonQuotes] = useState([jobResult]); // Start with current quote
@@ -76,27 +76,8 @@ const AnalysisResults = ({ jobResult, userTier = 'free', onCompare }) => {
     }
   };
 
-  const handleDownloadTextReport = async () => {
-    if (!jobResult?.jobId) return;
-
-    try {
-      setIsDownloadingTextReport(true);
-      const blob = await quoteApi.generateTextReport(jobResult.jobId);
-      const url = window.URL.createObjectURL(new Blob([blob]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `Technical_Report_${jobResult.jobId}.pdf`);
-      document.body.appendChild(link);
-      link.click();
-      link.parentNode.removeChild(link);
-
-      toast.success('Technical Report downloaded!');
-    } catch (err) {
-      console.error('Text report download error:', err);
-      toast.error('Failed to download technical report.');
-    } finally {
-      setIsDownloadingTextReport(false);
-    }
+  const handleOpenTechnicalModal = () => {
+    setShowTechnicalModal(true);
   };
 
   const toggleExpand = (key) => {
@@ -997,8 +978,445 @@ const AnalysisResults = ({ jobResult, userTier = 'free', onCompare }) => {
     );
   };
 
+  // Technical Data Modal Component
+  const TechnicalDataModal = () => {
+    if (!showTechnicalModal) return null;
+
+    const formatDate = (dateStr) => {
+      if (!dateStr) return 'N/A';
+      try {
+        return new Date(dateStr).toLocaleDateString('en-AU', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+      } catch {
+        return dateStr;
+      }
+    };
+
+    const getTierBadge = () => {
+      if (normalizedTier === 'premium') {
+        return (
+          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-black text-white">
+            <Crown className="w-3 h-3 mr-1.5 text-amber-400" />
+            PREMIUM
+          </span>
+        );
+      } else if (normalizedTier === 'standard') {
+        return (
+          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-orange-500 to-amber-600 text-white">
+            <Zap className="w-3 h-3 mr-1.5" />
+            STANDARD
+          </span>
+        );
+      } else {
+        return (
+          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-gray-200 text-gray-700">
+            FREE
+          </span>
+        );
+      }
+    };
+
+    return (
+      <div className="fixed inset-0 z-50 flex justify-center p-4 pt-20 animate-fadeIn">
+        <div className={`rounded-2xl shadow-2xl w-full max-w-4xl h-fit max-h-[85vh] overflow-hidden flex flex-col animate-slideUp ${normalizedTier === 'premium' ? 'bg-gray-900' :
+          normalizedTier === 'standard' ? 'bg-gradient-to-br from-orange-50 to-amber-50' :
+            'bg-white'
+          }`}>
+          {/* Modal Header */}
+          <div className={`flex items-center justify-between p-6 border-b ${normalizedTier === 'premium' ? 'border-gray-700 bg-gradient-to-r from-gray-800 to-gray-900' :
+            normalizedTier === 'standard' ? 'border-orange-200 bg-gradient-to-r from-orange-100 to-amber-100' :
+              'border-gray-200 bg-gradient-to-r from-gray-50 to-white'
+            }`}>
+            <div className="flex items-center gap-3">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${normalizedTier === 'premium' ? 'bg-gradient-to-br from-amber-400 to-amber-500' :
+                'bg-gradient-to-br from-blue-500 to-blue-600'
+                }`}>
+                <Database className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h2 className={`text-xl font-bold ${normalizedTier === 'premium' ? 'text-white' : 'text-gray-900'
+                  }`}>Technical Data</h2>
+                <p className={`text-sm ${normalizedTier === 'premium' ? 'text-gray-300' :
+                  normalizedTier === 'standard' ? 'text-gray-700' :
+                    'text-gray-600'
+                  }`}>Detailed analysis information</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              {getTierBadge()}
+              <button
+                onClick={() => setShowTechnicalModal(false)}
+                className={`p-2 rounded-lg transition-colors ${normalizedTier === 'premium' ? 'hover:bg-gray-700' : 'hover:bg-gray-100'
+                  }`}
+              >
+                <X className={`w-5 h-5 ${normalizedTier === 'premium' ? 'text-gray-300' : 'text-gray-500'
+                  }`} />
+              </button>
+            </div>
+          </div>
+
+          {/* Modal Content - Scrollable */}
+          <div className={`flex-1 overflow-y-auto p-6 space-y-6 ${normalizedTier === 'premium' ? 'bg-gray-900' :
+            normalizedTier === 'standard' ? 'bg-gradient-to-br from-orange-50 to-amber-50' :
+              'bg-white'
+            }`}>
+
+            {/* Job Information - Available for ALL tiers */}
+            <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-4 py-3 border-b border-gray-200">
+                <h3 className="font-bold text-gray-900 flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-blue-600" />
+                  Job Information
+                </h3>
+              </div>
+              <div className="p-4">
+                <table className="w-full">
+                  <tbody className="divide-y divide-gray-100">
+                    <tr>
+                      <td className="py-2 px-3 font-semibold text-gray-700 bg-gray-50 w-1/3">Job ID</td>
+                      <td className="py-2 px-3 text-gray-900 font-mono text-sm">{jobResult?.jobId || 'N/A'}</td>
+                    </tr>
+                    <tr>
+                      <td className="py-2 px-3 font-semibold text-gray-700 bg-gray-50">Analysis Date</td>
+                      <td className="py-2 px-3 text-gray-900">{formatDate(jobResult?.createdAt)}</td>
+                    </tr>
+                    <tr>
+                      <td className="py-2 px-3 font-semibold text-gray-700 bg-gray-50">File Name</td>
+                      <td className="py-2 px-3 text-gray-900">{jobResult?.metadata?.title || displayResult?.metadata?.fileName || 'Quote Document'}</td>
+                    </tr>
+                    <tr>
+                      <td className="py-2 px-3 font-semibold text-gray-700 bg-gray-50">Extraction Method</td>
+                      <td className="py-2 px-3">
+                        {displayResult?.metadata?.extractionMethod === 'vision_api' || displayResult?.metadata?.extractionMethod === 'fallback_placeholder' ? (
+                          <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-semibold bg-purple-100 text-purple-800">
+                            <Star className="w-3 h-3 mr-1" />
+                            AI Vision
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-semibold bg-blue-100 text-blue-800">
+                            <FileText className="w-3 h-3 mr-1" />
+                            Text Extraction
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="py-2 px-3 font-semibold text-gray-700 bg-gray-50">Analysis Tier</td>
+                      <td className="py-2 px-3">{getTierBadge()}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Cost Summary - Standard & Premium */}
+            {(normalizedTier === 'standard' || normalizedTier === 'premium') && (
+              <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+                <div className="bg-gradient-to-r from-green-50 to-emerald-50 px-4 py-3 border-b border-gray-200">
+                  <h3 className="font-bold text-gray-900 flex items-center gap-2">
+                    💰 Cost Summary
+                  </h3>
+                </div>
+                <div className="p-4">
+                  <table className="w-full">
+                    <tbody className="divide-y divide-gray-100">
+                      <tr>
+                        <td className="py-2 px-3 font-semibold text-gray-700 bg-gray-50 w-1/3">Total Cost</td>
+                        <td className="py-2 px-3 text-gray-900 font-bold text-lg">
+                          ${(displayResult?.overallCost || 0).toLocaleString()}
+                        </td>
+                      </tr>
+                      <tr>
+                        <td className="py-2 px-3 font-semibold text-gray-700 bg-gray-50">Labor</td>
+                        <td className="py-2 px-3 text-gray-900">
+                          ${(displayResult?.labourCost || 0).toLocaleString()}
+                        </td>
+                      </tr>
+                      <tr>
+                        <td className="py-2 px-3 font-semibold text-gray-700 bg-gray-50">Materials</td>
+                        <td className="py-2 px-3 text-gray-900">
+                          ${(displayResult?.materialsCost || 0).toLocaleString()}
+                        </td>
+                      </tr>
+                      <tr>
+                        <td className="py-2 px-3 font-semibold text-gray-700 bg-gray-50">Currency</td>
+                        <td className="py-2 px-3 text-gray-900">AUD</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* Cost Breakdown Table - Standard & Premium */}
+            {(normalizedTier === 'standard' || normalizedTier === 'premium') && displayResult?.costBreakdown?.length > 0 && (
+              <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+                <div className="bg-gradient-to-r from-amber-50 to-orange-50 px-4 py-3 border-b border-gray-200">
+                  <h3 className="font-bold text-gray-900 flex items-center gap-2">
+                    📊 Detailed Cost Breakdown
+                  </h3>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-gray-50 border-b border-gray-200">
+                      <tr>
+                        <th className="py-3 px-4 text-left text-xs font-bold text-gray-700 uppercase">Item</th>
+                        <th className="py-3 px-4 text-center text-xs font-bold text-gray-700 uppercase">Qty</th>
+                        <th className="py-3 px-4 text-right text-xs font-bold text-gray-700 uppercase">Unit Price</th>
+                        <th className="py-3 px-4 text-right text-xs font-bold text-gray-700 uppercase">Total</th>
+                        <th className="py-3 px-4 text-center text-xs font-bold text-gray-700 uppercase">Category</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {displayResult.costBreakdown.map((item, idx) => (
+                        <tr key={idx} className="hover:bg-gray-50 transition-colors">
+                          <td className="py-3 px-4 text-sm text-gray-900">{item.description || item.item}</td>
+                          <td className="py-3 px-4 text-center text-sm text-gray-700">{item.quantity || 1}</td>
+                          <td className="py-3 px-4 text-right text-sm text-gray-700">
+                            ${(item.unitPrice || item.amount || 0).toLocaleString()}
+                          </td>
+                          <td className="py-3 px-4 text-right text-sm font-semibold text-gray-900">
+                            ${(item.totalPrice || item.amount || 0).toLocaleString()}
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            <span className={`inline-flex px-2 py-1 rounded-md text-xs font-semibold ${item.category === 'labour' || item.category === 'labor' ? 'bg-blue-100 text-blue-800' :
+                              item.category === 'materials' ? 'bg-green-100 text-green-800' :
+                                item.category === 'equipment' ? 'bg-purple-100 text-purple-800' :
+                                  'bg-gray-100 text-gray-800'
+                              }`}>
+                              {item.category || 'other'}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* Red Flags Table - Standard & Premium */}
+            {(normalizedTier === 'standard' || normalizedTier === 'premium') && displayResult?.redFlags?.length > 0 && (
+              <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+                <div className="bg-gradient-to-r from-red-50 to-pink-50 px-4 py-3 border-b border-gray-200">
+                  <h3 className="font-bold text-gray-900 flex items-center gap-2">
+                    🚩 Red Flags & Warnings
+                  </h3>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-gray-50 border-b border-gray-200">
+                      <tr>
+                        <th className="py-3 px-4 text-left text-xs font-bold text-gray-700 uppercase">Severity</th>
+                        <th className="py-3 px-4 text-left text-xs font-bold text-gray-700 uppercase">Category</th>
+                        <th className="py-3 px-4 text-left text-xs font-bold text-gray-700 uppercase">Description</th>
+                        <th className="py-3 px-4 text-left text-xs font-bold text-gray-700 uppercase">Recommendation</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {displayResult.redFlags.map((flag, idx) => (
+                        <tr key={idx} className="hover:bg-gray-50 transition-colors">
+                          <td className="py-3 px-4">
+                            <span className={`inline-flex px-2 py-1 rounded-md text-xs font-bold ${flag.severity === 'critical' ? 'bg-red-600 text-white' :
+                              flag.severity === 'high' ? 'bg-red-100 text-red-800' :
+                                flag.severity === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                                  'bg-blue-100 text-blue-800'
+                              }`}>
+                              {flag.severity || 'low'}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-sm text-gray-700 capitalize">{flag.category || 'general'}</td>
+                          <td className="py-3 px-4 text-sm text-gray-900">{flag.description || flag.title}</td>
+                          <td className="py-3 px-4 text-sm text-gray-700">{flag.recommendation || 'Review with contractor'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* Benchmarking Table - Premium Only */}
+            {normalizedTier === 'premium' && displayResult?.benchmarking?.length > 0 && (
+              <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+                <div className="bg-gradient-to-r from-indigo-50 to-purple-50 px-4 py-3 border-b border-gray-200">
+                  <h3 className="font-bold text-gray-900 flex items-center gap-2">
+                    📈 Market Benchmarking
+                  </h3>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-gray-50 border-b border-gray-200">
+                      <tr>
+                        <th className="py-3 px-4 text-left text-xs font-bold text-gray-700 uppercase">Item</th>
+                        <th className="py-3 px-4 text-right text-xs font-bold text-gray-700 uppercase">Quote Price</th>
+                        <th className="py-3 px-4 text-right text-xs font-bold text-gray-700 uppercase">Market Min</th>
+                        <th className="py-3 px-4 text-right text-xs font-bold text-gray-700 uppercase">Market Avg</th>
+                        <th className="py-3 px-4 text-right text-xs font-bold text-gray-700 uppercase">Market Max</th>
+                        <th className="py-3 px-4 text-center text-xs font-bold text-gray-700 uppercase">Percentile</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {displayResult.benchmarking.map((bench, idx) => (
+                        <tr key={idx} className="hover:bg-gray-50 transition-colors">
+                          <td className="py-3 px-4 text-sm font-medium text-gray-900">{bench.item}</td>
+                          <td className="py-3 px-4 text-right text-sm font-semibold text-gray-900">
+                            ${bench.quotePrice?.toLocaleString()}
+                          </td>
+                          <td className="py-3 px-4 text-right text-sm text-gray-600">
+                            ${bench.marketMin?.toLocaleString()}
+                          </td>
+                          <td className="py-3 px-4 text-right text-sm text-gray-700">
+                            ${bench.marketAvg?.toLocaleString()}
+                          </td>
+                          <td className="py-3 px-4 text-right text-sm text-gray-600">
+                            ${bench.marketMax?.toLocaleString()}
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            <span className={`inline-flex px-2 py-1 rounded-md text-xs font-bold ${bench.percentile >= 75 ? 'bg-red-100 text-red-800' :
+                              bench.percentile >= 50 ? 'bg-yellow-100 text-yellow-800' :
+                                'bg-green-100 text-green-800'
+                              }`}>
+                              {bench.percentile}th
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* Recommendations Table - Premium Only */}
+            {normalizedTier === 'premium' && displayResult?.recommendations?.length > 0 && (
+              <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+                <div className="bg-gradient-to-r from-yellow-50 to-amber-50 px-4 py-3 border-b border-gray-200">
+                  <h3 className="font-bold text-gray-900 flex items-center gap-2">
+                    💡 Recommendations & Savings
+                  </h3>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-gray-50 border-b border-gray-200">
+                      <tr>
+                        <th className="py-3 px-4 text-left text-xs font-bold text-gray-700 uppercase">Strategy</th>
+                        <th className="py-3 px-4 text-left text-xs font-bold text-gray-700 uppercase">Description</th>
+                        <th className="py-3 px-4 text-right text-xs font-bold text-gray-700 uppercase">Potential Savings</th>
+                        <th className="py-3 px-4 text-center text-xs font-bold text-gray-700 uppercase">Difficulty</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {displayResult.recommendations.map((rec, idx) => (
+                        <tr key={idx} className="hover:bg-gray-50 transition-colors">
+                          <td className="py-3 px-4 text-sm font-semibold text-gray-900">{rec.title}</td>
+                          <td className="py-3 px-4 text-sm text-gray-700 max-w-md">{rec.description}</td>
+                          <td className="py-3 px-4 text-right text-sm font-bold text-green-700">
+                            ${rec.potentialSavings?.toLocaleString() || '0'}
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            <span className={`inline-flex px-2 py-1 rounded-md text-xs font-semibold ${rec.difficulty === 'complex' ? 'bg-red-100 text-red-800' :
+                              rec.difficulty === 'moderate' ? 'bg-yellow-100 text-yellow-800' :
+                                'bg-green-100 text-green-800'
+                              }`}>
+                              {rec.difficulty || 'easy'}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* Locked Content Indicators */}
+            {normalizedTier === 'free' && (
+              <div className="bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-200 rounded-xl p-6 text-center">
+                <Lock className="w-12 h-12 text-orange-600 mx-auto mb-3" />
+                <h3 className="font-bold text-gray-900 mb-2">Upgrade to See More</h3>
+                <p className="text-sm text-gray-700 mb-4">
+                  Unlock detailed cost breakdown, red flags, benchmarking, and recommendations with Standard or Premium.
+                </p>
+                <Link
+                  to="/pricing"
+                  className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-amber-600 text-white rounded-lg font-semibold hover:shadow-lg transition-all"
+                >
+                  <Zap className="w-4 h-4" />
+                  View Plans
+                </Link>
+              </div>
+            )}
+
+            {normalizedTier === 'standard' && (
+              <div className="bg-gradient-to-r from-gray-50 to-gray-100 border border-gray-200 rounded-xl p-6 text-center">
+                <Crown className="w-12 h-12 text-gray-900 mx-auto mb-3" />
+                <h3 className="font-bold text-gray-900 mb-2">Premium Features Locked</h3>
+                <p className="text-sm text-gray-700 mb-4">
+                  Upgrade to Premium to unlock market benchmarking and advanced recommendations.
+                </p>
+                <Link
+                  to="/pricing"
+                  className="inline-flex items-center gap-2 px-6 py-3 bg-black text-white rounded-lg font-semibold hover:bg-gray-900 transition-all"
+                >
+                  <Crown className="w-4 h-4" />
+                  Go Premium
+                </Link>
+              </div>
+            )}
+          </div>
+
+          {/* Modal Footer */}
+          <div className={`flex items-center justify-between p-4 border-t ${normalizedTier === 'premium' ? 'border-gray-700 bg-gray-800' :
+              normalizedTier === 'standard' ? 'border-orange-200 bg-orange-100' :
+                'border-gray-200 bg-gray-50'
+            }`}>
+            <p className={`text-xs ${normalizedTier === 'premium' ? 'text-gray-400' : 'text-gray-500'
+              }`}>
+              Generated on {formatDate(new Date())}
+            </p>
+            <div className="flex gap-2">
+              {normalizedTier === 'premium' && (
+                <button
+                  onClick={handleDownloadReport}
+                  disabled={isDownloadingReport}
+                  className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-black rounded-lg font-semibold hover:bg-amber-400 transition-colors disabled:opacity-50"
+                >
+                  {isDownloadingReport ? (
+                    <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
+                  ) : (
+                    <Download className="w-4 h-4" />
+                  )}
+                  Export PDF
+                </button>
+              )}
+              <button
+                onClick={() => setShowTechnicalModal(false)}
+                className={`px-4 py-2 rounded-lg font-semibold transition-colors ${normalizedTier === 'premium' ? 'bg-gray-700 text-white hover:bg-gray-600' :
+                    normalizedTier === 'standard' ? 'bg-orange-200 text-gray-800 hover:bg-orange-300' :
+                      'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
+
     <div className="w-full max-w-4xl mx-auto">
+      {/* Technical Data Modal */}
+      <TechnicalDataModal />
+
       {/* Irrelevant Document Warning */}
       {displayResult?.isIrrelevant && (
         <div className="mb-6 p-6 bg-red-50 border border-red-200 rounded-2xl">
@@ -1077,23 +1495,19 @@ const AnalysisResults = ({ jobResult, userTier = 'free', onCompare }) => {
               )}
             </button>
 
-            {normalizedTier === 'premium' && (
-              <button
-                onClick={handleDownloadTextReport}
-                disabled={isDownloadingTextReport}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg font-bold transition-all ${isDownloadingTextReport ? 'bg-gray-100 text-gray-400' : 'bg-gray-900 text-white hover:bg-black shadow-sm'}`}
-                title="Download Technical Report (Text Only)"
-              >
-                {isDownloadingTextReport ? (
-                  <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
-                ) : (
-                  <>
-                    <FileText className="w-3.5 h-3.5 text-amber-400" />
-                    <span className="text-xs uppercase tracking-tight">Technical</span>
-                  </>
-                )}
-              </button>
-            )}
+            {/* Technical Data Button - Available for ALL tiers */}
+            <button
+              onClick={handleOpenTechnicalModal}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg font-bold transition-all ${normalizedTier === 'premium' ? 'bg-gray-900 text-white hover:bg-black shadow-sm' :
+                normalizedTier === 'standard' ? 'bg-gradient-to-r from-orange-500 to-amber-600 text-white hover:shadow-md' :
+                  'bg-gray-700 text-white hover:bg-gray-800 shadow-sm'
+                }`}
+              title="View Technical Data"
+            >
+              <Database className="w-3.5 h-3.5" />
+              <span className="text-xs uppercase tracking-tight">Technical</span>
+            </button>
+
 
             <div className="ml-2 text-[10px] text-gray-400 font-mono hidden sm:block">
               {jobResult?.jobId?.substring(0, 8).toUpperCase() || 'MOCK-RESULT'}

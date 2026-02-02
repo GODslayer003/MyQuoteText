@@ -5,6 +5,8 @@ const Job = require('../../models/Job');
 const Result = require('../../models/Result');
 const User = require('../../models/User');
 const SupplierScoringService = require('../../services/supplier/SupplierScoringService');
+const AIOrchestrator = require('../../services/ai/AIOrchestrator');
+const { emailQueue } = require('../../config/queue');
 const logger = require('../../utils/logger');
 
 class AIProcessor {
@@ -37,7 +39,7 @@ class AIProcessor {
   }
 
   async process(job) {
-    const { jobId, extractedText, tier, ocrConfidence } = job.data;
+    const { jobId, extractedText, tier, ocrConfidence, imageUrl } = job.data;
 
     try {
       logger.info(`AI analysis started for job ${jobId}`);
@@ -61,7 +63,7 @@ class AIProcessor {
       };
 
       // Call AI service
-      const aiResult = await AIOrchestrator.analyzeQuote(extractedText, tier, metadata);
+      const aiResult = await AIOrchestrator.analyzeQuote(extractedText, tier, metadata, imageUrl);
 
       // Create result
       const result = await this.createResult(jobDoc, aiResult, tier);

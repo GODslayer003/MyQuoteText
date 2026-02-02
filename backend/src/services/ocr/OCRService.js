@@ -21,6 +21,17 @@ class OCRService {
         };
       }
 
+      // If it's an image, skip text extraction and go straight to Vision
+      if (mimeType.startsWith('image/')) {
+        logger.info(`Image detected (${mimeType}), using Vision fallback`);
+        return {
+          text: "",
+          ocrRequired: true,
+          fallbackToVision: true,
+          method: 'vision_api'
+        };
+      }
+
       // Try text extraction first for PDFs
       let extractedText = '';
       try {
@@ -51,7 +62,7 @@ class OCRService {
       return await this.performOCR(buffer);
     } catch (error) {
       logger.error('Extraction failed:', error);
-      throw new Error(`Failed to extract text from ${mimeType === 'application/pdf' ? 'PDF' : 'file'}`);
+      throw new Error(`Failed to extract text from ${mimeType.startsWith('image/') ? 'image' : (mimeType === 'application/pdf' ? 'PDF' : 'file')}`);
     }
   }
 

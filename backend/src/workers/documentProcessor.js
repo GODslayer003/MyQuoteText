@@ -58,13 +58,20 @@ class DocumentProcessor {
       await jobDoc.updateProcessingStep('extraction', 'completed');
 
       // Queue for AI analysis
+      let imageUrl = null;
+      if (extractionResult.fallbackToVision) {
+        imageUrl = StorageService.getPreviewUrl(document.storageKey);
+        logger.info(`Vision fallback enabled for job ${jobId}. Preview URL: ${imageUrl}`);
+      }
+
       await aiAnalysisQueue.add('analyze-quote', {
         jobId: jobId,
         documentId: documentId,
-        extractedText: extractionResult.text,
+        extractedText: extractionResult.text || "Please analyze this attached image/scanned document.",
         tier: tier,
         ocrConfidence: extractionResult.ocrConfidence,
-        extractionMethod: extractionResult.method
+        extractionMethod: extractionResult.method,
+        imageUrl: imageUrl
       }, {
         jobId: `ai-${jobId}`,
         attempts: 3
