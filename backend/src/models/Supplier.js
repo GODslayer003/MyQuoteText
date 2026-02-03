@@ -57,7 +57,6 @@ const supplierSchema = new mongoose.Schema({
   collection: 'suppliers'
 });
 
-supplierSchema.index({ abn: 1 });
 supplierSchema.index({ supplierName: 1 });
 supplierSchema.index({ score: -1 });
 

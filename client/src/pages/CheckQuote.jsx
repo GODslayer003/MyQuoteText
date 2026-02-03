@@ -45,6 +45,7 @@ const CheckQuote = () => {
   const [isVisible, setIsVisible] = useState(false);
   const [uploadMethod, setUploadMethod] = useState('file'); // 'file' or 'text'
   const [file, setFile] = useState(null);
+  const [files, setFiles] = useState([]); // Support for multiple files
   const [quoteText, setQuoteText] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -143,7 +144,7 @@ const CheckQuote = () => {
         date: formatRelativeTime(job.createdAt),
         quote: job.documents?.[0]?.originalFilename || 'Quote analysis',
         status: job.status,
-        tier: job.tier || 'free',
+        tier: job.tier || 'Free',
         jobData: job
       }));
       setChatHistory(history);
@@ -187,34 +188,66 @@ const CheckQuote = () => {
   };
 
   const handleFileUpload = (e) => {
-    const selectedFile = e.target.files[0];
-    if (!selectedFile) return;
+    const selectedFiles = Array.from(e.target.files);
+    if (selectedFiles.length === 0) return;
+
+    const analysisTier = isAuthenticated ? (user?.subscription?.plan?.toLowerCase() || 'free') : 'free';
 
     try {
-      validateFile(selectedFile);
-      setFile(selectedFile);
-      setError(null);
+      if (analysisTier === 'premium' || isComparisonMode) {
+        // Multi-file logic for Premium
+        if (selectedFiles.length + files.length > 3) {
+          throw new Error('Maximum 3 quotes allowed for comparison.');
+        }
+
+        const validFiles = selectedFiles.filter(f => validateFile(f));
+        setFiles(prev => [...prev, ...validFiles]);
+        setError(null);
+      } else {
+        // Single file logic for others
+        const selectedFile = selectedFiles[0];
+        validateFile(selectedFile);
+        setFile(selectedFile);
+        setError(null);
+      }
     } catch (err) {
       setError(err.message);
     }
   };
 
-  const removeFile = () => {
-    setFile(null);
-    setExtractedText('');
-    setQuoteText('');
+  const removeFile = (index) => {
+    if (index !== undefined && files.length > 0) {
+      setFiles(prev => prev.filter((_, i) => i !== index));
+    } else {
+      setFile(null);
+      setExtractedText('');
+      setQuoteText('');
+    }
     setError(null);
   };
 
   const validateForm = () => {
-    if (!quoteText.trim() && !file) {
-      setError('Please upload a PDF/Image or enter quote text to analyze.');
-      return false;
-    }
+    const analysisTier = isAuthenticated ? (user?.subscription?.plan?.toLowerCase() || 'free') : 'free';
 
-    if (uploadMethod === 'text' && quoteText.trim().length < 50) {
-      setError('Please enter at least 50 characters of quote text for accurate analysis.');
-      return false;
+    if (analysisTier === 'premium' || isComparisonMode) {
+      if (files.length < 2) {
+        setError('Premium comparison requires a minimum of 2 quotes. Please upload at least one more quote.');
+        return false;
+      }
+      if (files.length > 3) {
+        setError('Maximum 3 quotes allowed for comparison.');
+        return false;
+      }
+    } else {
+      if (!quoteText.trim() && !file) {
+        setError('Please upload a PDF/Image or enter quote text to analyze.');
+        return false;
+      }
+
+      if (uploadMethod === 'text' && quoteText.trim().length < 50) {
+        setError('Please enter at least 50 characters of quote text for accurate analysis.');
+        return false;
+      }
     }
 
     return true;
@@ -274,11 +307,102 @@ const CheckQuote = () => {
   };
 
   const performAnalysis = async () => {
-    // Moved the core logic from handleAnalyzeQuote here
     try {
-      let jobData;
       const analysisEmail = isAuthenticated ? user?.email : guestEmail;
-      const analysisTier = isAuthenticated ? (user?.subscription?.plan?.toLowerCase() || 'free') : 'free';
+      const analysisTier = isAuthenticated ? (user?.subscription?.plan || 'Free') : 'Free';
+
+      if (analysisTier.toLowerCase() === 'premium' && files.length > 1) {
+        // Multi-quote analysis for Premium
+        setIsAnalyzing(true);
+        setPhase('processing');
+        setError(null);
+
+        const jobIds = [];
+        const completedResults = [];
+        const loadingToast = toast.loading('Uploading and analyzing quotes...');
+
+        try {
+          // 1. Create jobs for all files
+          for (let i = 0; i < files.length; i++) {
+            const f = files[i];
+            toast.loading(`Uploading quote ${i + 1} of ${files.length}...`, { id: loadingToast });
+
+            const jobData = await quoteApi.createJob({
+              email: analysisEmail,
+              file: f,
+              tier: 'Premium',
+              exhaust: i === files.length - 1, // Drain credits on the last file
+              metadata: {
+                source: isAuthenticated ? 'web_upload' : 'guest_upload',
+                title: f.name.replace(/\.[^/.]+$/, ""),
+                method: 'file_upload'
+              }
+            });
+            jobIds.push(jobData.jobId);
+          }
+
+          toast.loading('Analyzing all quotes...', { id: loadingToast });
+
+          // 2. Poll for all jobs
+          const pollAll = jobIds.map(jobId => {
+            return new Promise((resolve, reject) => {
+              jobPollingService.startPolling(
+                jobId,
+                (status) => {
+                  setJobStatus(status); // Show last job status for simplicity
+                },
+                (result) => resolve(result),
+                (err) => reject(err)
+              );
+            });
+          });
+
+          const results = await Promise.all(pollAll);
+          completedResults.push(...results);
+
+          // 3. Compare them
+          toast.loading('Generating comparison details...', { id: loadingToast });
+          const comparisonResult = await quoteApi.compareQuotes(jobIds);
+
+          // 4. Set final result
+          const finalResult = {
+            ...completedResults[0],
+            quoteComparison: comparisonResult.comparison,
+            allResults: completedResults
+          };
+
+          setJobResult(finalResult);
+          setSuccess('Multi-quote comparison completed successfully!');
+          setPhase('result');
+          setIsAnalyzing(false);
+          toast.success('Analysis and Comparison complete!', { id: loadingToast });
+
+          // Add to history
+          if (isAuthenticated) {
+            const newHistoryItem = {
+              id: jobIds[0], // Use first jobId as reference
+              name: `Comparison: ${files.length} Quotes`,
+              date: 'Just now',
+              quote: files.map(f => f.name).join(' vs '),
+              status: 'completed',
+              tier: 'Premium',
+              jobData: { jobId: jobIds[0] } // Mock jobData for history
+            };
+            setChatHistory(prev => [newHistoryItem, ...prev]);
+          }
+
+        } catch (err) {
+          console.error('Batch analysis error:', err);
+          setError(`Batch analysis failed: ${err.message}`);
+          setPhase('upload');
+          setIsAnalyzing(false);
+          toast.error('Batch analysis failed.', { id: loadingToast });
+        }
+        return;
+      }
+
+      // Single file logic (Standard/Free)
+      let jobData;
 
       if (uploadMethod === 'file' && file) {
         // Upload File (PDF or Image)
@@ -286,6 +410,7 @@ const CheckQuote = () => {
           email: analysisEmail,
           file,
           tier: analysisTier,
+          exhaust: analysisTier === 'Premium', // Drain credits immediately for single premium quotes
           metadata: {
             source: isAuthenticated ? 'web_upload' : 'guest_upload',
             title: file.name.replace(/\.[^/.]+$/, ""),
@@ -301,6 +426,7 @@ const CheckQuote = () => {
           email: analysisEmail,
           file: textFile,
           tier: analysisTier,
+          exhaust: analysisTier === 'Premium', // Drain credits immediately for single premium quotes
           metadata: {
             source: isAuthenticated ? 'web_upload' : 'guest_upload',
             title: 'Text Quote Analysis',
@@ -369,7 +495,7 @@ const CheckQuote = () => {
             date: 'Just now',
             quote: (file ? file.name : quoteText.substring(0, 50)) + (file ? '' : '...'),
             status: 'processing',
-            tier: analysisTier,
+            tier: analysisTier === 'Free' ? 'Free' : (analysisTier === 'Standard' ? 'Standard' : 'Premium'),
             jobData
           };
           setChatHistory(prev => [newHistoryItem, ...prev]);
@@ -958,7 +1084,46 @@ WARRANTY: 6 years on workmanship`
                             fileInputRef.current?.click();
                           }}
                         >
-                          {file ? (
+                          {files.length > 0 ? (
+                            <div className="space-y-3">
+                              {files.map((f, index) => (
+                                <div key={index} className="flex items-center justify-between bg-orange-50 rounded-xl p-3 border border-orange-100">
+                                  <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center shadow-sm">
+                                      <FileIcon className="w-6 h-6 text-orange-500" />
+                                    </div>
+                                    <div className="text-left">
+                                      <p className="font-semibold text-gray-900 text-sm truncate max-w-[200px]">{f.name}</p>
+                                      <p className="text-[10px] text-gray-500">
+                                        {(f.size / 1024 / 1024).toFixed(2)} MB • {f.type.split('/')[1].toUpperCase()}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      removeFile(index);
+                                    }}
+                                    className="p-1.5 hover:bg-white rounded-lg transition-colors group"
+                                  >
+                                    <Trash2 className="w-4 h-4 text-gray-400 group-hover:text-red-500" />
+                                  </button>
+                                </div>
+                              ))}
+                              {files.length < 3 && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    fileInputRef.current?.click();
+                                  }}
+                                  className="w-full py-2 border-2 border-dashed border-gray-200 rounded-xl text-sm font-medium text-gray-500 hover:border-orange-300 hover:text-orange-500 transition-all flex items-center justify-center gap-2"
+                                >
+                                  <Upload className="w-4 h-4" />
+                                  Add Another Quote ({files.length}/3)
+                                </button>
+                              )}
+                            </div>
+                          ) : file ? (
                             <div className="space-y-4">
                               <div className="flex items-center justify-between bg-orange-50 rounded-xl p-4">
                                 <div className="flex items-center gap-3">
@@ -971,7 +1136,10 @@ WARRANTY: 6 years on workmanship`
                                   </div>
                                 </div>
                                 <button
-                                  onClick={removeFile}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    removeFile();
+                                  }}
                                   className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
                                 >
                                   <Trash2 className="w-5 h-5 text-gray-500 hover:text-red-500" />
@@ -984,7 +1152,7 @@ WARRANTY: 6 years on workmanship`
                                 <Upload className="w-8 h-8 text-orange-500" />
                               </div>
                               <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                                Upload Your Quote
+                                {isAuthenticated && user?.subscription?.plan === 'Premium' ? 'Compare 2-3 Quotes' : 'Upload Your Quote'}
                               </h3>
                               <p className="text-gray-600 mb-4">
                                 PDF or Images (JPG, PNG) • Max 10MB
@@ -996,7 +1164,7 @@ WARRANTY: 6 years on workmanship`
                                 }}
                                 className="px-6 py-3 bg-gradient-to-r from-orange-500 to-amber-600 text-white rounded-lg font-semibold hover:shadow-lg hover:shadow-orange-500/30 transition-all"
                               >
-                                Choose Quote File
+                                {isAuthenticated && user?.subscription?.plan === 'Premium' ? 'Select Quotes' : 'Choose Quote File'}
                               </button>
                               <p className="text-sm text-gray-500 mt-3">
                                 or drag and drop file here
@@ -1006,6 +1174,7 @@ WARRANTY: 6 years on workmanship`
                           <input
                             ref={fileInputRef}
                             type="file"
+                            multiple={isAuthenticated && user?.subscription?.plan === 'Premium'}
                             accept=".pdf,image/jpeg,image/png,image/webp"
                             onChange={handleFileUpload}
                             className="hidden"
@@ -1108,7 +1277,7 @@ WARRANTY: 6 years on workmanship`
                     {/* Analyze Button */}
                     <button
                       onClick={handleAnalyzeQuote}
-                      disabled={isAnalyzing || (!quoteText.trim() && !file)}
+                      disabled={isAnalyzing || (uploadMethod === 'file' ? (files.length === 0 && !file) : !quoteText.trim())}
                       className="group relative w-full py-4 bg-gradient-to-r from-orange-500 to-amber-600 text-white rounded-xl font-bold text-lg hover:shadow-xl hover:shadow-orange-500/30 transition-all duration-300 transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
                     >
                       {isAnalyzing ? (

@@ -12,15 +12,15 @@ const logger = require('../../utils/logger');
  * HARD tier limits (cost safety)
  */
 const TIER_LIMITS = {
-  free: {
+  Free: {
     maxInputChars: 7000,
     maxOutputTokens: 7000
   },
-  standard: {
+  Standard: {
     maxInputChars: 20000,
     maxOutputTokens: 20000
   },
-  premium: {
+  Premium: {
     maxInputChars: 40000,
     maxOutputTokens: 16000
   }
@@ -41,7 +41,7 @@ class AIOrchestrator {
    * Enforce tier-based input limits
    */
   applyInputLimit(text, tier) {
-    const limits = TIER_LIMITS[tier] || TIER_LIMITS.free;
+    const limits = TIER_LIMITS[tier] || TIER_LIMITS.Free;
 
     if (typeof text !== 'string') return '';
 
@@ -60,8 +60,8 @@ class AIOrchestrator {
   /**
    * Analyze single quote
    */
-  async analyzeQuote(extractedText, tier = 'free', metadata = {}, imageUrl = null) {
-    const limits = TIER_LIMITS[tier] || TIER_LIMITS.free;
+  async analyzeQuote(extractedText, tier = 'Free', metadata = {}, imageUrl = null) {
+    const limits = TIER_LIMITS[tier] || TIER_LIMITS.Free;
 
     try {
       logger.info('AI analysis started', { tier, hasImage: !!imageUrl });
@@ -131,7 +131,7 @@ class AIOrchestrator {
       const response = await this.callOpenAI({
         systemPrompt,
         userPrompt,
-        maxOutputTokens: TIER_LIMITS.premium.maxOutputTokens
+        maxOutputTokens: TIER_LIMITS.Premium.maxOutputTokens
       });
 
       return this.parseComparisonResponse(response);
@@ -210,9 +210,24 @@ class AIOrchestrator {
       throw new Error(`AI analysis incomplete (limit reached: ${reason}). Please try again or upgrade tier.`);
     }
 
-    const outputText =
-      response.output_text ||
-      response.output?.[0]?.content?.[0]?.text;
+    // Concatenate all text fragments from the response
+    let outputText = '';
+    if (response.output && Array.isArray(response.output)) {
+      response.output.forEach(msg => {
+        if (msg.content && Array.isArray(msg.content)) {
+          msg.content.forEach(part => {
+            if (part.type === 'output_text' && part.text) {
+              outputText += part.text;
+            }
+          });
+        }
+      });
+    }
+
+    // Fallback for older response formats if applicable
+    if (!outputText && response.output_text) {
+      outputText = response.output_text;
+    }
 
     if (!outputText) {
       throw new Error('Empty AI response from provider');
@@ -230,11 +245,11 @@ class AIOrchestrator {
     const isIrrelevant = parsed.relevance?.isRelevant === false;
 
     if (!isIrrelevant) {
-      if (tier === 'free' && !parsed.freeSummary) {
+      if (tier === 'Free' && !parsed.freeSummary) {
         throw new Error('Invalid free-tier response: missing freeSummary');
       }
 
-      if (tier !== 'free' && !parsed.analysis) {
+      if (tier !== 'Free' && !parsed.analysis) {
         throw new Error(`Invalid ${tier}-tier response: missing analysis`);
       }
     }
@@ -254,9 +269,24 @@ class AIOrchestrator {
    * Parse comparison response
    */
   parseComparisonResponse(response) {
-    const outputText =
-      response.output_text ||
-      response.output?.[0]?.content?.[0]?.text;
+    // Concatenate all text fragments from the response
+    let outputText = '';
+    if (response.output && Array.isArray(response.output)) {
+      response.output.forEach(msg => {
+        if (msg.content && Array.isArray(msg.content)) {
+          msg.content.forEach(part => {
+            if (part.type === 'output_text' && part.text) {
+              outputText += part.text;
+            }
+          });
+        }
+      });
+    }
+
+    // Fallback for older response formats if applicable
+    if (!outputText && response.output_text) {
+      outputText = response.output_text;
+    }
 
     if (!outputText) {
       throw new Error('Empty comparison response');

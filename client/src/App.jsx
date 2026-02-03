@@ -36,13 +36,11 @@ const ProtectedRoute = ({ children }) => {
 };
 
 import ScrollToTop from "./components/ScrollToTop";
-import Snowfall from "./components/Snowfall";
 
 export default function App() {
   return (
     <>
       <ScrollToTop />
-      <Snowfall />
       <HeaderFooter>
         <Routes>
           {/* Public routes */}

@@ -21,8 +21,8 @@ const AnalysisResults = ({ jobResult, userTier = 'free', onCompare }) => {
   const [showTechnicalModal, setShowTechnicalModal] = useState(false);
 
   // Multi-Quote State
-  const [comparisonQuotes, setComparisonQuotes] = useState([jobResult]); // Start with current quote
-  const [comparisonResult, setComparisonResult] = useState(null);
+  const [comparisonQuotes, setComparisonQuotes] = useState(jobResult?.allResults || [jobResult]); // Start with all results if batch, else current
+  const [comparisonResult, setComparisonResult] = useState(jobResult?.quoteComparison || null);
   const [isUploadingQuote, setIsUploadingQuote] = useState(false);
   const [isComparing, setIsComparing] = useState(false);
 
@@ -1153,6 +1153,58 @@ const AnalysisResults = ({ jobResult, userTier = 'free', onCompare }) => {
               </div>
             )}
 
+            {/* Premium Comparison Matrix */}
+            {normalizedTier === 'premium' && comparisonResult && (
+              <div className="bg-gray-900 border border-gray-700 rounded-xl overflow-hidden shadow-xl mb-8">
+                <div className="bg-gradient-to-r from-amber-600 to-amber-700 px-5 py-4 border-b border-gray-700 flex justify-between items-center">
+                  <h3 className="font-black text-white flex items-center gap-2 uppercase tracking-widest text-sm">
+                    <Crown className="w-5 h-5 text-amber-300" /> Technical Comparison Matrix (AU 2026)
+                  </h3>
+                  <div className="px-2 py-1 bg-white/20 rounded text-[10px] font-bold text-white uppercase tracking-tighter">Premium Access</div>
+                </div>
+                <div className="p-6 space-y-6">
+                  {/* Winner Summary */}
+                  <div className="bg-white/5 border border-white/10 rounded-xl p-5 border-l-4 border-l-amber-500">
+                    <h4 className="text-amber-400 font-bold mb-3 uppercase text-[10px] tracking-widest">AI Professional Verdict</h4>
+                    <p className="text-gray-200 text-sm leading-relaxed italic">
+                      {comparisonResult.winner?.reason?.split('\n\n')[0]}
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Better Approach */}
+                    <div className="bg-blue-900/20 border border-blue-500/20 rounded-xl p-5">
+                      <h4 className="text-blue-400 font-bold mb-3 uppercase text-[10px] tracking-widest">Strategic Methodology</h4>
+                      <p className="text-gray-300 text-xs leading-relaxed">
+                        {comparisonResult.betterApproach}
+                      </p>
+                    </div>
+
+                    {/* Key Technical Differences */}
+                    <div className="bg-indigo-900/20 border border-indigo-500/20 rounded-xl p-5">
+                      <h4 className="text-indigo-400 font-bold mb-3 uppercase text-[10px] tracking-widest">Differentiators</h4>
+                      <ul className="space-y-2">
+                        {comparisonResult.keyDifferences?.slice(0, 4).map((diff, i) => (
+                          <li key={i} className="flex items-start gap-2 text-[11px] text-gray-300">
+                            <Zap className="w-3 h-3 text-amber-500 mt-0.5 flex-shrink-0" />
+                            {diff}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+
+                  {/* Relative Pricing & Value */}
+                  <div className="bg-green-900/20 border border-green-500/20 rounded-xl p-4">
+                    <h4 className="text-green-400 font-bold mb-2 uppercase text-[10px] tracking-widest">Market Value Assessment</h4>
+                    <p className="text-gray-300 text-[11px] leading-relaxed">
+                      {comparisonResult.valueAssessment}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Cost Breakdown Table - Standard & Premium */}
             {(normalizedTier === 'standard' || normalizedTier === 'premium') && displayResult?.costBreakdown?.length > 0 && (
               <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
@@ -1373,8 +1425,8 @@ const AnalysisResults = ({ jobResult, userTier = 'free', onCompare }) => {
 
           {/* Modal Footer */}
           <div className={`flex items-center justify-between p-4 border-t ${normalizedTier === 'premium' ? 'border-gray-700 bg-gray-800' :
-              normalizedTier === 'standard' ? 'border-orange-200 bg-orange-100' :
-                'border-gray-200 bg-gray-50'
+            normalizedTier === 'standard' ? 'border-orange-200 bg-orange-100' :
+              'border-gray-200 bg-gray-50'
             }`}>
             <p className={`text-xs ${normalizedTier === 'premium' ? 'text-gray-400' : 'text-gray-500'
               }`}>
@@ -1398,8 +1450,8 @@ const AnalysisResults = ({ jobResult, userTier = 'free', onCompare }) => {
               <button
                 onClick={() => setShowTechnicalModal(false)}
                 className={`px-4 py-2 rounded-lg font-semibold transition-colors ${normalizedTier === 'premium' ? 'bg-gray-700 text-white hover:bg-gray-600' :
-                    normalizedTier === 'standard' ? 'bg-orange-200 text-gray-800 hover:bg-orange-300' :
-                      'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  normalizedTier === 'standard' ? 'bg-orange-200 text-gray-800 hover:bg-orange-300' :
+                    'bg-gray-200 text-gray-700 hover:bg-gray-300'
                   }`}
               >
                 Close

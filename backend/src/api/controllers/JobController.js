@@ -35,7 +35,7 @@ class JobController {
    */
   async createJob(req, res, next) {
     try {
-      const { email, tier = 'free', metadata = {} } = req.body;
+      const { email, tier = 'Free', metadata = {}, exhaust = false } = req.body;
       const file = req.file;
 
       console.log('Upload request received:', { email, file: file?.originalname, user: req.user?._id });
@@ -138,6 +138,15 @@ class JobController {
 
           await user.save();
           logger.info(`Used 1 paid credit for user ${user._id} (${jobTier}). Remaining: ${user.subscription.credits}.`);
+
+          // One-Shot Premium Enforcement (exhaust flag)
+          if (exhaust && user.subscription.plan === 'Premium') {
+            logger.info(`Exhaust flag set. Draining remaining ${user.subscription.credits} credits for user ${user._id} and reverting to Free.`);
+            user.subscription.credits = 0;
+            user.subscription.plan = 'Free';
+            user.subscription.reportsTotal = 1;
+            await user.save();
+          }
         } else {
           // Check Free Monthly Limit (1 per month)
           const now = new Date();
@@ -614,8 +623,8 @@ class JobController {
         }
 
         // Check text limit (only if not using Vision? No, apply limit to text part anyway)
-        const limits = { free: 6000, standard: 20000, premium: 40000 };
-        const limit = limits[job.tier] || 6000;
+        const limits = { Free: 7000, Standard: 20000, Premium: 40000 };
+        const limit = limits[job.tier] || 7000;
 
         const cappedText = textToAnalyze.length > limit
           ? textToAnalyze.slice(0, limit)
@@ -838,6 +847,18 @@ class JobController {
       const comparisonData = await AIOrchestrator.compareQuotes(processedResults, {
         workCategory: jobs[0].metadata?.workCategory
       });
+
+      // 5. Premium Credit Enforcement: Drain remaining credits and revert to Free
+      if (req.user) {
+        const user = await User.findById(req.user._id);
+        if (user && user.subscription.plan === 'Premium') {
+          logger.info(`Comparison performed. Draining remaining ${user.subscription.credits} credits for user ${user._id} and reverting to Free.`);
+          user.subscription.credits = 0;
+          user.subscription.plan = 'Free';
+          user.subscription.reportsTotal = 1;
+          await user.save();
+        }
+      }
 
       res.json({
         success: true,

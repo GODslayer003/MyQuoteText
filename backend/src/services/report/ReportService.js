@@ -392,6 +392,11 @@ class ReportService {
                 await this.generatePage3CostBreakdown(doc, job, result, tier, colors);
                 await this.generatePage4RiskAnalysis(doc, job, result, tier, colors);
 
+                // Quote Comparison (Premium Only)
+                if (tier === 'premium' && result.quoteComparison) {
+                    await this.generatePageComparison(doc, job, result, tier, colors);
+                }
+
                 if (tier === 'premium') {
                     await this.generatePage5Benchmarking(doc, job, result, tier, colors);
                 }
@@ -1158,6 +1163,132 @@ class ReportService {
                     width: pageWidth - 120
                 });
         }
+
+        this.addFooter(doc, job.jobId);
+        doc.addPage();
+    }
+
+    /**
+     * PAGE 4.5: Quote Comparison Matrix (Premium Only)
+     */
+    async generatePageComparison(doc, job, result, tier, colors) {
+        if (tier !== 'premium' || !result.quoteComparison) return;
+
+        this.addHeader(doc, 'COMP', tier, colors);
+
+        const pageWidth = doc.page.width;
+        let currentY = 100;
+
+        // Page title
+        doc.fillColor(colors.primary)
+            .font('Helvetica-Bold')
+            .fontSize(28)
+            .text('Quote Comparison', 40, currentY);
+
+        doc.moveTo(40, currentY + 38)
+            .lineTo(250, currentY + 38)
+            .lineWidth(4)
+            .strokeColor(colors.primary)
+            .stroke();
+
+        currentY += 70;
+
+        const comp = result.quoteComparison;
+
+        // AI Verdict Box
+        doc.save();
+        doc.fillColor(colors.primary)
+            .fillOpacity(0.05)
+            .roundedRect(40, currentY, pageWidth - 80, 110, 12)
+            .fill()
+            .strokeColor(colors.primary)
+            .lineWidth(0.5)
+            .stroke();
+        doc.restore();
+
+        doc.fillColor(colors.primary)
+            .font('Helvetica-Bold')
+            .fontSize(12)
+            .text('AI PROFESSIONAL VERDICT', 60, currentY + 20);
+
+        doc.fillColor(this.colors.neutral.dark)
+            .font('Helvetica-Oblique')
+            .fontSize(10)
+            .text(comp.winner?.reason?.substring(0, 400) || 'Comparison analysis pending.', 60, currentY + 40, {
+                width: pageWidth - 120,
+                align: 'justify',
+                lineGap: 4
+            });
+
+        currentY += 140;
+
+        // Strategic Methodology
+        doc.fillColor(this.colors.neutral.dark)
+            .font('Helvetica-Bold')
+            .fontSize(14)
+            .text('Technical Differentiation', 40, currentY);
+
+        currentY += 25;
+
+        // Methodology Box
+        doc.save();
+        doc.fillColor('#f8fafc')
+            .roundedRect(40, currentY, (pageWidth - 100) / 2, 160, 8)
+            .fill();
+        doc.restore();
+
+        doc.fillColor('#1e40af')
+            .font('Helvetica-Bold')
+            .fontSize(9)
+            .text('STRATEGIC METHODOLOGY', 55, currentY + 15);
+
+        doc.fillColor(this.colors.neutral.dark)
+            .font('Helvetica')
+            .fontSize(9)
+            .text(comp.betterApproach || 'Analysis pending.', 55, currentY + 35, { width: (pageWidth - 140) / 2, lineGap: 3 });
+
+        // Differences Box
+        doc.save();
+        doc.fillColor('#f5f3ff')
+            .roundedRect(40 + (pageWidth - 100) / 2 + 20, currentY, (pageWidth - 100) / 2, 160, 8)
+            .fill();
+        doc.restore();
+
+        doc.fillColor('#4338ca')
+            .font('Helvetica-Bold')
+            .fontSize(9)
+            .text('CRITICAL DIFFERENCES', 40 + (pageWidth - 100) / 2 + 35, currentY + 15);
+
+        let diffY = currentY + 35;
+        comp.keyDifferences?.slice(0, 5).forEach(diff => {
+            doc.fillColor('#4338ca')
+                .circle(40 + (pageWidth - 100) / 2 + 35, diffY + 4, 1.5)
+                .fill();
+            doc.fillColor(this.colors.neutral.dark)
+                .font('Helvetica')
+                .fontSize(8)
+                .text(diff, 40 + (pageWidth - 100) / 2 + 45, diffY, { width: (pageWidth - 160) / 2 });
+            diffY = doc.y + 6;
+        });
+
+        currentY += 180;
+
+        // Value Assessment
+        doc.save();
+        doc.fillColor('#f0fdf4')
+            .roundedRect(40, currentY, pageWidth - 80, 80, 8)
+            .fill();
+        doc.restore();
+
+        doc.fillColor('#15803d')
+            .font('Helvetica-Bold')
+            .fontSize(11)
+            .text('MARKET VALUE ASSESSMENT', 60, currentY + 15);
+
+        doc.fillColor(this.colors.neutral.dark)
+            .font('Helvetica')
+            .fontSize(10)
+            .text(comp.valueAssessment || 'Analysis pending.', 60, currentY + 35, { width: pageWidth - 120, lineGap: 3 });
 
         this.addFooter(doc, job.jobId);
         doc.addPage();

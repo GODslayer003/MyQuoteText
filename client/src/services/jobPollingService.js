@@ -5,7 +5,7 @@ class JobPollingService {
   constructor() {
     this.activePolls = new Map();
     this.pollingInterval = 2000; // 2 seconds
-    this.maxPollingTime = 120000; // 2 minutes
+    this.maxPollingTime = 300000; // 5 minutes
   }
 
   // Start polling a job
