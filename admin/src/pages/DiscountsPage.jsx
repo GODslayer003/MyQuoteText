@@ -13,8 +13,9 @@ const DiscountsPage = () => {
     type: 'percentage',
     value: '',
     description: '',
-    maxUses: '',
+    startDate: new Date().toISOString().split('T')[0],
     expiresAt: '',
+    maxUses: '',
     minPurchaseAmount: '',
     applicableTiers: []
   });
@@ -30,7 +31,7 @@ const DiscountsPage = () => {
   const fetchUsageHistory = async () => {
     try {
       setLoadingHistory(true);
-      const response = await api.get('/admin/discounts/history');
+      const response = await api.get('/discounts/history');
       setUsageHistory(response.data.data);
     } catch (err) {
       console.error('Failed to fetch usage history:', err);
@@ -42,7 +43,7 @@ const DiscountsPage = () => {
   const fetchDiscounts = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/admin/discounts');
+      const response = await api.get('/discounts');
       setDiscounts(response.data.data || []);
       setError(null);
     } catch (err) {
@@ -80,9 +81,9 @@ const DiscountsPage = () => {
       };
 
       if (editingId) {
-        await api.put(`/admin/discounts/${editingId}`, submitData);
+        await api.put(`/discounts/${editingId}`, submitData);
       } else {
-        await api.post('/admin/discounts', submitData);
+        await api.post('/discounts', submitData);
       }
       fetchDiscounts();
       setShowForm(false);
@@ -92,8 +93,9 @@ const DiscountsPage = () => {
         type: 'percentage',
         value: '',
         description: '',
-        maxUses: '',
+        startDate: new Date().toISOString().split('T')[0],
         expiresAt: '',
+        maxUses: '',
         minPurchaseAmount: '',
         applicableTiers: []
       });
@@ -108,8 +110,9 @@ const DiscountsPage = () => {
       type: discount.type,
       value: discount.value.toString(),
       description: discount.description,
-      maxUses: discount.maxUses ? discount.maxUses.toString() : '',
+      startDate: discount.startDate ? discount.startDate.split('T')[0] : new Date().toISOString().split('T')[0],
       expiresAt: discount.expiresAt ? discount.expiresAt.split('T')[0] : '',
+      maxUses: discount.maxUses ? discount.maxUses.toString() : '',
       minPurchaseAmount: discount.minPurchaseAmount ? discount.minPurchaseAmount.toString() : '',
       applicableTiers: discount.applicableTiers || []
     });
@@ -120,7 +123,7 @@ const DiscountsPage = () => {
   const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this discount?')) {
       try {
-        await api.delete(`/admin/discounts/${id}`);
+        await api.delete(`/discounts/${id}`);
         fetchDiscounts();
       } catch (err) {
         setError(err.response?.data?.error || 'Failed to delete discount');
@@ -136,8 +139,9 @@ const DiscountsPage = () => {
       type: 'percentage',
       value: '',
       description: '',
-      maxUses: '',
+      startDate: new Date().toISOString().split('T')[0],
       expiresAt: '',
+      maxUses: '',
       minPurchaseAmount: '',
       applicableTiers: []
     });
@@ -245,13 +249,30 @@ const DiscountsPage = () => {
                 />
 
                 <div className="grid grid-cols-2 gap-4">
-                  <input
-                    type="date"
-                    name="expiresAt"
-                    value={formData.expiresAt}
-                    onChange={handleInputChange}
-                    className="col-span-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500"
-                  />
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-500 mb-1">Start Date</label>
+                    <input
+                      type="date"
+                      name="startDate"
+                      value={formData.startDate}
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-500 mb-1">End Date (Optional)</label>
+                    <input
+                      type="date"
+                      name="expiresAt"
+                      value={formData.expiresAt}
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
                   <input
                     type="number"
                     name="maxUses"
@@ -314,7 +335,7 @@ const DiscountsPage = () => {
                 <th className="px-6 py-3 text-left text-xs font-semibold text-gray-900">Code</th>
                 <th className="px-6 py-3 text-left text-xs font-semibold text-gray-900">Discount</th>
                 <th className="px-6 py-3 text-left text-xs font-semibold text-gray-900">Description</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-900">Expires</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-900">Validity</th>
                 <th className="px-6 py-3 text-left text-xs font-semibold text-gray-900">Max Uses</th>
                 <th className="px-6 py-3 text-left text-xs font-semibold text-gray-900">Actions</th>
               </tr>
@@ -328,7 +349,10 @@ const DiscountsPage = () => {
                   </td>
                   <td className="px-6 py-4 text-gray-700 text-sm">{discount.description}</td>
                   <td className="px-6 py-4 text-gray-700 text-sm">
-                    {discount.expiresAt ? new Date(discount.expiresAt).toLocaleDateString() : 'No expiry'}
+                    <div className="flex flex-col">
+                      <span className="text-xs text-green-600 font-medium">Start: {new Date(discount.startDate).toLocaleDateString()}</span>
+                      <span className="text-xs text-red-600 font-medium">End: {discount.expiresAt ? new Date(discount.expiresAt).toLocaleDateString() : 'Never'}</span>
+                    </div>
                   </td>
                   <td className="px-6 py-4 text-gray-700 text-sm">{discount.maxUses || 'Unlimited'}</td>
                   <td className="px-6 py-4 flex gap-2">

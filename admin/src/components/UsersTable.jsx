@@ -2,12 +2,55 @@
 import React, { useState } from 'react';
 import { Users, ChevronRight, Loader2, Mail, Phone, Calendar, MoreVertical, X, User } from 'lucide-react';
 import api from '../services/api';
+import Swal from 'sweetalert2';
+import UserDetailsModal from './UserDetailsModal';
 
 const UsersTable = ({ users, loading, pagination, onPageChange }) => {
   const [expandedId, setExpandedId] = useState(null);
   const [viewAllOpen, setViewAllOpen] = useState(false);
   const [allUsers, setAllUsers] = useState([]);
   const [loadingAll, setLoadingAll] = useState(false);
+
+  // Details Modal State
+  const [viewDetailsUser, setViewDetailsUser] = useState(null);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+
+  const handleSuspend = async (user) => {
+    const result = await Swal.fire({
+      title: 'Are you sure?',
+      text: "This user will be permanently deleted and their email/phone banned from future registration!",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#3085d6',
+      confirmButtonText: 'Yes, suspend & ban!'
+    });
+
+    if (result.isConfirmed) {
+      try {
+        await api.delete(`/admin/users/${user._id}`);
+        Swal.fire(
+          'Suspended!',
+          'User has been banned and removed.',
+          'success'
+        );
+        // Trigger refresh if parent supports it, or just close expanded
+        setExpandedId(null);
+        if (onPageChange) onPageChange(pagination.page); // Refresh list
+      } catch (error) {
+        Swal.fire(
+          'Error!',
+          'Failed to suspend user.',
+          'error'
+        );
+      }
+    }
+  };
+
+  const handleViewDetails = (user) => {
+    setViewDetailsUser(user);
+    setShowDetailsModal(true);
+  };
 
   const formatDate = (date) => {
     if (!date) return 'N/A';
@@ -33,27 +76,115 @@ const UsersTable = ({ users, loading, pagination, onPageChange }) => {
 
   const renderPagination = () => {
     if (!pagination || pagination.total <= pagination.limit) return null;
+
+    const currentPage = pagination.page || 1;
     const totalPages = Math.ceil(pagination.total / pagination.limit);
-    const pages = [];
-    for (let i = 1; i <= Math.min(totalPages, 5); i++) {
-      pages.push(i);
-    }
+
+    // Generate visible page numbers
+    const getPageNumbers = () => {
+      const pages = [];
+      const maxVisible = 5;
+
+      if (totalPages <= maxVisible) {
+        // Show all pages if total is less than max visible
+        for (let i = 1; i <= totalPages; i++) {
+          pages.push(i);
+        }
+      } else {
+        // Always show first page
+        pages.push(1);
+
+        // Calculate range around current page
+        let start = Math.max(2, currentPage - 1);
+        let end = Math.min(totalPages - 1, currentPage + 1);
+
+        // Adjust if we're near the start
+        if (currentPage <= 3) {
+          end = 4;
+        }
+
+        // Adjust if we're near the end
+        if (currentPage >= totalPages - 2) {
+          start = totalPages - 3;
+        }
+
+        // Add ellipsis after first page if needed
+        if (start > 2) {
+          pages.push('...');
+        }
+
+        // Add middle pages
+        for (let i = start; i <= end; i++) {
+          pages.push(i);
+        }
+
+        // Add ellipsis before last page if needed
+        if (end < totalPages - 1) {
+          pages.push('...');
+        }
+
+        // Always show last page
+        pages.push(totalPages);
+      }
+
+      return pages;
+    };
+
+    const pageNumbers = getPageNumbers();
 
     return (
-      <div className="flex items-center gap-2 mt-4">
-        {pages.map(p => (
+      <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-200">
+        <div className="text-sm text-gray-600">
+          Showing <span className="font-semibold">{Math.min((currentPage - 1) * pagination.limit + 1, pagination.total)}</span> to{' '}
+          <span className="font-semibold">{Math.min(currentPage * pagination.limit, pagination.total)}</span> of{' '}
+          <span className="font-semibold">{pagination.total}</span> users
+        </div>
+
+        <div className="flex items-center gap-2">
+          {/* Previous Button */}
           <button
-            key={p}
-            onClick={() => onPageChange(p)}
-            className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-medium transition-colors ${p === pagination.page
-              ? 'bg-orange-600 text-white'
-              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
+            onClick={() => onPageChange(currentPage - 1)}
+            disabled={currentPage === 1}
+            className="px-3 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:hover:bg-gray-100"
           >
-            {p}
+            Previous
           </button>
-        ))}
-        {totalPages > 5 && <span className="text-gray-400">...</span>}
+
+          {/* Page Numbers */}
+          <div className="flex items-center gap-1">
+            {pageNumbers.map((page, index) => {
+              if (page === '...') {
+                return (
+                  <span key={`ellipsis-${index}`} className="px-2 text-gray-400">
+                    ...
+                  </span>
+                );
+              }
+
+              return (
+                <button
+                  key={page}
+                  onClick={() => onPageChange(page)}
+                  className={`min-w-[2.5rem] h-10 px-3 rounded-lg text-sm font-medium transition-colors ${page === currentPage
+                    ? 'bg-orange-500 text-white shadow-md'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                >
+                  {page}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Next Button */}
+          <button
+            onClick={() => onPageChange(currentPage + 1)}
+            disabled={currentPage === totalPages}
+            className="px-3 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:hover:bg-gray-100"
+          >
+            Next
+          </button>
+        </div>
       </div>
     );
   };
@@ -172,10 +303,16 @@ const UsersTable = ({ users, loading, pagination, onPageChange }) => {
                             </div>
                           </div>
                           <div className="flex gap-2 pt-4 border-t border-gray-200">
-                            <button className="px-3 py-2 bg-orange-50 hover:bg-orange-100 text-orange-700 rounded-lg text-sm font-medium transition-colors">
+                            <button
+                              onClick={() => handleViewDetails(user)}
+                              className="px-3 py-2 bg-orange-50 hover:bg-orange-100 text-orange-700 rounded-lg text-sm font-medium transition-colors"
+                            >
                               View Details
                             </button>
-                            <button className="px-3 py-2 bg-red-50 hover:bg-red-100 text-red-700 rounded-lg text-sm font-medium transition-colors">
+                            <button
+                              onClick={() => handleSuspend(user)}
+                              className="px-3 py-2 bg-red-50 hover:bg-red-100 text-red-700 rounded-lg text-sm font-medium transition-colors"
+                            >
                               Suspend
                             </button>
                           </div>
@@ -265,6 +402,13 @@ const UsersTable = ({ users, loading, pagination, onPageChange }) => {
           </div>
         </div>
       )}
+
+      {/* Details Modal */}
+      <UserDetailsModal
+        isOpen={showDetailsModal}
+        onClose={() => setShowDetailsModal(false)}
+        user={viewDetailsUser}
+      />
     </div>
   );
 };

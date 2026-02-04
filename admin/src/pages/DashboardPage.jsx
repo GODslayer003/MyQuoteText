@@ -1,11 +1,10 @@
 // admin/src/pages/DashboardPage.jsx
 import React, { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchAdminStats, fetchUsers, fetchPayments } from '../store/dashboardThunks';
+import { fetchAdminStats, fetchUsers } from '../store/dashboardThunks';
 import { Users, CreditCard, TrendingUp, Loader2, RefreshCw, FileText } from 'lucide-react';
 import StatCard from '../components/StatCard';
 import UsersTable from '../components/UsersTable';
-import PaymentsTable from '../components/PaymentsTable';
 
 const DashboardPage = () => {
   const dispatch = useDispatch();
@@ -18,7 +17,6 @@ const DashboardPage = () => {
   const refreshData = () => {
     dispatch(fetchAdminStats());
     dispatch(fetchUsers({ page: 1, limit: 5 }));
-    dispatch(fetchPayments({ page: 1, limit: 5 }));
   };
 
   if (loading && !stats.totalUsers) {
@@ -78,15 +76,15 @@ const DashboardPage = () => {
           trend={stats.jobGrowth !== undefined ? `${stats.jobGrowth >= 0 ? '+' : ''}${stats.jobGrowth}% this month` : 'Loading...'}
         />
         <StatCard
-          title={`${standardInfo?.name || 'Standard'} ($${standardInfo?.price || '7.99'})`}
-          value={stats.standardPurchases || 0}
+          title={`${standardInfo?.name || 'Standard'} Revenue`}
+          value={`$${(stats.standardRevenue || 0).toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
           icon={<CreditCard className="w-8 h-8" />}
           color="blue"
           trend={stats.standardGrowth !== undefined ? `${stats.standardGrowth >= 0 ? '+' : ''}${stats.standardGrowth}% this month` : 'Loading...'}
         />
         <StatCard
-          title={`${premiumInfo?.name || 'Premium'} ($${premiumInfo?.price || '9.99'})`}
-          value={stats.premiumPurchases || 0}
+          title={`${premiumInfo?.name || 'Premium'} Revenue`}
+          value={`$${(stats.premiumRevenue || 0).toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
           icon={<TrendingUp className="w-8 h-8" />}
           color="green"
           trend={stats.premiumGrowth !== undefined ? `${stats.premiumGrowth >= 0 ? '+' : ''}${stats.premiumGrowth}% this month` : 'Loading...'}
@@ -99,14 +97,6 @@ const DashboardPage = () => {
         loading={loading}
         pagination={pagination.users}
         onPageChange={(page) => dispatch(fetchUsers({ page, limit: 5 }))}
-      />
-
-      {/* Payments Table */}
-      <PaymentsTable
-        payments={payments}
-        loading={loading}
-        pagination={pagination.payments}
-        onPageChange={(page) => dispatch(fetchPayments({ page, limit: 5 }))}
       />
     </div>
   );

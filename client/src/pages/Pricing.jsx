@@ -34,9 +34,13 @@ import {
   Calendar,
   FileCheck,
   RefreshCw,
-  Globe
+  Globe,
+  Inbox,
+  Copy,
+  Tag
 } from 'lucide-react';
 import PaymentModal from '../components/PaymentModal';
+import DiscountRedemptionModal from '../components/DiscountRedemptionModal';
 import { useAuth } from '../providers/AuthProvider';
 import { paymentApi } from '../services/paymentApi';
 import { toast } from 'react-hot-toast'; // Assuming toast is available, or use alert/console
@@ -50,14 +54,45 @@ const Pricing = () => {
   const [hoveredPlan, setHoveredPlan] = useState(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [selectedPlanForPayment, setSelectedPlanForPayment] = useState(null);
+  const [prefilledDiscountCode, setPrefilledDiscountCode] = useState('');
+
+  // Discount States
+  const [activeDiscounts, setActiveDiscounts] = useState([]);
+  const [currentDiscountIndex, setCurrentDiscountIndex] = useState(0);
+  const [showRedemptionModal, setShowRedemptionModal] = useState(false);
+  const [selectedRedemptionDiscount, setSelectedRedemptionDiscount] = useState(null);
 
   const [plans, setPlans] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [copiedCode, setCopiedCode] = useState(false);
 
   useEffect(() => {
     setIsVisible(true);
     fetchPlans();
+    fetchActiveDiscount();
   }, []);
+
+  const fetchActiveDiscount = async () => {
+    try {
+      const apiUrl = `${import.meta.env.VITE_API_BASE}/api/v1/discounts/active`;
+      const response = await fetch(apiUrl);
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success && result.data && result.data.length > 0) {
+          setActiveDiscounts(result.data);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch discounts:', err);
+    }
+  };
+
+  const copyToClipboard = (code) => {
+    navigator.clipboard.writeText(code);
+    setCopiedCode(true);
+    toast.success('Discount code copied!');
+    setTimeout(() => setCopiedCode(false), 2000);
+  };
 
   // Static fallback data with all visual metadata
   const staticPlans = [
@@ -210,6 +245,23 @@ const Pricing = () => {
     }
 
     setSelectedPlanForPayment(plan);
+    setPrefilledDiscountCode(''); // Clear any prefilled code for standard selection
+    setShowPaymentModal(true);
+  };
+
+  const handleDiscountClick = (discount) => {
+    setSelectedRedemptionDiscount(discount);
+    setShowRedemptionModal(true);
+  };
+
+  const handleRedemptionSelect = (planName, code) => {
+    setShowRedemptionModal(false);
+    // Find the full plan object
+    const plan = plans.find(p => p.name === planName) || { name: planName };
+
+    // Set payment state
+    setSelectedPlanForPayment(plan);
+    setPrefilledDiscountCode(code);
     setShowPaymentModal(true);
   };
 
@@ -296,6 +348,18 @@ const Pricing = () => {
     }
   ];
 
+  // Cycle discounts automatically
+  useEffect(() => {
+    if (activeDiscounts.length > 1) {
+      const interval = setInterval(() => {
+        setCurrentDiscountIndex((prev) => (prev + 1) % activeDiscounts.length);
+      }, 5000); // Change every 5 seconds
+      return () => clearInterval(interval);
+    }
+  }, [activeDiscounts]);
+
+  const activeDiscount = activeDiscounts.length > 0 ? activeDiscounts[currentDiscountIndex] : null;
+
   const testimonials = [
     {
       name: "Sarah M.",
@@ -349,6 +413,22 @@ const Pricing = () => {
 
   return (
     <div className="min-h-screen bg-white text-gray-900">
+      <DiscountRedemptionModal
+        isOpen={showRedemptionModal}
+        onClose={() => setShowRedemptionModal(false)}
+        discount={selectedRedemptionDiscount}
+        onSelectPlan={handleRedemptionSelect}
+      />
+
+      <PaymentModal
+        isOpen={showPaymentModal}
+        onClose={() => setShowPaymentModal(false)}
+        plan={selectedPlanForPayment?.name}
+        price={selectedPlanForPayment?.price}
+        initialDiscountCode={prefilledDiscountCode}
+        onSuccess={handlePaymentSuccess}
+      />
+
       {/* Hero Section */}
       <section className="relative overflow-hidden bg-gradient-to-br from-white via-orange-50 to-white py-16 sm:py-20 lg:py-24">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
@@ -367,13 +447,78 @@ const Pricing = () => {
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-            <Link
-              to="/check-quote"
-              className="group px-8 py-4 bg-black text-white rounded-xl font-bold text-lg hover:shadow-2xl transition-all duration-300 transform hover:scale-105 shadow-lg flex items-center"
-            >
-              Check a Quote Free
-              <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
-            </Link>
+            {activeDiscount ? (
+              <div className="animate-fade-in-up w-full max-w-md mx-auto mb-2">
+                <div className="bg-white border-2 border-orange-100 rounded-2xl p-4 shadow-xl relative overflow-hidden group hover:border-orange-200 transition-all cursor-pointer" onClick={() => handleDiscountClick(activeDiscount)}>
+                  <div className="absolute top-0 right-0 bg-orange-500 text-white text-xs font-bold px-3 py-1 rounded-bl-lg z-10">
+                    LIMITED TIME
+                  </div>
+
+                  <div className="flex items-start gap-4">
+                    <div className="bg-orange-50 p-3 rounded-xl flex-shrink-0">
+                      <Inbox className="w-6 h-6 text-orange-600" />
+                    </div>
+
+                    <div className="flex-1 text-left min-w-0">
+                      <h3 className="font-bold text-gray-900 text-lg flex items-center gap-2 truncate">
+                        Special Offer
+                        <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full font-medium whitespace-nowrap">Valid until {activeDiscount.expiresAt ? new Date(activeDiscount.expiresAt).toLocaleDateString() : 'Forever'}</span>
+                      </h3>
+                      <p className="text-gray-600 text-sm mb-3 truncate">
+                        {activeDiscount.description || `Get ${activeDiscount.type === 'percentage' ? activeDiscount.value + '%' : '$' + activeDiscount.value} off!`}
+                      </p>
+
+                      <div className="flex items-center gap-2 bg-gray-50 rounded-lg p-1.5 border border-gray-200 border-dashed">
+                        <Tag className="w-4 h-4 text-gray-400 ml-2" />
+                        <code className="flex-1 font-mono font-bold text-gray-800 tracking-wide text-lg text-center">
+                          {activeDiscount.code}
+                        </code>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            copyToClipboard(activeDiscount.code);
+                          }}
+                          className="bg-black hover:bg-gray-800 text-white p-2 rounded-md transition-colors z-20"
+                          title="Copy Code"
+                        >
+                          {copiedCode ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Multiple Discounts Indicator */}
+                  {activeDiscounts.length > 1 && (
+                    <div className="absolute bottom-1 left-0 right-0 flex justify-center gap-1 pb-1">
+                      {activeDiscounts.map((_, idx) => (
+                        <div
+                          key={idx}
+                          className={`w-1.5 h-1.5 rounded-full transition-colors ${idx === currentDiscountIndex ? 'bg-orange-500' : 'bg-gray-200'}`}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="mt-8 text-center">
+                  <Link
+                    to="/check-quote"
+                    className="inline-flex items-center text-gray-500 hover:text-gray-900 font-medium transition-colors"
+                  >
+                    Check a Quote Free
+                    <ArrowRight className="ml-1 w-4 h-4" />
+                  </Link>
+                </div>
+              </div>
+            ) : (
+              <Link
+                to="/check-quote"
+                className="group px-8 py-4 bg-black text-white rounded-xl font-bold text-lg hover:shadow-2xl transition-all duration-300 transform hover:scale-105 shadow-lg flex items-center"
+              >
+                Check a Quote Free
+                <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
+              </Link>
+            )}
           </div>
         </div>
       </section>

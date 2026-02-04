@@ -24,7 +24,7 @@ router.get('/suppliers/:id', AdminController.getSupplierDetails);
 router.get('/discounts/history', AdminController.getDiscountHistory);
 router.get('/users', AdminController.getUsers);
 router.patch('/users/:userId', AdminController.updateUserStatus); // Added method for completeness
-router.delete('/users/:userId', AdminController.deleteUser);      // Added method for completeness
+router.delete('/users/:userId', AdminController.banUser);      // Updated to Ban User
 
 router.get('/payments', AdminController.getPayments);
 

@@ -39,6 +39,10 @@ const discountSchema = new mongoose.Schema({
     enum: ['standard', 'premium'],
     default: ['standard', 'premium']
   }],
+  startDate: {
+    type: Date,
+    default: Date.now
+  },
   expiresAt: {
     type: Date,
     default: null

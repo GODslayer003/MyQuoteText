@@ -96,12 +96,12 @@ class AdminController {
                 totalUsers,
                 usersLastMonth,
                 usersPreviousMonth,
-                standardCount,
-                standardLastMonth,
-                standardPreviousMonth,
-                premiumCount,
-                premiumLastMonth,
-                premiumPreviousMonth,
+                standardRevenue,
+                standardRevenueLastMonth,
+                standardRevenuePreviousMonth,
+                premiumRevenue,
+                premiumRevenueLastMonth,
+                premiumRevenuePreviousMonth,
                 totalJobs,
                 jobsLastMonth,
                 jobsPreviousMonth,
@@ -110,12 +110,43 @@ class AdminController {
                 User.countDocuments({ accountStatus: { $ne: 'deleted' } }),
                 User.countDocuments({ accountStatus: { $ne: 'deleted' }, createdAt: { $gte: thirtyDaysAgo } }),
                 User.countDocuments({ accountStatus: { $ne: 'deleted' }, createdAt: { $gte: sixtyDaysAgo, $lt: thirtyDaysAgo } }),
-                Payment.countDocuments({ status: { $in: ['succeeded', 'partially_refunded', 'refunded'] }, tier: 'standard' }),
-                Payment.countDocuments({ status: { $in: ['succeeded', 'partially_refunded', 'refunded'] }, tier: 'standard', createdAt: { $gte: thirtyDaysAgo } }),
-                Payment.countDocuments({ status: { $in: ['succeeded', 'partially_refunded', 'refunded'] }, tier: 'standard', createdAt: { $gte: sixtyDaysAgo, $lt: thirtyDaysAgo } }),
-                Payment.countDocuments({ status: { $in: ['succeeded', 'partially_refunded', 'refunded'] }, tier: 'premium' }),
-                Payment.countDocuments({ status: { $in: ['succeeded', 'partially_refunded', 'refunded'] }, tier: 'premium', createdAt: { $gte: thirtyDaysAgo } }),
-                Payment.countDocuments({ status: { $in: ['succeeded', 'partially_refunded', 'refunded'] }, tier: 'premium', createdAt: { $gte: sixtyDaysAgo, $lt: thirtyDaysAgo } }),
+
+                // Standard tier total revenue
+                Payment.aggregate([
+                    { $match: { status: { $in: ['succeeded', 'partially_refunded'] }, tier: 'Standard' } },
+                    { $group: { _id: null, total: { $sum: '$amount' } } }
+                ]).then(result => result[0]?.total || 0),
+
+                // Standard tier revenue last month
+                Payment.aggregate([
+                    { $match: { status: { $in: ['succeeded', 'partially_refunded'] }, tier: 'Standard', createdAt: { $gte: thirtyDaysAgo } } },
+                    { $group: { _id: null, total: { $sum: '$amount' } } }
+                ]).then(result => result[0]?.total || 0),
+
+                // Standard tier revenue previous month
+                Payment.aggregate([
+                    { $match: { status: { $in: ['succeeded', 'partially_refunded'] }, tier: 'Standard', createdAt: { $gte: sixtyDaysAgo, $lt: thirtyDaysAgo } } },
+                    { $group: { _id: null, total: { $sum: '$amount' } } }
+                ]).then(result => result[0]?.total || 0),
+
+                // Premium tier total revenue
+                Payment.aggregate([
+                    { $match: { status: { $in: ['succeeded', 'partially_refunded'] }, tier: 'Premium' } },
+                    { $group: { _id: null, total: { $sum: '$amount' } } }
+                ]).then(result => result[0]?.total || 0),
+
+                // Premium tier revenue last month
+                Payment.aggregate([
+                    { $match: { status: { $in: ['succeeded', 'partially_refunded'] }, tier: 'Premium', createdAt: { $gte: thirtyDaysAgo } } },
+                    { $group: { _id: null, total: { $sum: '$amount' } } }
+                ]).then(result => result[0]?.total || 0),
+
+                // Premium tier revenue previous month
+                Payment.aggregate([
+                    { $match: { status: { $in: ['succeeded', 'partially_refunded'] }, tier: 'Premium', createdAt: { $gte: sixtyDaysAgo, $lt: thirtyDaysAgo } } },
+                    { $group: { _id: null, total: { $sum: '$amount' } } }
+                ]).then(result => result[0]?.total || 0),
+
                 Job.countDocuments({ deletedAt: null }),
                 Job.countDocuments({ deletedAt: null, createdAt: { $gte: thirtyDaysAgo } }),
                 Job.countDocuments({ deletedAt: null, createdAt: { $gte: sixtyDaysAgo, $lt: thirtyDaysAgo } }),
@@ -130,17 +161,17 @@ class AdminController {
 
             const userGrowth = calculateGrowth(usersLastMonth, usersPreviousMonth);
             const jobGrowth = calculateGrowth(jobsLastMonth, jobsPreviousMonth);
-            const standardGrowth = calculateGrowth(standardLastMonth, standardPreviousMonth);
-            const premiumGrowth = calculateGrowth(premiumLastMonth, premiumPreviousMonth);
+            const standardGrowth = calculateGrowth(standardRevenueLastMonth, standardRevenuePreviousMonth);
+            const premiumGrowth = calculateGrowth(premiumRevenueLastMonth, premiumRevenuePreviousMonth);
 
             return res.json({
                 success: true,
                 data: {
                     totalUsers,
                     userGrowth,
-                    standardPurchases: standardCount,
+                    standardRevenue, // Exact revenue amount in dollars
                     standardGrowth,
-                    premiumPurchases: premiumCount,
+                    premiumRevenue, // Exact revenue amount in dollars
                     premiumGrowth,
                     totalJobs,
                     jobGrowth,
@@ -471,23 +502,46 @@ class AdminController {
         }
     }
 
-    static async deleteUser(req, res) {
+    static async banUser(req, res) {
         try {
             const { userId } = req.params;
+            const BannedUser = require('../../models/BannedUser');
+
             const user = await User.findById(userId);
-            if (user) {
-                await user.softDelete();
+            if (!user) {
+                return res.status(404).json({ success: false, error: 'User not found' });
             }
-            return res.json({ success: true, message: 'User deleted' });
+
+            // check if already banned to avoid duplicates if button clicked twice
+            const existingBan = await BannedUser.findOne({ email: user.email });
+            if (!existingBan) {
+                // Add to BannedUser collection
+                await BannedUser.create({
+                    email: user.email,
+                    phone: user.phone,
+                    reason: 'Admin suspended user',
+                    bannedBy: req.user._id
+                });
+            }
+
+            // Hard delete the user to remove all details from User DB as requested
+            await User.findByIdAndDelete(userId);
+
+            // Also delete related data if strictly required (optional, but good for cleanup)
+            // await Job.deleteMany({ userId: userId });
+            // await Payment.deleteMany({ userId: userId });
+
+            return res.json({ success: true, message: 'User suspended and banned permanently' });
         } catch (e) {
-            return res.status(500).json({ success: false, error: 'Failed to delete user' });
+            console.error('Ban user error:', e);
+            return res.status(500).json({ success: false, error: 'Failed to suspend user' });
         }
     }
 
     // Get Suppliers with pagination and search
     static async getSuppliers(req, res) {
         try {
-            const { search = '', page = 1, limit = 5 } = req.query;
+            const { search = '', page = 1, limit = 10 } = req.query;
             const skip = (parseInt(page) - 1) * parseInt(limit);
 
             // Build search query
@@ -530,6 +584,7 @@ class AdminController {
     static async getSupplierDetails(req, res) {
         try {
             const { id } = req.params;
+            const SupplierQuote = require('../../models/SupplierQuote');
 
             // Get supplier
             const supplier = await Supplier.findById(id).lean();
@@ -537,27 +592,35 @@ class AdminController {
                 return res.status(404).json({ success: false, error: 'Supplier not found' });
             }
 
-            // Calculate stats from supplier's quote history
+            // Fetch quote history from SupplierQuote collection
+            const quotes = await SupplierQuote.find({ supplierId: id })
+                .sort({ createdAt: -1 })
+                .limit(10)
+                .lean();
+
+            // Calculate stats from fetched quotes
             const stats = {
-                totalQuotes: supplier.quoteHistory?.length || 0,
+                totalQuotes: quotes.length,
                 medianTotalAmount: 0,
                 priceChangePctVsLast: 0,
                 averageScore: supplier.score || 0
             };
 
-            if (supplier.quoteHistory && supplier.quoteHistory.length > 0) {
+            if (quotes.length > 0) {
                 // Calculate median
-                const amounts = supplier.quoteHistory.map(q => q.totalAmount).sort((a, b) => a - b);
+                const amounts = quotes.map(q => q.totalAmount).sort((a, b) => a - b);
                 const mid = Math.floor(amounts.length / 2);
                 stats.medianTotalAmount = amounts.length % 2 === 0
                     ? (amounts[mid - 1] + amounts[mid]) / 2
                     : amounts[mid];
 
-                // Calculate price change
-                if (supplier.quoteHistory.length >= 2) {
-                    const latest = supplier.quoteHistory[supplier.quoteHistory.length - 1];
-                    const previous = supplier.quoteHistory[supplier.quoteHistory.length - 2];
-                    stats.priceChangePctVsLast = ((latest.totalAmount - previous.totalAmount) / previous.totalAmount) * 100;
+                // Calculate price change (recent quotes are at the start due to sort)
+                if (quotes.length >= 2) {
+                    const latest = quotes[0]; // Most recent
+                    const previous = quotes[1]; // Second most recent
+                    if (previous.totalAmount > 0) {
+                        stats.priceChangePctVsLast = ((latest.totalAmount - previous.totalAmount) / previous.totalAmount) * 100;
+                    }
                 }
             }
 
@@ -566,7 +629,7 @@ class AdminController {
                 data: {
                     supplier,
                     stats,
-                    history: supplier.quoteHistory || []
+                    history: quotes
                 }
             });
         } catch (e) {

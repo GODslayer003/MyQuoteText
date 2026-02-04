@@ -170,18 +170,24 @@ const SuppliersPage = () => {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedSupplierId, setSelectedSupplierId] = useState(null);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
+    const [totalSuppliers, setTotalSuppliers] = useState(0);
 
     useEffect(() => {
         fetchSuppliers();
     }, []);
 
-    const fetchSuppliers = async () => {
+    const fetchSuppliers = async (page = 1) => {
         try {
             setLoading(true);
             const response = await api.get('/admin/suppliers', {
-                params: { search: searchTerm }
+                params: { search: searchTerm, page, limit: 10 }
             });
             setSuppliers(response.data.data);
+            setCurrentPage(response.data.pagination.page);
+            setTotalPages(response.data.pagination.pages);
+            setTotalSuppliers(response.data.pagination.total);
         } catch (err) {
             console.error('Failed to fetch suppliers:', err);
         } finally {
@@ -191,7 +197,13 @@ const SuppliersPage = () => {
 
     const handleSearch = (e) => {
         e.preventDefault();
-        fetchSuppliers();
+        setCurrentPage(1);
+        fetchSuppliers(1);
+    };
+
+    const handlePageChange = (page) => {
+        setCurrentPage(page);
+        fetchSuppliers(page);
     };
 
     const getScoreColor = (score) => {
@@ -224,7 +236,7 @@ const SuppliersPage = () => {
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
                     <p className="text-sm text-gray-500 font-medium">Total Suppliers</p>
-                    <p className="text-2xl font-bold text-gray-900 mt-1">{suppliers.length}</p>
+                    <p className="text-2xl font-bold text-gray-900 mt-1">{totalSuppliers}</p>
                 </div>
                 <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
                     <p className="text-sm text-gray-500 font-medium">Avg Score</p>
@@ -337,6 +349,45 @@ const SuppliersPage = () => {
                     </tbody>
                 </table>
             </div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+                <div className="flex justify-center items-center gap-2 mt-6">
+                    <button
+                        onClick={() => handlePageChange(currentPage - 1)}
+                        disabled={currentPage === 1}
+                        className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                        Previous
+                    </button>
+
+                    <div className="flex gap-2">
+                        {[...Array(totalPages)].map((_, index) => {
+                            const pageNum = index + 1;
+                            return (
+                                <button
+                                    key={pageNum}
+                                    onClick={() => handlePageChange(pageNum)}
+                                    className={`px-4 py-2 rounded-lg font-bold transition-colors ${currentPage === pageNum
+                                        ? 'bg-orange-500 text-white'
+                                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                        }`}
+                                >
+                                    {pageNum}
+                                </button>
+                            );
+                        })}
+                    </div>
+
+                    <button
+                        onClick={() => handlePageChange(currentPage + 1)}
+                        disabled={currentPage === totalPages}
+                        className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                        Next
+                    </button>
+                </div>
+            )}
 
             {/* Details Modal */}
             {selectedSupplierId && (

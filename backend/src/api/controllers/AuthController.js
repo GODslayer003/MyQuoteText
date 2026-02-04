@@ -12,6 +12,16 @@ class AuthController {
   async register(req, res, next) {
     try {
       const { email, password, firstName, lastName, phone } = req.body;
+      const BannedUser = require('../../models/BannedUser');
+
+      // Check if user is banned
+      const isBanned = await BannedUser.findOne({ $or: [{ email: email.toLowerCase() }, { phone: phone }] });
+      if (isBanned) {
+        return res.status(403).json({
+          success: false,
+          error: 'This account has been suspended permanently.'
+        });
+      }
 
       // Check if user exists
       const existingUser = await User.findByEmail(email);
@@ -88,6 +98,16 @@ class AuthController {
   async login(req, res, next) {
     try {
       const { email, password } = req.body;
+      const BannedUser = require('../../models/BannedUser');
+
+      // Check if user is banned
+      const isBanned = await BannedUser.findOne({ email: email.toLowerCase() });
+      if (isBanned) {
+        return res.status(403).json({
+          success: false,
+          error: 'Your account has been suspended permanently due to a violation of our terms.'
+        });
+      }
 
       // Find user
       const user = await User.findByEmail(email).select('+passwordHash');

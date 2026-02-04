@@ -9,12 +9,65 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../providers/AuthProvider';
 import quoteApi from '../services/quoteApi';
+import { paymentApi } from '../services/paymentApi';
+import { toast } from 'react-hot-toast';
 
-const PaymentModal = ({ isOpen, onClose, plan = 'Standard', price = 7.99, onSuccess }) => {
+const PaymentModal = ({ isOpen, onClose, plan = 'Standard', price = 7.99, initialDiscountCode = '', onSuccess }) => {
     const { user } = useAuth();
     const [isProcessing, setIsProcessing] = useState(false);
     const [step, setStep] = useState('summary'); // summary, processing, success
     const [paymentMethod, setPaymentMethod] = useState('card');
+    const [discountCode, setDiscountCode] = useState('');
+    const [appliedDiscount, setAppliedDiscount] = useState(null);
+    const [validatingCode, setValidatingCode] = useState(false);
+
+    // Reset state when modal opens/closes
+    React.useEffect(() => {
+        if (isOpen) {
+            setStep('summary');
+            setDiscountCode(initialDiscountCode || '');
+            setAppliedDiscount(null);
+        }
+    }, [isOpen, initialDiscountCode]);
+
+    const handleValidateCode = async () => {
+        const codeToValidate = discountCode || initialDiscountCode;
+        if (!codeToValidate.trim()) return;
+
+        setValidatingCode(true);
+        try {
+            const response = await fetch(`${import.meta.env.VITE_API_BASE}/api/v1/discounts/validate`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    code: discountCode,
+                    tier: plan.toLowerCase(),
+                    amount: price
+                })
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                setAppliedDiscount(result.data);
+                toast.success('Discount applied!');
+            } else {
+                setAppliedDiscount(null);
+                toast.error(result.error || 'Invalid discount code');
+            }
+        } catch (error) {
+            console.error('Validation failed:', error);
+            toast.error('Failed to validate code');
+        } finally {
+            setValidatingCode(false);
+        }
+    };
+
+    const finalPrice = appliedDiscount
+        ? (appliedDiscount.type === 'percentage'
+            ? Math.max(0, price * (1 - appliedDiscount.value / 100)).toFixed(2)
+            : Math.max(0, price - appliedDiscount.value).toFixed(2))
+        : price;
 
     if (!isOpen) return null;
 
@@ -23,7 +76,8 @@ const PaymentModal = ({ isOpen, onClose, plan = 'Standard', price = 7.99, onSucc
         setStep('processing');
 
         try {
-            await quoteApi.upgradeTier(plan);
+            // Use mock upgrade for now, but in real app pass the discount info
+            await paymentApi.mockUpgrade(plan); // Using paymentApi mock from Pricing.jsx logic
 
             setIsProcessing(false);
             setStep('success');
@@ -39,6 +93,7 @@ const PaymentModal = ({ isOpen, onClose, plan = 'Standard', price = 7.99, onSucc
             // Ideally handle error state here
             setStep('summary'); // Reset to summary on failure
             // Note: In production, show error message
+            toast.error('Payment failed. Please try again.');
         }
     };
 
@@ -74,6 +129,17 @@ const PaymentModal = ({ isOpen, onClose, plan = 'Standard', price = 7.99, onSucc
                                     <span className="text-gray-600">{plan} Report</span>
                                     <span className="font-bold text-gray-900">${price}</span>
                                 </div>
+                                {appliedDiscount && (
+                                    <div className="flex justify-between items-center mb-2 text-green-600">
+                                        <span className="flex items-center gap-1">
+                                            <Zap className="w-3 h-3" />
+                                            Discount ({appliedDiscount.code})
+                                        </span>
+                                        <span className="font-bold">
+                                            -{appliedDiscount.type === 'percentage' ? `${appliedDiscount.value}%` : `$${appliedDiscount.value}`}
+                                        </span>
+                                    </div>
+                                )}
                                 <div className="flex justify-between items-center text-sm text-gray-500">
                                     <span>Processing Fee</span>
                                     <span>$0.00</span>
@@ -81,7 +147,50 @@ const PaymentModal = ({ isOpen, onClose, plan = 'Standard', price = 7.99, onSucc
                                 <div className="border-t border-gray-200 my-3"></div>
                                 <div className="flex justify-between items-center font-bold text-lg">
                                     <span>Total</span>
-                                    <span>${price}</span>
+                                    <span className={appliedDiscount ? "text-orange-600" : ""}>${finalPrice}</span>
+                                </div>
+                            </div>
+
+                            {/* Discount Code Input */}
+                            <div className="mb-6">
+                                <label className="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">
+                                    Discount Code
+                                </label>
+                                <div className="flex gap-2">
+                                    <div className="relative flex-1">
+                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                            <Zap className="h-4 w-4 text-gray-400" />
+                                        </div>
+                                        <input
+                                            type="text"
+                                            value={discountCode}
+                                            onChange={(e) => setDiscountCode(e.target.value)}
+                                            placeholder="Enter code"
+                                            className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500 sm:text-sm bg-gray-50 uppercase"
+                                            disabled={!!appliedDiscount}
+                                        />
+                                        {appliedDiscount && (
+                                            <button
+                                                onClick={() => {
+                                                    setAppliedDiscount(null);
+                                                    setDiscountCode('');
+                                                }}
+                                                className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                                            >
+                                                <X className="h-4 w-4" />
+                                            </button>
+                                        )}
+                                    </div>
+                                    <button
+                                        onClick={handleValidateCode}
+                                        disabled={!discountCode || validatingCode || !!appliedDiscount}
+                                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${appliedDiscount
+                                            ? 'bg-green-100 text-green-700 cursor-default'
+                                            : 'bg-black text-white hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed'
+                                            }`}
+                                    >
+                                        {validatingCode ? '...' : appliedDiscount ? 'Applied' : 'Apply'}
+                                    </button>
                                 </div>
                             </div>
 
@@ -105,7 +214,7 @@ const PaymentModal = ({ isOpen, onClose, plan = 'Standard', price = 7.99, onSucc
                                 onClick={handlePayment}
                                 className="w-full py-4 bg-gradient-to-r from-orange-500 to-amber-600 text-white rounded-xl font-bold text-lg hover:shadow-lg hover:shadow-orange-500/30 transition-all active:scale-[0.98]"
                             >
-                                Pay ${price} Securely
+                                Pay ${finalPrice} Securely
                             </button>
 
                             <div className="mt-4 flex items-center justify-center gap-2 text-xs text-gray-500">

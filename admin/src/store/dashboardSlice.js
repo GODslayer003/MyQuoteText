@@ -56,6 +56,7 @@ const dashboardSlice = createSlice({
       state.loading = false;
       state.users = action.payload.users;
       state.pagination.users.total = action.payload.total;
+      state.pagination.users.page = action.meta.arg.page || 1;
     });
     builder.addCase(fetchUsers.rejected, (state, action) => {
       state.loading = false;
@@ -71,6 +72,7 @@ const dashboardSlice = createSlice({
       state.loading = false;
       state.payments = action.payload.payments;
       state.pagination.payments.total = action.payload.total;
+      state.pagination.payments.page = action.meta.arg.page || 1;
     });
     builder.addCase(fetchPayments.rejected, (state, action) => {
       state.loading = false;
