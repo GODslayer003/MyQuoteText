@@ -130,7 +130,7 @@ const Pricing = () => {
       textColor: "text-black",
       border: "border-gray-800",
       button: "bg-black hover:bg-gray-900 text-white",
-      cta: "Buy 3 Reports",
+      cta: "Buy 1 Reports",
       icon: <Crown className="w-6 h-6" />,
       features: [
         { included: true, text: "Credits for 3 analyses" },

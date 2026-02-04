@@ -367,13 +367,13 @@ class AIProcessor {
     const fallbacks = [
       {
         title: 'Negotiate Detailed Material Breakdown & Supplier Choice',
-        description: `Based on your quote total of $${baseCost.toLocaleString()}, request a line-by-line material breakdown with brand specifications and unit prices. In the 2026 Australian market, contractor markups on materials typically range from 20-35%, which could represent $${Math.round(baseCost * 0.08).toLocaleString()}-$${Math.round(baseCost * 0.12).toLocaleString()} on your project. By requesting transparency and potentially sourcing premium items yourself through trade accounts (Bunnings Trade, Reece, or Beaumont Tiles), you can eliminate this markup while maintaining quality. Additionally, ask if you can approve supplier choices—some contractors have established relationships that yield better pricing, which they may pass on if you demonstrate market knowledge.`,
+        description: `Based on your quote total of $${baseCost.toLocaleString()}, request a line-by-line material breakdown with brand specifications and unit prices. In the ${new Date().getFullYear()} Australian market, contractor markups on materials typically range from 20-35%, which could represent $${Math.round(baseCost * 0.08).toLocaleString()}-$${Math.round(baseCost * 0.12).toLocaleString()} on your project. By requesting transparency and potentially sourcing premium items yourself through trade accounts (Bunnings Trade, Reece, or Beaumont Tiles), you can eliminate this markup while maintaining quality. Additionally, ask if you can approve supplier choices—some contractors have established relationships that yield better pricing, which they may pass on if you demonstrate market knowledge.`,
         potentialSavings: Math.round(baseCost * 0.08),
         difficulty: 'moderate'
       },
       {
         title: 'Optimize Payment Schedule for Cash Flow Leverage',
-        description: `Your project value of $${baseCost.toLocaleString()} positions you well for payment term negotiations. The standard Australian construction payment schedule (30% deposit, 40% mid-stage, 30% completion) heavily favors contractor cash flow. Propose an alternative: 40% upfront deposit in exchange for 7-10% total discount (potential $${Math.round(baseCost * 0.075).toLocaleString()} saving). In 2026's competitive market, many contractors face cash flow constraints and value immediate liquidity over margin. Alternatively, offer to pay materials invoices directly to suppliers (removing contractor financing burden) in exchange for 5% discount. Both approaches demonstrate you're a serious, well-funded client while capturing savings. Ensure all payment terms are documented in the contract with clear milestone definitions.`,
+        description: `Your project value of $${baseCost.toLocaleString()} positions you well for payment term negotiations. The standard Australian construction payment schedule (30% deposit, 40% mid-stage, 30% completion) heavily favors contractor cash flow. Propose an alternative: 40% upfront deposit in exchange for 7-10% total discount (potential $${Math.round(baseCost * 0.075).toLocaleString()} saving). In ${new Date().getFullYear()}'s competitive market, many contractors face cash flow constraints and value immediate liquidity over margin. Alternatively, offer to pay materials invoices directly to suppliers (removing contractor financing burden) in exchange for 5% discount. Both approaches demonstrate you're a serious, well-funded client while capturing savings. Ensure all payment terms are documented in the contract with clear milestone definitions.`,
         potentialSavings: Math.round(baseCost * 0.075),
         difficulty: 'easy'
       },
@@ -385,13 +385,13 @@ class AIProcessor {
       },
       {
         title: 'Value Engineering: Scope Optimization Without Quality Compromise',
-        description: `For a $${baseCost.toLocaleString()} renovation, systematic value engineering can save 10-18% ($${Math.round(baseCost * 0.12).toLocaleString()}-$${Math.round(baseCost * 0.18).toLocaleString()}) through smart substitutions. Work with your contractor to identify equivalent-performance alternatives: commercial-grade fixtures vs. premium residential (often identical manufacturing, different branding), engineered stone vs. natural stone for non-food-contact surfaces, or pre-finished materials vs. on-site finishing. The 2026 market offers exceptional mid-tier products that outperform premium options from 5 years ago. Request the contractor provide 3 specification tiers for key items—you'll often find the mid-tier exceeds your requirements at 30-40% less cost. This approach maintains project vision while eliminating unnecessary premium pricing. Document all substitutions in writing to ensure warranty coverage.`,
+        description: `For a $${baseCost.toLocaleString()} renovation, systematic value engineering can save 10-18% ($${Math.round(baseCost * 0.12).toLocaleString()}-$${Math.round(baseCost * 0.18).toLocaleString()}) through smart substitutions. Work with your contractor to identify equivalent-performance alternatives: commercial-grade fixtures vs. premium residential (often identical manufacturing, different branding), engineered stone vs. natural stone for non-food-contact surfaces, or pre-finished materials vs. on-site finishing. The ${new Date().getFullYear()} market offers exceptional mid-tier products that outperform premium options from 5 years ago. Request the contractor provide 3 specification tiers for key items—you'll often find the mid-tier exceeds your requirements at 30-40% less cost. This approach maintains project vision while eliminating unnecessary premium pricing. Document all substitutions in writing to ensure warranty coverage.`,
         potentialSavings: Math.round(baseCost * 0.14),
         difficulty: 'moderate'
       },
       {
         title: 'Project Bundling & Multi-Trade Coordination Premium',
-        description: `If you're planning additional work (landscaping, interior updates, deck construction) in the next 12 months, bundling with this $${baseCost.toLocaleString()} project can reduce total costs by 12-18%. Contractors offer volume discounts for combined work ($${Math.round(baseCost * 0.15).toLocaleString()}+ potential savings) because it ensures continuous workflow, reduces mobilization costs, and allows bulk material ordering. Additionally, single-contractor coordination eliminates the 10-15% "margin stacking" that occurs when separate trades each add profit margins to sequential work. Present your contractor with a 6-12 month roadmap of planned improvements and request package pricing. Even if you stage payments across fiscal years, the consolidated approach typically saves more than financing costs. This strategy particularly benefits homeowners planning whole-home renovations in phases, as it locks in 2026 rates before anticipated 2027 market increases.`,
+        description: `If you're planning additional work (landscaping, interior updates, deck construction) in the next 12 months, bundling with this $${baseCost.toLocaleString()} project can reduce total costs by 12-18%. Contractors offer volume discounts for combined work ($${Math.round(baseCost * 0.15).toLocaleString()}+ potential savings) because it ensures continuous workflow, reduces mobilization costs, and allows bulk material ordering. Additionally, single-contractor coordination eliminates the 10-15% "margin stacking" that occurs when separate trades each add profit margins to sequential work. Present your contractor with a 6-12 month roadmap of planned improvements and request package pricing. Even if you stage payments across fiscal years, the consolidated approach typically saves more than financing costs. This strategy particularly benefits homeowners planning whole-home renovations in phases, as it locks in ${new Date().getFullYear()} rates before anticipated ${new Date().getFullYear() + 1} market increases.`,
         potentialSavings: Math.round(baseCost * 0.15),
         difficulty: 'complex'
       }
@@ -428,7 +428,7 @@ class AIProcessor {
     const baseCost = totalCost || 10000;
     const fallbacks = [];
 
-    // 1. Skilled Labor Rate Benchmarking (2026 AU Market)
+    // 1. Skilled Labor Rate Benchmarking (Current AU Market)
     const laborItems = (costBreakdown || []).filter(item =>
       item.category?.toLowerCase().includes('labour') ||
       item.category?.toLowerCase().includes('labor') ||
@@ -487,7 +487,7 @@ class AIProcessor {
     });
 
     // 4. Total Project Value Benchmarking (per square meter estimates)
-    const estimatedSqm = Math.max(15, Math.round(baseCost / 2200)); // $2200/sqm is 2026 AU avg for renovations
+    const estimatedSqm = Math.max(15, Math.round(baseCost / 2200)); // Current AU avg for renovations
     const costPerSqm = Math.round(baseCost / estimatedSqm);
 
     fallbacks.push({

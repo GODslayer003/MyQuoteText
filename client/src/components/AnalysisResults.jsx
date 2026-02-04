@@ -268,10 +268,11 @@ const AnalysisResults = ({ jobResult, userTier = 'free', onCompare }) => {
   // Use mock data if jobResult is not provided
   const displayResult = jobResult || mockJobResult;
 
-  // Normalize tier names to lowercase
-  const normalizedTier = userTier?.toLowerCase() === 'standard' ? 'standard' :
-    userTier?.toLowerCase() === 'premium' ? 'premium' :
-      userTier?.toLowerCase() || 'free';
+  // Normalize tier names to lowercase - PRIORITIZE jobResult.tier if it exists
+  const effectiveTier = jobResult?.tier || userTier;
+  const normalizedTier = effectiveTier?.toLowerCase() === 'standard' ? 'standard' :
+    effectiveTier?.toLowerCase() === 'premium' ? 'premium' :
+      effectiveTier?.toLowerCase() || 'free';
 
   // Tier access mapping
   const tierAccess = {
@@ -1158,7 +1159,7 @@ const AnalysisResults = ({ jobResult, userTier = 'free', onCompare }) => {
               <div className="bg-gray-900 border border-gray-700 rounded-xl overflow-hidden shadow-xl mb-8">
                 <div className="bg-gradient-to-r from-amber-600 to-amber-700 px-5 py-4 border-b border-gray-700 flex justify-between items-center">
                   <h3 className="font-black text-white flex items-center gap-2 uppercase tracking-widest text-sm">
-                    <Crown className="w-5 h-5 text-amber-300" /> Technical Comparison Matrix (AU 2026)
+                    <Crown className="w-5 h-5 text-amber-300" /> Technical Comparison Matrix (AU {jobResult?.createdAt ? new Date(jobResult.createdAt).getFullYear() : new Date().getFullYear()})
                   </h3>
                   <div className="px-2 py-1 bg-white/20 rounded text-[10px] font-bold text-white uppercase tracking-tighter">Premium Access</div>
                 </div>
