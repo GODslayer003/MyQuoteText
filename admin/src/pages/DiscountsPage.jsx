@@ -350,8 +350,8 @@ const DiscountsPage = () => {
                   <td className="px-6 py-4 text-gray-700 text-sm">{discount.description}</td>
                   <td className="px-6 py-4 text-gray-700 text-sm">
                     <div className="flex flex-col">
-                      <span className="text-xs text-green-600 font-medium">Start: {new Date(discount.startDate).toLocaleDateString()}</span>
-                      <span className="text-xs text-red-600 font-medium">End: {discount.expiresAt ? new Date(discount.expiresAt).toLocaleDateString() : 'Never'}</span>
+                      <span className="text-xs text-green-600 font-medium">Start: {new Date(discount.startDate).toLocaleDateString('en-AU', { timeZone: 'Australia/Sydney' })}</span>
+                      <span className="text-xs text-red-600 font-medium">End: {discount.expiresAt ? new Date(discount.expiresAt).toLocaleDateString('en-AU', { timeZone: 'Australia/Sydney' }) : 'Never'}</span>
                     </div>
                   </td>
                   <td className="px-6 py-4 text-gray-700 text-sm">{discount.maxUses || 'Unlimited'}</td>

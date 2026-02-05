@@ -13,8 +13,8 @@ const initialState = {
   loading: false,
   error: null,
   pagination: {
-    users: { page: 1, limit: 5, total: 0 },
-    payments: { page: 1, limit: 5, total: 0 }
+    users: { page: 1, limit: 10, total: 0 },
+    payments: { page: 1, limit: 10, total: 0 }
   }
 };
 
@@ -57,6 +57,7 @@ const dashboardSlice = createSlice({
       state.users = action.payload.users;
       state.pagination.users.total = action.payload.total;
       state.pagination.users.page = action.meta.arg.page || 1;
+      state.pagination.users.limit = action.meta.arg.limit || 10;
     });
     builder.addCase(fetchUsers.rejected, (state, action) => {
       state.loading = false;
@@ -73,6 +74,7 @@ const dashboardSlice = createSlice({
       state.payments = action.payload.payments;
       state.pagination.payments.total = action.payload.total;
       state.pagination.payments.page = action.meta.arg.page || 1;
+      state.pagination.payments.limit = action.meta.arg.limit || 10;
     });
     builder.addCase(fetchPayments.rejected, (state, action) => {
       state.loading = false;

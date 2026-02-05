@@ -128,7 +128,7 @@ const SupplierDetailsModal = ({ supplierId, onClose }) => {
                                     {history.map((q) => (
                                         <tr key={q._id}>
                                             <td className="px-4 py-3 text-sm text-gray-600">
-                                                {new Date(q.createdAt).toLocaleDateString()}
+                                                {new Date(q.createdAt).toLocaleDateString('en-AU', { timeZone: 'Australia/Sydney' })}
                                             </td>
                                             <td className="px-4 py-3 text-sm font-bold text-gray-900">
                                                 ${q.totalAmount?.toLocaleString()}
@@ -332,7 +332,7 @@ const SuppliersPage = () => {
                                     <td className="px-6 py-4">
                                         <div className="flex items-center gap-2 text-xs text-gray-500">
                                             <Mail className="w-3 h-3" />
-                                            {new Date(supplier.lastSeenAt).toLocaleDateString()}
+                                            {new Date(supplier.lastSeenAt).toLocaleDateString('en-AU', { timeZone: 'Australia/Sydney' })}
                                         </div>
                                     </td>
                                     <td className="px-6 py-4 text-right">

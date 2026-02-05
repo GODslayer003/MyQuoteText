@@ -16,7 +16,7 @@ const DashboardPage = () => {
 
   const refreshData = () => {
     dispatch(fetchAdminStats());
-    dispatch(fetchUsers({ page: 1, limit: 5 }));
+    dispatch(fetchUsers({ page: 1, limit: 10 }));
   };
 
   if (loading && !stats.totalUsers) {
@@ -96,7 +96,7 @@ const DashboardPage = () => {
         users={users}
         loading={loading}
         pagination={pagination.users}
-        onPageChange={(page) => dispatch(fetchUsers({ page, limit: 5 }))}
+        onPageChange={(page) => dispatch(fetchUsers({ page, limit: 10 }))}
       />
     </div>
   );

@@ -54,7 +54,8 @@ const UsersTable = ({ users, loading, pagination, onPageChange }) => {
 
   const formatDate = (date) => {
     if (!date) return 'N/A';
-    return new Date(date).toLocaleDateString('en-US', {
+    return new Date(date).toLocaleDateString('en-AU', {
+      timeZone: 'Australia/Sydney',
       year: 'numeric',
       month: 'short',
       day: 'numeric'
@@ -75,10 +76,15 @@ const UsersTable = ({ users, loading, pagination, onPageChange }) => {
   };
 
   const renderPagination = () => {
-    if (!pagination || pagination.total <= pagination.limit) return null;
+    if (!pagination) return null;
+
+    // Ensure we use the limit that matches the current view if pagination.limit is stale
+    const limit = pagination.limit || 10;
+    const totalPages = Math.ceil(pagination.total / limit);
+
+    if (totalPages <= 1) return null;
 
     const currentPage = pagination.page || 1;
-    const totalPages = Math.ceil(pagination.total / pagination.limit);
 
     // Generate visible page numbers
     const getPageNumbers = () => {
@@ -233,14 +239,20 @@ const UsersTable = ({ users, loading, pagination, onPageChange }) => {
                   <tr className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
                     <td className="py-4 px-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-gradient-to-r from-orange-500 to-amber-600 rounded-full flex items-center justify-center text-white text-sm font-semibold">
-                          {(user.firstName?.[0] || user.email?.[0] || 'U').toUpperCase()}
-                        </div>
+                        {user.avatarUrl ? (
+                          <img
+                            src={user.avatarUrl}
+                            alt={user.firstName}
+                            className="w-10 h-10 rounded-full object-cover border border-gray-200"
+                          />
+                        ) : (
+                          <div className="w-10 h-10 bg-gradient-to-r from-orange-500 to-amber-600 rounded-full flex items-center justify-center text-white font-bold shadow-sm">
+                            {(user.firstName?.[0] || user.email?.[0] || 'U').toUpperCase()}
+                          </div>
+                        )}
                         <div>
-                          <p className="font-medium text-gray-900">
-                            {user.firstName} {user.lastName}
-                          </p>
-                          <p className="text-xs text-gray-500">{user._id}</p>
+                          <div className="font-bold text-gray-900">{user.firstName} {user.lastName}</div>
+                          <div className="text-xs text-gray-500 font-mono">{user._id}</div>
                         </div>
                       </div>
                     </td>
@@ -367,9 +379,17 @@ const UsersTable = ({ users, loading, pagination, onPageChange }) => {
                       <tr key={u._id} className="hover:bg-gray-50">
                         <td className="py-4 px-4">
                           <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center font-bold">
-                              {u.firstName?.[0] || 'U'}
-                            </div>
+                            {u.avatarUrl ? (
+                              <img
+                                src={u.avatarUrl}
+                                alt={u.firstName}
+                                className="w-8 h-8 rounded-full object-cover border border-gray-200"
+                              />
+                            ) : (
+                              <div className="w-8 h-8 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center font-bold">
+                                {u.firstName?.[0] || 'U'}
+                              </div>
+                            )}
                             <span className="font-medium">{u.firstName} {u.lastName}</span>
                           </div>
                         </td>

@@ -462,7 +462,7 @@ const Pricing = () => {
                     <div className="flex-1 text-left min-w-0">
                       <h3 className="font-bold text-gray-900 text-lg flex items-center gap-2 truncate">
                         Special Offer
-                        <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full font-medium whitespace-nowrap">Valid until {activeDiscount.expiresAt ? new Date(activeDiscount.expiresAt).toLocaleDateString() : 'Forever'}</span>
+                        <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full font-medium whitespace-nowrap">Valid until {activeDiscount.expiresAt ? new Date(activeDiscount.expiresAt).toLocaleDateString('en-AU', { timeZone: 'Australia/Sydney' }) : 'Forever'}</span>
                       </h3>
                       <p className="text-gray-600 text-sm mb-3 truncate">
                         {activeDiscount.description || `Get ${activeDiscount.type === 'percentage' ? activeDiscount.value + '%' : '$' + activeDiscount.value} off!`}

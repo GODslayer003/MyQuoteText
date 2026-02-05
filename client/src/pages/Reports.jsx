@@ -104,9 +104,10 @@ const Reports = () => {
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
+    return date.toLocaleDateString('en-AU', {
+      timeZone: 'Australia/Sydney',
       year: 'numeric',
-      month: 'short',
+      month: 'long',
       day: 'numeric'
     });
   };
@@ -326,10 +327,10 @@ const Reports = () => {
                             </h3>
                             {report.tier && (
                               <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${report.tier.toLowerCase() === 'premium'
-                                  ? 'bg-gradient-to-r from-yellow-400 to-amber-500 text-black'
-                                  : report.tier.toLowerCase() === 'standard'
-                                    ? 'bg-orange-500 text-white'
-                                    : 'bg-gray-400 text-white'
+                                ? 'bg-gradient-to-r from-yellow-400 to-amber-500 text-black'
+                                : report.tier.toLowerCase() === 'standard'
+                                  ? 'bg-orange-500 text-white'
+                                  : 'bg-gray-400 text-white'
                                 }`}>
                                 {report.tier}
                               </span>

@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { CreditCard, ChevronRight, Loader2, DollarSign, Calendar, MoreVertical, User, X } from 'lucide-react';
 import api from '../services/api';
+import ReceiptModal from './ReceiptModal';
 
 const PaymentsTable = ({ payments, loading, pagination, onPageChange }) => {
   const [expandedId, setExpandedId] = useState(null);
@@ -9,9 +10,19 @@ const PaymentsTable = ({ payments, loading, pagination, onPageChange }) => {
   const [allPayments, setAllPayments] = useState([]);
   const [loadingAll, setLoadingAll] = useState(false);
 
+  // Receipt Modal State
+  const [receiptPayment, setReceiptPayment] = useState(null);
+  const [showReceiptModal, setShowReceiptModal] = useState(false);
+
+  const handleViewReceipt = (payment) => {
+    setReceiptPayment(payment);
+    setShowReceiptModal(true);
+  };
+
   const formatDate = (date) => {
     if (!date) return 'N/A';
-    return new Date(date).toLocaleDateString('en-US', {
+    return new Date(date).toLocaleDateString('en-AU', {
+      timeZone: 'Australia/Sydney',
       year: 'numeric',
       month: 'short',
       day: 'numeric'
@@ -135,9 +146,17 @@ const PaymentsTable = ({ payments, loading, pagination, onPageChange }) => {
                     </td>
                     <td className="py-4 px-4">
                       <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center">
-                          <User className="w-3 h-3 text-gray-500" />
-                        </div>
+                        {payment.userId?.avatarUrl ? (
+                          <img
+                            src={payment.userId.avatarUrl}
+                            alt={payment.userId.firstName}
+                            className="w-8 h-8 rounded-full object-cover border border-gray-200"
+                          />
+                        ) : (
+                          <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
+                            <User className="w-4 h-4 text-gray-500" />
+                          </div>
+                        )}
                         <div className="text-sm">
                           <p className="font-medium text-gray-900">
                             {payment.userId?.firstName
@@ -209,14 +228,12 @@ const PaymentsTable = ({ payments, loading, pagination, onPageChange }) => {
                             </div>
                           )}
                           <div className="flex gap-2 pt-4 border-t border-gray-200">
-                            <button className="px-3 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-sm font-medium transition-colors">
+                            <button
+                              onClick={() => handleViewReceipt(payment)}
+                              className="px-3 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-sm font-medium transition-colors"
+                            >
                               View Receipt
                             </button>
-                            {payment.status === 'succeeded' && (
-                              <button className="px-3 py-2 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-lg text-sm font-medium transition-colors">
-                                Issue Refund
-                              </button>
-                            )}
                           </div>
                         </div>
                       </td>
@@ -262,6 +279,7 @@ const PaymentsTable = ({ payments, loading, pagination, onPageChange }) => {
                       <th className="py-3 px-4 text-xs font-bold text-gray-400 uppercase">Amount</th>
                       <th className="py-3 px-4 text-xs font-bold text-gray-400 uppercase">Status</th>
                       <th className="py-3 px-4 text-xs font-bold text-gray-400 uppercase">Date</th>
+                      <th className="py-3 px-4 text-xs font-bold text-gray-400 uppercase text-right">Action</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
@@ -269,8 +287,23 @@ const PaymentsTable = ({ payments, loading, pagination, onPageChange }) => {
                       <tr key={p._id} className="hover:bg-gray-50 text-sm">
                         <td className="py-4 px-4 font-mono text-xs text-gray-500">{p.stripePaymentId || p._id}</td>
                         <td className="py-4 px-4">
-                          <p className="font-medium text-gray-900">{p.userId?.firstName || 'User'} {p.userId?.lastName || ''}</p>
-                          <p className="text-xs text-gray-400">{p.userId?.email}</p>
+                          <div className="flex items-center gap-3">
+                            {p.userId?.avatarUrl ? (
+                              <img
+                                src={p.userId.avatarUrl}
+                                alt={p.userId.firstName}
+                                className="w-8 h-8 rounded-full object-cover border border-gray-200"
+                              />
+                            ) : (
+                              <div className="w-8 h-8 rounded-full bg-orange-50 text-orange-600 flex items-center justify-center font-bold text-xs">
+                                {(p.userId?.firstName?.[0] || 'U').toUpperCase()}
+                              </div>
+                            )}
+                            <div>
+                              <p className="font-medium text-gray-900">{p.userId?.firstName || 'User'} {p.userId?.lastName || ''}</p>
+                              <p className="text-xs text-gray-400">{p.userId?.email}</p>
+                            </div>
+                          </div>
                         </td>
                         <td className="py-4 px-4 font-bold text-gray-900">${p.amount?.toFixed(2)}</td>
                         <td className="py-4 px-4">
@@ -279,6 +312,14 @@ const PaymentsTable = ({ payments, loading, pagination, onPageChange }) => {
                           </span>
                         </td>
                         <td className="py-4 px-4 text-gray-500">{formatDate(p.createdAt)}</td>
+                        <td className="py-4 px-4 text-right">
+                          <button
+                            onClick={() => handleViewReceipt(p)}
+                            className="text-xs font-bold text-orange-600 hover:text-orange-700 px-2 py-1 rounded-md hover:bg-orange-50 transition-colors"
+                          >
+                            RECEIPT
+                          </button>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -297,6 +338,13 @@ const PaymentsTable = ({ payments, loading, pagination, onPageChange }) => {
           </div>
         </div>
       )}
+
+      {/* Receipt Modal */}
+      <ReceiptModal
+        isOpen={showReceiptModal}
+        onClose={() => setShowReceiptModal(false)}
+        payment={receiptPayment}
+      />
     </div>
   );
 };

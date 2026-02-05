@@ -15,7 +15,14 @@ const UserDetailsModal = ({ isOpen, onClose, user }) => {
 
     const formatDate = (date) => {
         if (!date) return 'N/A';
-        return new Date(date).toLocaleString();
+        return new Date(date).toLocaleString('en-AU', {
+            timeZone: 'Australia/Sydney',
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
     };
 
     return (
@@ -25,9 +32,17 @@ const UserDetailsModal = ({ isOpen, onClose, user }) => {
                 {/* Header */}
                 <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between bg-gray-50">
                     <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center font-bold text-xl">
-                            {(user.firstName?.[0] || 'U').toUpperCase()}
-                        </div>
+                        {user.avatarUrl ? (
+                            <img
+                                src={user.avatarUrl}
+                                alt={user.firstName}
+                                className="w-12 h-12 rounded-full object-cover border border-gray-200"
+                            />
+                        ) : (
+                            <div className="w-12 h-12 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center font-bold text-xl">
+                                {(user.firstName?.[0] || 'U').toUpperCase()}
+                            </div>
+                        )}
                         <div>
                             <h3 className="text-xl font-bold text-gray-900">{user.firstName} {user.lastName}</h3>
                             <p className="text-sm text-gray-500">{user.email}</p>
@@ -45,8 +60,8 @@ const UserDetailsModal = ({ isOpen, onClose, user }) => {
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
                             className={`flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors border-b-2 ${activeTab === tab.id
-                                    ? 'border-orange-500 text-orange-600'
-                                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                                ? 'border-orange-500 text-orange-600'
+                                : 'border-transparent text-gray-500 hover:text-gray-700'
                                 }`}
                         >
                             <tab.icon className="w-4 h-4" />
@@ -122,8 +137,8 @@ const UserDetailsModal = ({ isOpen, onClose, user }) => {
                             <div className="flex items-center justify-between mb-6">
                                 <h4 className="font-bold text-gray-900 text-lg">Current Plan</h4>
                                 <span className={`px-3 py-1 rounded-lg text-sm font-bold uppercase tracking-wider ${user.subscription?.plan === 'Premium' ? 'bg-purple-100 text-purple-700' :
-                                        user.subscription?.plan === 'Standard' ? 'bg-blue-100 text-blue-700' :
-                                            'bg-gray-100 text-gray-600'
+                                    user.subscription?.plan === 'Standard' ? 'bg-blue-100 text-blue-700' :
+                                        'bg-gray-100 text-gray-600'
                                     }`}>
                                     {user.subscription?.plan || 'Free'}
                                 </span>

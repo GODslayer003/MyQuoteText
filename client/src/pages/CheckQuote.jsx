@@ -140,7 +140,7 @@ const CheckQuote = () => {
       const jobs = await quoteApi.getUserJobs();
       const history = jobs.map(job => ({
         id: job.jobId,
-        name: job.metadata?.title || `Quote Analysis ${new Date(job.createdAt).toLocaleDateString()}`,
+        name: job.metadata?.title || `Quote Analysis ${new Date(job.createdAt).toLocaleDateString('en-AU', { timeZone: 'Australia/Sydney' })}`,
         date: formatRelativeTime(job.createdAt),
         quote: job.documents?.[0]?.originalFilename || 'Quote analysis',
         status: job.status,
@@ -159,6 +159,16 @@ const CheckQuote = () => {
     requestLogin('/check-quote');
   };
 
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-AU', {
+      timeZone: 'Australia/Sydney',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
+
   const formatRelativeTime = (dateString) => {
     const date = new Date(dateString);
     const now = new Date();
@@ -171,7 +181,7 @@ const CheckQuote = () => {
     if (diffMins < 60) return `${diffMins} min${diffMins > 1 ? 's' : ''} ago`;
     if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
     if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
-    return date.toLocaleDateString();
+    return date.toLocaleDateString('en-AU', { timeZone: 'Australia/Sydney' });
   };
 
   const validateFile = (selectedFile) => {
@@ -277,7 +287,7 @@ const CheckQuote = () => {
     setJobStatus(null);
     setJobResult(null);
     setError(null);
-    setLimitError(null);
+    // setLimitError(null); // This variable is not defined in the component state
     setSuccess(null);
 
     // Stop any polling
@@ -555,7 +565,7 @@ const CheckQuote = () => {
               <div class="bg-orange-50 p-3 rounded-lg border border-orange-100">
                 <p class="text-sm font-medium text-orange-800">
                   Next free analysis available on: <br/>
-                  <span class="font-bold text-lg">${nextDate.toLocaleDateString()}</span>
+                  <span className="font-bold text-lg">{nextDate.toLocaleDateString('en-AU', { timeZone: 'Australia/Sydney' })}</span>
                 </p>
               </div>
               <p class="text-sm text-gray-500">Upgrade to Standard or Premium for unlimited reports and professional insights!</p>

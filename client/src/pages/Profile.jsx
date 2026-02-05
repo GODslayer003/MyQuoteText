@@ -527,7 +527,7 @@ const Profile = () => {
                   <p className="text-gray-600">{userData.email || 'No email provided'}</p>
                   <div className="flex items-center gap-2 mt-1">
                     <div className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">
-                      Member since {user?.createdAt ? new Date(user.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                      Member since {user?.createdAt ? new Date(user.createdAt).toLocaleDateString('en-AU', { timeZone: 'Australia/Sydney', month: 'long', year: 'numeric' }) : new Date().toLocaleDateString('en-AU', { timeZone: 'Australia/Sydney', month: 'long', year: 'numeric' })}
                     </div>
                   </div>
                 </div>
@@ -809,7 +809,7 @@ const Profile = () => {
                           </h4>
                         </div>
                         <div className="flex items-center gap-2.5">
-                          <span className="text-[11px] text-gray-400 font-medium">{new Date(report.createdAt).toLocaleDateString()}</span>
+                          <span className="text-[11px] text-gray-400 font-medium">{new Date(report.createdAt).toLocaleDateString('en-AU', { timeZone: 'Australia/Sydney' })}</span>
                           <span className="w-1 h-1 bg-gray-200 rounded-full"></span>
                           <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider shadow-sm border ${report.tier?.toLowerCase() === 'premium'
                             ? 'bg-gradient-to-r from-gray-900 to-black text-amber-400 border-amber-500/30'

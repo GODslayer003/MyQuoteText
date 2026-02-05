@@ -987,6 +987,7 @@ const AnalysisResults = ({ jobResult, userTier = 'free', onCompare }) => {
       if (!dateStr) return 'N/A';
       try {
         return new Date(dateStr).toLocaleDateString('en-AU', {
+          timeZone: 'Australia/Sydney',
           year: 'numeric',
           month: 'short',
           day: 'numeric',
@@ -1431,7 +1432,7 @@ const AnalysisResults = ({ jobResult, userTier = 'free', onCompare }) => {
             }`}>
             <p className={`text-xs ${normalizedTier === 'premium' ? 'text-gray-400' : 'text-gray-500'
               }`}>
-              Generated on {formatDate(new Date())}
+              Generated on {formatDate(new Date())} (AU)
             </p>
             <div className="flex gap-2">
               {normalizedTier === 'premium' && (

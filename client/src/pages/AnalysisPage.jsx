@@ -129,7 +129,7 @@ const AnalysisPage = () => {
                                     {job.tier} Plan
                                 </span>
                                 <span className="flex items-center gap-1.5 bg-gray-100 px-3 py-1 rounded-full">
-                                    Analyzed: {new Date(job.createdAt).toLocaleDateString()}
+                                    Analyzed: {new Date(job.createdAt).toLocaleDateString('en-AU', { timeZone: 'Australia/Sydney' })}
                                 </span>
                             </div>
                         </div>

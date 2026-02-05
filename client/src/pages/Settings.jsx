@@ -180,9 +180,10 @@ const Settings = () => {
   };
 
   const formatDate = (date) => {
-    return new Date(date).toLocaleDateString('en-US', {
+    return new Date(date).toLocaleDateString('en-AU', {
+      timeZone: 'Australia/Sydney',
       year: 'numeric',
-      month: 'short',
+      month: 'long',
       day: 'numeric',
       hour: '2-digit',
       minute: '2-digit'
@@ -258,8 +259,8 @@ const Settings = () => {
                     key={section.id}
                     onClick={() => setActiveSection(section.id)}
                     className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${activeSection === section.id
-                        ? 'bg-orange-50 text-orange-600'
-                        : 'text-gray-600 hover:bg-gray-50'
+                      ? 'bg-orange-50 text-orange-600'
+                      : 'text-gray-600 hover:bg-gray-50'
                       }`}
                   >
                     {section.icon}
@@ -579,7 +580,8 @@ const Settings = () => {
                       Last Login
                     </h3>
                     <p className="text-gray-600">
-                      {new Date().toLocaleDateString('en-US', {
+                      {new Date().toLocaleDateString('en-AU', {
+                        timeZone: 'Australia/Sydney',
                         year: 'numeric',
                         month: 'long',
                         day: 'numeric',
