@@ -5,21 +5,29 @@ import {
     CheckCircle,
     ShieldCheck,
     Lock,
-    Zap
+    Zap,
+    ArrowRight
 } from 'lucide-react';
+import { loadStripe } from '@stripe/stripe-js';
+import {
+    Elements,
+} from '@stripe/react-stripe-js';
 import { useAuth } from '../providers/AuthProvider';
-import quoteApi from '../services/quoteApi';
 import { paymentApi } from '../services/paymentApi';
 import { toast } from 'react-hot-toast';
+import CheckoutForm from './CheckoutForm';
+
+// Initialize Stripe
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
 
 const PaymentModal = ({ isOpen, onClose, plan = 'Standard', price = 7.99, initialDiscountCode = '', onSuccess }) => {
     const { user } = useAuth();
     const [isProcessing, setIsProcessing] = useState(false);
-    const [step, setStep] = useState('summary'); // summary, processing, success
-    const [paymentMethod, setPaymentMethod] = useState('card');
+    const [step, setStep] = useState('summary'); // summary, payment, success
     const [discountCode, setDiscountCode] = useState('');
     const [appliedDiscount, setAppliedDiscount] = useState(null);
     const [validatingCode, setValidatingCode] = useState(false);
+    const [clientSecret, setClientSecret] = useState('');
 
     // Reset state when modal opens/closes
     React.useEffect(() => {
@@ -27,6 +35,7 @@ const PaymentModal = ({ isOpen, onClose, plan = 'Standard', price = 7.99, initia
             setStep('summary');
             setDiscountCode(initialDiscountCode || '');
             setAppliedDiscount(null);
+            setClientSecret('');
         }
     }, [isOpen, initialDiscountCode]);
 
@@ -71,31 +80,36 @@ const PaymentModal = ({ isOpen, onClose, plan = 'Standard', price = 7.99, initia
 
     if (!isOpen) return null;
 
-    const handlePayment = async () => {
+    const handleInitiatePayment = async () => {
         setIsProcessing(true);
-        setStep('processing');
-
         try {
-            // Use mock upgrade for now, but in real app pass the discount info
-            await paymentApi.mockUpgrade(plan); // Using paymentApi mock from Pricing.jsx logic
+            const response = await paymentApi.createIntent(null, plan.toLowerCase(), {
+                email: user?.email,
+                name: `${user?.firstName || ''} ${user?.lastName || ''}`.trim(),
+                discountCode: appliedDiscount?.code
+            });
 
-            setIsProcessing(false);
-            setStep('success');
-
-            // Auto close after success
-            setTimeout(() => {
-                onSuccess?.();
-                onClose();
-            }, 2500);
+            if (response.data.success) {
+                setClientSecret(response.data.data.clientSecret);
+                setStep('payment');
+            } else {
+                toast.error(response.data.error || 'Failed to initialize payment');
+            }
         } catch (error) {
-            console.error('Payment failed:', error);
+            console.error('Payment initiation failed:', error);
+            toast.error('Failed to connect to payment server');
+        } finally {
             setIsProcessing(false);
-            // Ideally handle error state here
-            setStep('summary'); // Reset to summary on failure
-            // Note: In production, show error message
-            toast.error('Payment failed. Please try again.');
         }
     };
+
+    const appearance = {
+        theme: 'stripe',
+        variables: {
+            colorPrimary: '#f97316', // orange-500
+        },
+    };
+    const loader = 'auto';
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
@@ -140,14 +154,10 @@ const PaymentModal = ({ isOpen, onClose, plan = 'Standard', price = 7.99, initia
                                         </span>
                                     </div>
                                 )}
-                                <div className="flex justify-between items-center text-sm text-gray-500">
-                                    <span>Processing Fee</span>
-                                    <span>$0.00</span>
-                                </div>
                                 <div className="border-t border-gray-200 my-3"></div>
                                 <div className="flex justify-between items-center font-bold text-lg">
                                     <span>Total</span>
-                                    <span className={appliedDiscount ? "text-orange-600" : ""}>${finalPrice}</span>
+                                    <span className={appliedDiscount ? "text-orange-600" : ""}>${parseFloat(finalPrice).toFixed(2)}</span>
                                 </div>
                             </div>
 
@@ -194,42 +204,50 @@ const PaymentModal = ({ isOpen, onClose, plan = 'Standard', price = 7.99, initia
                                 </div>
                             </div>
 
-                            {/* Mock Payment Methods */}
-                            <div className="space-y-3 mb-8">
-                                <div
-                                    onClick={() => setPaymentMethod('card')}
-                                    className={`p-3 border rounded-xl flex items-center gap-3 cursor-pointer transition-all ${paymentMethod === 'card' ? 'border-orange-500 bg-orange-50 ring-1 ring-orange-500' : 'border-gray-200 hover:border-gray-300'
-                                        }`}
-                                >
-                                    <CreditCard className={`w-5 h-5 ${paymentMethod === 'card' ? 'text-orange-600' : 'text-gray-400'}`} />
-                                    <span className="font-medium text-gray-900">Stripe</span>
-                                    <div className="ml-auto flex gap-1">
-                                        <div className="w-8 h-5 bg-gray-200 rounded"></div>
-                                        <div className="w-8 h-5 bg-gray-200 rounded"></div>
-                                    </div>
-                                </div>
-                            </div>
-
                             <button
-                                onClick={handlePayment}
-                                className="w-full py-4 bg-gradient-to-r from-orange-500 to-amber-600 text-white rounded-xl font-bold text-lg hover:shadow-lg hover:shadow-orange-500/30 transition-all active:scale-[0.98]"
+                                onClick={handleInitiatePayment}
+                                disabled={isProcessing}
+                                className="w-full py-4 bg-gradient-to-r from-orange-500 to-amber-600 text-white rounded-xl font-bold text-lg hover:shadow-lg hover:shadow-orange-500/30 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
                             >
-                                Pay ${finalPrice} Securely
+                                {isProcessing ? (
+                                    <>
+                                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                        Securing Link...
+                                    </>
+                                ) : (
+                                    <>
+                                        Continue to Payment
+                                        <ArrowRight className="w-5 h-5" />
+                                    </>
+                                )}
                             </button>
 
-                            <div className="mt-4 flex items-center justify-center gap-2 text-xs text-gray-500">
+                            <div className="mt-4 flex items-center justify-center gap-2 text-[10px] text-gray-400 uppercase tracking-widest font-bold">
                                 <Lock className="w-3 h-3" />
                                 Payments processed securely by Stripe
                             </div>
                         </>
                     )}
 
-                    {step === 'processing' && (
-                        <div className="py-12 text-center">
-                            <div className="w-16 h-16 border-4 border-orange-200 border-t-orange-600 rounded-full animate-spin mx-auto mb-6"></div>
-                            <h3 className="text-xl font-bold text-gray-900 mb-2">Processing Payment</h3>
-                            <p className="text-gray-600">Please wait while we confirm your transaction...</p>
-                        </div>
+                    {step === 'payment' && clientSecret && (
+                        <Elements stripe={stripePromise} options={{ clientSecret, appearance, loader }}>
+                            <div className="mb-4 text-center">
+                                <h3 className="text-xl font-bold text-gray-900">Complete Payment</h3>
+                                <p className="text-sm text-gray-500">Pay ${parseFloat(finalPrice).toFixed(2)} for {plan} Pack</p>
+                            </div>
+                            <CheckoutForm
+                                amount={parseFloat(finalPrice)}
+                                tier={plan}
+                                onCancel={() => setStep('summary')}
+                                onSuccess={() => {
+                                    setStep('success');
+                                    setTimeout(() => {
+                                        onSuccess?.();
+                                        onClose();
+                                    }, 2500);
+                                }}
+                            />
+                        </Elements>
                     )}
 
                     {step === 'success' && (
@@ -238,7 +256,7 @@ const PaymentModal = ({ isOpen, onClose, plan = 'Standard', price = 7.99, initia
                                 <CheckCircle className="w-10 h-10 text-green-600" />
                             </div>
                             <h3 className="text-2xl font-bold text-gray-900 mb-2">Payment Successful!</h3>
-                            <p className="text-gray-600 mb-6">Your premium features have been unlocked.</p>
+                            <p className="text-gray-600 mb-6">Your credits have been added successfully.</p>
                             <div className="text-sm text-gray-500">Redirecting...</div>
                         </div>
                     )}

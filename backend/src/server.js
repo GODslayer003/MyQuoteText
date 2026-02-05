@@ -110,8 +110,17 @@ const passport = require('./config/passport');
 app.use(passport.initialize());
 
 // Body parsing
-app.use(express.json({ limit: '10mb' }));
+app.use((req, res, next) => {
+  if (req.originalUrl.includes('/payments/webhook')) {
+    next();
+  } else {
+    express.json({ limit: '10mb' })(req, res, next);
+  }
+});
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Stripe Webhook needs raw body
+app.use('/api/v1/payments/webhook', express.raw({ type: 'application/json' }));
 app.use(cookieParser());
 
 // ============================================

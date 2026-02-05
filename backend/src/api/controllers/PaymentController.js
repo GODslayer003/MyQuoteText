@@ -26,30 +26,33 @@ class PaymentController {
         });
       }
 
-      // Find job
-      const job = await Job.findOne({ jobId });
+      // Find job if jobId is provided
+      let job = null;
+      if (jobId) {
+        job = await Job.findOne({ jobId });
 
-      if (!job) {
-        return res.status(404).json({
-          success: false,
-          error: 'Job not found'
-        });
-      }
+        if (!job) {
+          return res.status(404).json({
+            success: false,
+            error: 'Job not found'
+          });
+        }
 
-      // Check if already paid
-      if (job.unlocked) {
-        return res.status(400).json({
-          success: false,
-          error: 'Job is already unlocked'
-        });
-      }
+        // Check if already paid
+        if (job.unlocked) {
+          return res.status(400).json({
+            success: false,
+            error: 'Job is already unlocked'
+          });
+        }
 
-      // Check if job is completed
-      if (job.status !== 'completed') {
-        return res.status(400).json({
-          success: false,
-          error: 'Job analysis not yet complete'
-        });
+        // Check if job is completed
+        if (job.status !== 'completed') {
+          return res.status(400).json({
+            success: false,
+            error: 'Job analysis not yet complete'
+          });
+        }
       }
 
       // Enforce Strict Single Tier Policy

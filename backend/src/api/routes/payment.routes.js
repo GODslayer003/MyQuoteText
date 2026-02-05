@@ -46,4 +46,10 @@ router.post(
   safe(PaymentController.mockUpgrade, 'mockUpgrade')
 );
 
+// Stripe Webhook (Handle fulfillment)
+router.post(
+  '/webhook',
+  safe(PaymentController.handleWebhook, 'handleWebhook')
+);
+
 module.exports = router;

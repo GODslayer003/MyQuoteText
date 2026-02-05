@@ -58,11 +58,12 @@ const validateJobCreation = (req, res, next) => {
 // ─── ✅ Payment Intent (THIS WAS MISSING) ────
 const validatePaymentIntent = (req, res, next) => {
   const schema = Joi.object({
-    jobId: Joi.string().required(),
-    tier: Joi.string().valid('standard', 'premium').required(),
+    jobId: Joi.string().allow(null, '').optional(),
+    tier: Joi.string().lowercase().valid('standard', 'premium').required(),
     customerData: Joi.object({
       name: Joi.string().optional(),
-      email: Joi.string().email().optional()
+      email: Joi.string().email().optional(),
+      discountCode: Joi.string().allow(null, '').optional()
     }).optional()
   });
 
