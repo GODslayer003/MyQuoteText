@@ -108,10 +108,17 @@ const Landing = () => {
     <div className="min-h-screen bg-gradient-to-b from-gray-50 via-white to-gray-50 text-gray-900 overflow-x-hidden">
       {/* Hero Section */}
       <section ref={heroRef} className="relative overflow-hidden bg-gradient-to-br from-white via-gray-50 to-white pt-16 sm:pt-20 lg:pt-24">
-        {/* Animated background orbs */}
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute -top-40 -right-40 w-80 h-80 sm:w-[600px] sm:h-[600px] bg-gradient-to-br from-orange-200 to-amber-300 rounded-full blur-3xl opacity-40 animate-float"></div>
-          <div className="absolute -bottom-40 -left-40 w-80 h-80 sm:w-[600px] sm:h-[600px] bg-gradient-to-br from-orange-100 to-amber-200 rounded-full blur-3xl opacity-30 animate-float-delayed"></div>
+        {/* Background Image & Gradient Overlays */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          {/* Australia Background */}
+          <div className="absolute inset-0 bg-[url('/Australia2.jpg')] bg-cover bg-center opacity-15"></div>
+
+          {/* Orangish Gradient Layer */}
+          <div className="absolute inset-0 bg-gradient-to-br from-orange-50/70 via-white/50 to-white/20"></div>
+
+          {/* Refined floating orbs */}
+          <div className="absolute -top-40 -right-40 w-80 h-80 sm:w-[600px] sm:h-[600px] bg-gradient-to-br from-orange-200/30 to-amber-300/30 rounded-full blur-3xl animate-float"></div>
+          <div className="absolute -bottom-40 -left-40 w-80 h-80 sm:w-[600px] sm:h-[600px] bg-gradient-to-br from-orange-100/20 to-amber-200/20 rounded-full blur-3xl animate-float-delayed"></div>
         </div>
 
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 sm:pt-12 lg:pt-20 pb-16 sm:pb-20 lg:pb-24">

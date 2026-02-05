@@ -69,8 +69,8 @@ const HeaderFooter = ({ children }) => {
       { name: 'Check Your Quote', path: '/check-quote' }
     ],
     Legal: [
-      { name: 'Privacy Policy', path: '/privacy' },
-      { name: 'Terms of Use', path: '/terms' },
+      { name: 'Terms & Conditions', path: '/terms' },
+      { name: 'Privacy Notice', path: '/privacy' },
       { name: 'About Us', path: '/about' }
     ]
   };
