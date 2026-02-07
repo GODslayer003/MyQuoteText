@@ -38,6 +38,8 @@ import Swal from 'sweetalert2';
 import quoteApi from '../services/quoteApi';
 import jobPollingService from '../services/jobPollingService';
 import AnalysisResults from '../components/AnalysisResults';
+import PaymentModal from '../components/PaymentModal';
+import MobileAuthModal from '../components/MobileAuthModal';
 
 const CheckQuote = () => {
   const navigate = useNavigate();
@@ -57,9 +59,13 @@ const CheckQuote = () => {
   const [currentJob, setCurrentJob] = useState(null);
   const [jobStatus, setJobStatus] = useState(null);
   const [jobResult, setJobResult] = useState(null);
-  const [showGuestModal, setShowGuestModal] = useState(false);
-  const [guestEmail, setGuestEmail] = useState('');
-  const [guestEmailError, setGuestEmailError] = useState('');
+
+  // Auth & Payment Flow States
+  const [showMobileAuthModal, setShowMobileAuthModal] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [selectedPricingTier, setSelectedPricingTier] = useState(null);
+  const [pendingAnalysis, setPendingAnalysis] = useState(false);
+
   const [comparisonQuotes, setComparisonQuotes] = useState([]);
   const [isComparisonMode, setIsComparisonMode] = useState(false);
 
@@ -69,6 +75,54 @@ const CheckQuote = () => {
   useEffect(() => {
     setIsVisible(true);
     loadUserJobs();
+  }, []);
+
+  // Check if user came from pricing page with a tier selection
+  useEffect(() => {
+    const storedTier = sessionStorage.getItem('selectedPricingTier');
+    if (storedTier) {
+      try {
+        const tierData = JSON.parse(storedTier);
+        setSelectedPricingTier(tierData);
+        // Show a toast to inform user
+        toast((t) => (
+          <div className="flex items-start gap-4 min-w-[300px]">
+            <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
+              <Zap className="w-6 h-6 text-orange-600" />
+            </div>
+            <div className="flex-1">
+              <h3 className="font-bold text-gray-900">{tierData.tier} Plan Selected</h3>
+              <p className="text-sm text-gray-600 mt-1">
+                You are set to analyze with {tierData.tier}.
+              </p>
+              <button
+                onClick={() => {
+                  sessionStorage.removeItem('selectedPricingTier');
+                  setSelectedPricingTier(null);
+                  toast.dismiss(t.id);
+                  toast.success('Switched to Free/Default plan');
+                }}
+                className="text-xs font-bold text-red-500 mt-2 hover:underline"
+              >
+                Cancel / Switch to Free
+              </button>
+            </div>
+          </div>
+        ), {
+          duration: 6000,
+          position: 'top-center',
+          style: {
+            background: '#fff',
+            border: '1px solid #fed7aa',
+            padding: '16px',
+            borderRadius: '16px',
+            boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)'
+          }
+        });
+      } catch (e) {
+        console.error('Failed to parse tier data:', e);
+      }
+    }
   }, []);
 
   // Usage Limit Notifications
@@ -266,54 +320,71 @@ const CheckQuote = () => {
   const handleAnalyzeQuote = async () => {
     if (!validateForm()) return;
 
+    // STEP 1: Auth Check
     if (!isAuthenticated) {
-      setShowGuestModal(true);
+      setShowMobileAuthModal(true);
       return;
     }
 
-    // Authenticated users go straight to analysis
+    // STEP 2: Payment Check
+    checkPaymentAndAnalyze();
+  };
+
+  const checkPaymentAndAnalyze = () => {
+    // Check if user has a pending tier selection (Standard/Premium)
+    if (selectedPricingTier && selectedPricingTier.tier !== 'Free') {
+      setPendingAnalysis(true);
+      setShowPaymentModal(true);
+      return;
+    }
+
+    // Authenticated users with Free tier or existing credits go straight to analysis
     setError(null);
     setSuccess(null);
     setIsAnalyzing(true);
     performAnalysis();
   };
 
-  const resetToUpload = () => {
-    setPhase('upload');
-    setFile(null);
-    setQuoteText('');
-    setExtractedText('');
-    setCurrentJob(null);
-    setJobStatus(null);
-    setJobResult(null);
-    setError(null);
-    // setLimitError(null); // This variable is not defined in the component state
-    setSuccess(null);
+  const handleAuthSuccess = (newUser) => {
+    // User just logged in/signed up via Mobile Modal
+    setShowMobileAuthModal(false);
 
-    // Stop any polling
-    if (currentJob?.jobId) {
-      jobPollingService.stopPolling(currentJob.jobId);
-    }
+    // Continue flow
+    toast.success(`Welcome, ${newUser.firstName}!`);
+
+    // Small delay to allow state updates
+    setTimeout(() => {
+      checkPaymentAndAnalyze();
+    }, 500);
   };
 
-  const handleGuestSubmit = (e) => {
-    e.preventDefault();
-    if (!guestEmail || !guestEmail.includes('@')) {
-      setGuestEmailError('Please enter a valid email address');
-      return;
+  const handlePaymentSuccess = async () => {
+    try {
+      // Clear the stored tier from sessionStorage
+      sessionStorage.removeItem('selectedPricingTier');
+      setSelectedPricingTier(null);
+
+      // Close payment modal
+      setShowPaymentModal(false);
+      setPendingAnalysis(false);
+
+      // Refresh user data to get updated credits
+      await refreshUser();
+
+      // Auto-trigger analysis
+      toast.success('Payment successful! Starting analysis...');
+      setError(null);
+      setSuccess(null);
+      setIsAnalyzing(true);
+
+      // Small delay to let modal close smoothly
+      setTimeout(() => {
+        performAnalysis();
+      }, 300);
+    } catch (error) {
+      console.error('Post-payment error:', error);
+      toast.error('Payment succeeded but analysis start failed. Please try analyzing again.');
     }
-    setGuestEmailError('');
-    setShowGuestModal(false);
-
-    // Proceed with analysis after modal closure
-    setError(null);
-    setSuccess(null);
-    setIsAnalyzing(true);
-
-    // Tiny delay to ensure modal closure is smooth before starting heavy logic
-    setTimeout(() => {
-      performAnalysis();
-    }, 300);
   };
 
   const performAnalysis = async () => {
@@ -1040,20 +1111,39 @@ WARRANTY: 6 years on workmanship`
                       <div className="text-right">
                         <div className="text-sm text-gray-500 mb-1">Step 1 of 2</div>
                         {user && (
-                          <div className="inline-flex items-center px-3 py-1 bg-gray-100 rounded-full text-xs font-medium text-gray-700">
-                            {user.subscription?.credits > 0 ? (
-                              <>
-                                <Zap className="w-3 h-3 text-orange-500 mr-1.5" />
-                                {user.subscription.credits} Credit{user.subscription.credits !== 1 ? 's' : ''} Remaining
-                              </>
+                          <div className="flex gap-2 justify-end">
+                            {/* Priority: Show Selected Tier from Pricing Page first */}
+                            {selectedPricingTier ? (
+                              <div className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold shadow-sm ${selectedPricingTier.tier === 'Premium'
+                                  ? 'bg-gray-900 text-white border border-gray-800' // Blackish theme
+                                  : 'bg-orange-500 text-white border border-orange-600' // Orangish theme
+                                }`}>
+                                <Zap className={`w-3 h-3 mr-1.5 ${selectedPricingTier.tier === 'Premium' ? 'text-yellow-400' : 'text-white'}`} />
+                                {selectedPricingTier.tier} Selected
+                              </div>
                             ) : (
+                              // Else show active subscription status
                               <>
-                                <Clock className="w-3 h-3 text-blue-500 mr-1.5" />
-                                {user.subscription?.freeReportDate &&
-                                  new Date(user.subscription.freeReportDate).getMonth() === new Date().getMonth() &&
-                                  new Date(user.subscription.freeReportDate).getFullYear() === new Date().getFullYear()
-                                  ? 'Monthly Free Report Used'
-                                  : 'Free Report Available'}
+                                {user.subscription?.plan === 'Premium' && user.subscription?.credits > 0 ? (
+                                  <div className="inline-flex items-center px-3 py-1 bg-gray-900 text-white rounded-full text-xs font-bold border border-gray-800 shadow-sm">
+                                    <Sparkles className="w-3 h-3 text-yellow-400 mr-1.5" />
+                                    Premium Available
+                                  </div>
+                                ) : user.subscription?.plan === 'Standard' && user.subscription?.credits > 0 ? (
+                                  <div className="inline-flex items-center px-3 py-1 bg-orange-500 text-white rounded-full text-xs font-bold border border-orange-600 shadow-sm">
+                                    <Zap className="w-3 h-3 text-white mr-1.5" />
+                                    Standard Available
+                                  </div>
+                                ) : (
+                                  <div className="inline-flex items-center px-3 py-1 bg-gray-100 rounded-full text-xs font-medium text-gray-700 border border-gray-200">
+                                    <Clock className="w-3 h-3 text-blue-500 mr-1.5" />
+                                    {user.subscription?.freeReportDate &&
+                                      new Date(user.subscription.freeReportDate).getMonth() === new Date().getMonth() &&
+                                      new Date(user.subscription.freeReportDate).getFullYear() === new Date().getFullYear()
+                                      ? 'Monthly Free Report Used'
+                                      : 'Free Report Available'}
+                                  </div>
+                                )}
                               </>
                             )}
                           </div>
@@ -1473,88 +1563,12 @@ WARRANTY: 6 years on workmanship`
         </div>
       </section>
 
-      {/* Guest Email Modal */}
-      {showGuestModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl w-full max-w-md p-8 shadow-2xl animate-in zoom-in-95 duration-200">
-            <div className="flex justify-between items-start mb-6">
-              <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
-                <Mail className="w-6 h-6 text-orange-600" />
-              </div>
-              <button
-                onClick={() => setShowGuestModal(false)}
-                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-              >
-                <X className="w-5 h-5 text-gray-400" />
-              </button>
-            </div>
-
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Analyzing as Guest</h2>
-            <p className="text-gray-600 mb-6">
-              Enter your email address to receive your free analysis results and get notified when it's ready.
-            </p>
-
-            <form onSubmit={handleGuestSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Email Address
-                </label>
-                <input
-                  type="email"
-                  value={guestEmail}
-                  onChange={(e) => setGuestEmail(e.target.value)}
-                  placeholder="name@example.com"
-                  className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-orange-500 focus:outline-none transition-all ${guestEmailError ? 'border-red-500 bg-red-50' : 'border-gray-200 bg-gray-50'
-                    }`}
-                  autoFocus
-                />
-                {guestEmailError && (
-                  <p className="mt-1.5 text-sm text-red-600 font-medium flex items-center gap-1">
-                    <AlertCircle className="w-4 h-4" />
-                    {guestEmailError}
-                  </p>
-                )}
-              </div>
-
-              <button
-                type="submit"
-                className="w-full py-4 bg-gradient-to-r from-orange-500 to-amber-600 text-white rounded-xl font-bold text-lg hover:shadow-xl hover:shadow-orange-500/30 transition-all"
-              >
-                Start Analysis
-              </button>
-
-              {/* Divider */}
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-gray-200" />
-                </div>
-                <div className="relative flex justify-center text-sm">
-                  <span className="px-4 bg-white text-gray-500">Or continue with</span>
-                </div>
-              </div>
-
-              {/* Google OAuth Button */}
-              <button
-                type="button"
-                onClick={() => window.location.href = `${import.meta.env.VITE_API_BASE}/api/${import.meta.env.VITE_API_VERSION}/auth/google`}
-                className="w-full py-3 bg-white border-2 border-gray-300 hover:border-gray-400 hover:bg-gray-50 text-gray-700 font-medium rounded-lg transition-all flex items-center justify-center gap-3"
-              >
-                <svg className="w-5 h-5" viewBox="0 0 24 24">
-                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
-                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
-                </svg>
-                Sign in with Google
-              </button>
-
-              <p className="text-center text-xs text-gray-500 mt-4">
-                By continuing, you agree to our Terms of Service and Privacy Policy. We'll only email you about your analysis.
-              </p>
-            </form>
-          </div>
-        </div>
-      )}
+      {/* Mobile Auth Modal - Replaces Guest Email Modal */}
+      <MobileAuthModal
+        isOpen={showMobileAuthModal}
+        onClose={() => setShowMobileAuthModal(false)}
+        onSuccess={handleAuthSuccess}
+      />
 
       {/* Custom Animations */}
 

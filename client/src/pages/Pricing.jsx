@@ -233,21 +233,54 @@ const Pricing = () => {
       return;
     }
 
+    // ALLOW GUEST: User can proceed to Check Quote even if not logged in
+    // We will handle auth/payment there
+
+    /* REMOVED: Strict auth check
     if (!user) {
       requestLogin('/pricing');
       return;
     }
+    */
 
-    // STRICT CHECK: User cannot buy if they have active credits on a paid plan
-    if (user.subscription && user.subscription.plan !== 'Free' && user.subscription.credits > 0) {
-      toast.error(`You have ${user.subscription.credits} unused report(s) on your ${user.subscription.plan} plan. Please use them first.`);
+    // CHECK: User already has this plan with credits
+    if (user && user.subscription && user.subscription.plan === plan.name && user.subscription.credits > 0) {
+      // Use Swal for a nice modal as requested
+      import('sweetalert2').then(({ default: Swal }) => {
+        Swal.fire({
+          title: `You already have ${plan.name}`,
+          text: `You have ${user.subscription.credits} active credit(s) remaining for the ${plan.name} plan. You can use them now!`,
+          icon: 'info',
+          showCancelButton: true,
+          confirmButtonText: 'Use Credits',
+          cancelButtonText: 'Buy More',
+          confirmButtonColor: '#ea580c', // orange-600
+        }).then((result) => {
+          if (result.isConfirmed) {
+            navigate('/check-quote');
+          } else if (result.dismiss === Swal.DismissReason.cancel) {
+            // User wants to buy more, proceed
+            proceedToSelection(plan);
+          }
+        });
+      });
       return;
     }
 
-    setSelectedPlanForPayment(plan);
-    setPrefilledDiscountCode(''); // Clear any prefilled code for standard selection
-    setShowPaymentModal(true);
+    proceedToSelection(plan);
   };
+
+  const proceedToSelection = (plan) => {
+    // NEW FLOW: Store tier selection and navigate to Check Quote page
+    sessionStorage.setItem('selectedPricingTier', JSON.stringify({
+      tier: plan.name,
+      price: plan.price
+    }));
+
+    toast.success(`${plan.name} plan selected! Upload your quote to continue.`);
+    navigate('/check-quote');
+  };
+
 
   const handleDiscountClick = (discount) => {
     setSelectedRedemptionDiscount(discount);
