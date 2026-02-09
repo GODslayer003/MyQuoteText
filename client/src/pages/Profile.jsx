@@ -636,6 +636,12 @@ const Profile = () => {
                     <div className="px-4 py-3 bg-gray-50 rounded-lg flex items-center gap-3">
                       <Phone className="w-4 h-4 text-gray-500" />
                       <span className="text-gray-900">{userData.phone || 'Not set'}</span>
+                      {user?.phoneVerified && (
+                        <span className="ml-auto px-2 py-0.5 bg-green-100 text-green-700 text-[10px] font-bold rounded-full flex items-center gap-1 uppercase tracking-wider">
+                          <CheckCircle className="w-3 h-3" />
+                          Verified
+                        </span>
+                      )}
                     </div>
                   )}
                 </div>

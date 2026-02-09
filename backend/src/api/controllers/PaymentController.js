@@ -92,6 +92,59 @@ class PaymentController {
   }
 
   /**
+   * Verify Payment Manually (Sync)
+   * POST /api/v1/payments/verify
+   */
+  async verifyPayment(req, res, next) {
+    try {
+      const { paymentIntentId } = req.body;
+
+      if (!paymentIntentId) {
+        return res.status(400).json({ success: false, error: 'Payment Intent ID is required' });
+      }
+
+      // Retrieve from Stripe
+      const paymentIntent = await stripeService.retrievePaymentIntent(paymentIntentId);
+
+      if (!paymentIntent) {
+        return res.status(404).json({ success: false, error: 'Payment Intent not found' });
+      }
+
+      if (paymentIntent.status === 'succeeded') {
+        // Force fulfillment (idempotent)
+        await stripeService.fulfillOrder(paymentIntent);
+
+        // Fetch updated user to return fresh stats
+        const User = require('../../models/User');
+        const updatedUser = await User.findById(req.user._id);
+
+        logger.info(`Manual Verification - Updated User Stats: ID=${req.user._id}, Credits=${updatedUser.subscription.credits}, Plan=${updatedUser.subscription.plan}`);
+
+        return res.json({
+          success: true,
+          message: 'Payment verified and processed',
+          status: 'succeeded',
+          data: {
+            credits: updatedUser.subscription.credits,
+            plan: updatedUser.subscription.plan,
+            reportsUsed: updatedUser.subscription.reportsUsed
+          }
+        });
+      } else {
+        return res.status(400).json({
+          success: false,
+          error: `Payment is not succeeded. Status: ${paymentIntent.status}`,
+          status: paymentIntent.status
+        });
+      }
+
+    } catch (error) {
+      logger.error('Manual validation failed:', error);
+      next(error);
+    }
+  }
+
+  /**
    * Handle Stripe webhook
    * POST /api/v1/payments/webhook
    */

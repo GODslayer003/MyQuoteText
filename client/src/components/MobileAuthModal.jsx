@@ -13,14 +13,18 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../providers/AuthProvider';
 import { toast } from 'react-hot-toast';
+import { countries } from '../constants/countries';
+import { Search, ChevronDown } from 'lucide-react';
+import { useEffect, useRef } from 'react';
 
-const MobileAuthModal = ({ isOpen, onClose, onSuccess, initialEmail = '' }) => {
-    const { register, login } = useAuth();
+const MobileAuthModal = ({ isOpen, onClose, onSuccess, initialEmail = '', verifyOnly = false }) => {
+    const { register, login, sendOtp, verifyOtp } = useAuth();
     const [step, setStep] = useState('mobile'); // mobile, otp, signup
     const [loading, setLoading] = useState(false);
 
     // Data State
     const [countryCode, setCountryCode] = useState('+61');
+    const [selectedCountry, setSelectedCountry] = useState(countries.find(c => c.code === '+61') || countries[0]);
     const [mobileNumber, setMobileNumber] = useState('');
     const [otp, setOtp] = useState(['', '', '', '', '', '']);
     const [userDetails, setUserDetails] = useState({
@@ -31,25 +35,70 @@ const MobileAuthModal = ({ isOpen, onClose, onSuccess, initialEmail = '' }) => {
         confirmPassword: ''
     });
 
+    // UI State for Searchable Dropdown
+    const [searchTerm, setSearchTerm] = useState('');
+    const [showDropdown, setShowDropdown] = useState(false);
+    const dropdownRef = useRef(null);
+
+    // Filter countries based on search
+    const filteredCountries = countries.filter(c =>
+        c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        c.code.includes(searchTerm) ||
+        c.country.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    // Handle clicks outside dropdown
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+                setShowDropdown(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    // Tracing logs for mountain/unmounting and state changes
+    useEffect(() => {
+        console.log('[MobileAuthModal] Mounted. Current step:', step);
+        return () => console.log('[MobileAuthModal] Unmounted');
+    }, []);
+
+    useEffect(() => {
+        console.log('[MobileAuthModal] Step changed to:', step);
+    }, [step]);
+
     if (!isOpen) return null;
 
     // --- Step 1: Mobile Input Logic ---
     const handleSendOtp = async (e) => {
-        e.preventDefault();
-        if (!mobileNumber || mobileNumber.length < 9) {
+        if (e) e.preventDefault();
+
+        const fullPhone = `${countryCode}${mobileNumber}`;
+        if (!mobileNumber || mobileNumber.length < 7) {
             toast.error('Please enter a valid mobile number');
             return;
         }
 
         setLoading(true);
-        // TODO: Integrate Clicksend here
-        // Mock API call to send OTP
-        setTimeout(() => {
+        console.log('[MobileAuthModal] Sending OTP to:', fullPhone);
+        try {
+            const result = await sendOtp(fullPhone);
+            console.log('[MobileAuthModal] Send OTP Response:', result);
+            if (result.success) {
+                toast.success(`OTP sent to ${countryCode} ${mobileNumber}`);
+                console.log('[MobileAuthModal] Success received, setting step to: otp');
+                setStep('otp');
+            } else {
+                console.error('[MobileAuthModal] Send OTP Failed:', result.error);
+                toast.error(result.error || 'Failed to send OTP');
+            }
+        } catch (error) {
+            console.error('Send OTP error:', error);
+            toast.error('Something went wrong. Please try again.');
+        } finally {
             setLoading(false);
-            toast.success(`OTP sent to ${countryCode} ${mobileNumber}`);
-            console.log('Mock OTP: 123456'); // For dev testing
-            setStep('otp');
-        }, 1500);
+        }
     };
 
     // --- Step 2: OTP Verification Logic ---
@@ -73,18 +122,32 @@ const MobileAuthModal = ({ isOpen, onClose, onSuccess, initialEmail = '' }) => {
             return;
         }
 
+        const fullPhone = `${countryCode}${mobileNumber}`;
         setLoading(true);
-        // Mock verification
-        setTimeout(() => {
-            setLoading(false);
-            if (enteredOtp === '123456') {
+        try {
+            const result = await verifyOtp(fullPhone, enteredOtp);
+            if (result.success) {
                 toast.success('Mobile verified successfully!');
-                setStep('signup');
+
+                if (verifyOnly) {
+                    onSuccess({ phone: fullPhone });
+                    onClose();
+                } else {
+                    setStep('signup');
+                }
             } else {
-                toast.error('Invalid code. Try 123456');
+                toast.error(result.error || 'Invalid verification code');
             }
-        }, 1500);
+        } catch (error) {
+            console.error('Verify OTP error:', error);
+            toast.error('Verification failed. Please try again.');
+        } finally {
+            setLoading(false);
+        }
     };
+
+    // Helper to get flag URL
+    const getFlagUrl = (iso) => `https://flagcdn.com/w40/${iso.toLowerCase()}.png`;
 
     // --- Step 3: Signup Logic ---
     const handleSignup = async (e) => {
@@ -130,18 +193,10 @@ const MobileAuthModal = ({ isOpen, onClose, onSuccess, initialEmail = '' }) => {
         }
     };
 
-    const countryCodes = [
-        { code: '+61', country: 'AU', flag: '🇦🇺' },
-        { code: '+1', country: 'US', flag: '🇺🇸' },
-        { code: '+44', country: 'UK', flag: '🇬🇧' },
-        { code: '+91', country: 'IN', flag: '🇮🇳' },
-        { code: '+64', country: 'NZ', flag: '🇳🇿' },
-        { code: '+1', country: 'CA', flag: '🇨🇦' },
-    ];
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+            <div className="relative w-full max-w-md bg-white rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.3)] overflow-hidden scale-in-center animate-in zoom-in-95 duration-300">
 
                 {/* Header */}
                 <div className="px-6 py-4 bg-gray-50 border-b border-gray-100 flex items-center justify-between">
@@ -165,29 +220,84 @@ const MobileAuthModal = ({ isOpen, onClose, onSuccess, initialEmail = '' }) => {
                     </div>
 
                     {step === 'mobile' && (
-                        <form onSubmit={handleSendOtp} className="space-y-6">
+                        <form onSubmit={handleSendOtp} className="space-y-6 animate-in slide-in-from-right-4 fade-in duration-300">
                             <div className="text-center mb-6">
-                                <div className="w-16 h-16 bg-orange-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                                    <Phone className="w-8 h-8 text-orange-600" />
+                                <div className="w-20 h-20 bg-orange-50 rounded-full flex items-center justify-center mx-auto mb-4 border-4 border-white shadow-sm">
+                                    <Phone className="w-10 h-10 text-orange-600" />
                                 </div>
-                                <h2 className="text-xl font-bold text-gray-900">Enter your mobile number</h2>
-                                <p className="text-gray-500 text-sm mt-1">We'll send you a verification code to secure your account.</p>
+                                <h2 className="text-2xl font-black text-gray-900 tracking-tight">Verify your mobile</h2>
+                                <p className="text-gray-500 text-sm mt-2 max-w-[280px] mx-auto leading-relaxed">We'll send a secure 6-digit code to your phone to protect your account.</p>
                             </div>
 
                             <div>
                                 <label className="block text-xs font-semibold text-gray-700 mb-1 uppercase">Mobile Number</label>
-                                <div className="flex gap-2">
-                                    <select
-                                        value={countryCode}
-                                        onChange={(e) => setCountryCode(e.target.value)}
-                                        className="flex-shrink-0 w-[80px] px-2 py-3 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none"
-                                    >
-                                        {countryCodes.map((c) => (
-                                            <option key={c.country} value={c.code}>
-                                                {c.flag} {c.code}
-                                            </option>
-                                        ))}
-                                    </select>
+                                <div className="flex gap-2 relative" ref={dropdownRef}>
+                                    {/* Custom Searchable Dropdown */}
+                                    <div className="relative flex-shrink-0 w-[110px]">
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowDropdown(!showDropdown)}
+                                            className="w-full flex items-center justify-between px-3 py-3 bg-gray-50 border border-gray-300 rounded-xl text-sm hover:border-orange-500 transition-all outline-none"
+                                        >
+                                            <span className="flex items-center gap-2">
+                                                <img
+                                                    src={getFlagUrl(selectedCountry.country)}
+                                                    alt={selectedCountry.name}
+                                                    className="w-5 h-3.5 object-cover rounded-sm shadow-sm"
+                                                />
+                                                <span className="font-bold text-gray-900">{selectedCountry.code}</span>
+                                            </span>
+                                            <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${showDropdown ? 'rotate-180' : ''}`} />
+                                        </button>
+
+                                        {showDropdown && (
+                                            <div className="absolute top-full left-0 mt-3 w-[300px] bg-white border border-gray-100 rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.15)] z-[60] overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                                                <div className="p-3 border-b border-gray-100 flex items-center gap-3 bg-gray-50/50">
+                                                    <Search className="w-4 h-4 text-gray-400" />
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Search country or code..."
+                                                        value={searchTerm}
+                                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                                        className="w-full bg-transparent text-sm outline-none font-medium placeholder:text-gray-400"
+                                                        autoFocus
+                                                    />
+                                                </div>
+                                                <div className="max-h-[280px] overflow-y-auto custom-scrollbar">
+                                                    {filteredCountries.length > 0 ? (
+                                                        filteredCountries.map((c) => (
+                                                            <button
+                                                                key={`${c.country}-${c.code}`}
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    setCountryCode(c.code);
+                                                                    setSelectedCountry(c);
+                                                                    setShowDropdown(false);
+                                                                    setSearchTerm('');
+                                                                }}
+                                                                className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-orange-50 transition-colors border-b border-gray-50 last:border-0 ${countryCode === c.code && selectedCountry.country === c.country ? 'bg-orange-50' : ''}`}
+                                                            >
+                                                                <img
+                                                                    src={getFlagUrl(c.country)}
+                                                                    alt={c.name}
+                                                                    className="w-6 h-4 object-cover rounded shadow-sm border border-gray-200"
+                                                                />
+                                                                <div className="flex flex-1 flex-col items-start">
+                                                                    <span className="text-sm font-bold text-gray-900 leading-tight">{c.name}</span>
+                                                                    <span className="text-xs text-gray-500">{c.code}</span>
+                                                                </div>
+                                                                {countryCode === c.code && selectedCountry.country === c.country && (
+                                                                    <CheckCircle className="w-4 h-4 text-orange-500" />
+                                                                )}
+                                                            </button>
+                                                        ))
+                                                    ) : (
+                                                        <div className="p-4 text-center text-sm text-gray-500">No countries found</div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
                                     <input
                                         type="tel"
                                         value={mobileNumber}
@@ -214,15 +324,16 @@ const MobileAuthModal = ({ isOpen, onClose, onSuccess, initialEmail = '' }) => {
                     )}
 
                     {step === 'otp' && (
-                        <div className="space-y-6 text-center">
+                        <div className="space-y-6 text-center animate-in slide-in-from-right-4 fade-in duration-300">
                             <div>
-                                <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                                    <MessageSquare className="w-8 h-8 text-blue-600" />
+                                <div className="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4 border-4 border-white shadow-sm">
+                                    <MessageSquare className="w-10 h-10 text-blue-600" />
                                 </div>
-                                <h2 className="text-xl font-bold text-gray-900">Enter Verification Code</h2>
-                                <p className="text-gray-500 text-sm mt-1">
-                                    Sent to {countryCode} {mobileNumber} <br />
-                                    <button onClick={() => setStep('mobile')} className="text-orange-600 font-medium hover:underline">Change Number</button>
+                                <h2 className="text-2xl font-black text-gray-900 tracking-tight">Security Check</h2>
+                                <p className="text-gray-500 text-sm mt-2 max-w-[280px] mx-auto leading-relaxed">
+                                    We've sent a code to <span className="font-bold text-gray-900">{countryCode} {mobileNumber}</span>
+                                    <br />
+                                    <button onClick={() => setStep('mobile')} className="text-orange-600 font-bold hover:underline mt-1 bg-orange-50 px-2 py-0.5 rounded-full inline-block">Change Number</button>
                                 </p>
                             </div>
 
@@ -259,13 +370,13 @@ const MobileAuthModal = ({ isOpen, onClose, onSuccess, initialEmail = '' }) => {
                     )}
 
                     {step === 'signup' && (
-                        <form onSubmit={handleSignup} className="space-y-4">
+                        <form onSubmit={handleSignup} className="space-y-5 animate-in slide-in-from-right-4 fade-in duration-400">
                             <div className="text-center mb-6">
-                                <div className="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                                    <CheckCircle className="w-8 h-8 text-green-600" />
+                                <div className="w-20 h-20 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-4 border-4 border-white shadow-sm">
+                                    <CheckCircle className="w-10 h-10 text-green-600" />
                                 </div>
-                                <h2 className="text-xl font-bold text-gray-900">Almost Done!</h2>
-                                <p className="text-gray-500 text-sm">Please complete your profile to continue.</p>
+                                <h2 className="text-2xl font-black text-gray-900 tracking-tight">Welcome Aboard!</h2>
+                                <p className="text-gray-500 text-sm mt-2 max-w-[280px] mx-auto leading-relaxed">Mobile verified. Just a few final details to set up your secure account.</p>
                             </div>
 
                             <div className="grid grid-cols-2 gap-3">
@@ -344,10 +455,17 @@ const MobileAuthModal = ({ isOpen, onClose, onSuccess, initialEmail = '' }) => {
                                 <button
                                     type="submit"
                                     disabled={loading}
-                                    className="w-full py-3 bg-gradient-to-r from-orange-500 to-amber-600 text-white rounded-xl font-bold hover:shadow-lg hover:shadow-orange-500/30 transition-all flex items-center justify-center gap-2"
+                                    className="w-full py-4 bg-black text-white rounded-2xl font-black text-lg hover:bg-gray-900 hover:shadow-xl hover:-translate-y-0.5 transition-all active:scale-95 flex items-center justify-center gap-2 group disabled:opacity-70 disabled:cursor-not-allowed"
                                 >
-                                    {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Create Account & Continue'}
+                                    {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : (
+                                        <>
+                                            Finish Setup <ArrowRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
+                                        </>
+                                    )}
                                 </button>
+                                <p className="text-center text-[10px] text-gray-400 mt-4 leading-relaxed">
+                                    By clicking "Finish Setup", you agree to our <span className="underline cursor-pointer">Terms of Service</span> and <span className="underline cursor-pointer">Privacy Policy</span>.
+                                </p>
                             </div>
                         </form>
                     )}

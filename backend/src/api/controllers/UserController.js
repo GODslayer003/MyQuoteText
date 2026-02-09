@@ -32,6 +32,7 @@ class UserController {
         security: user.security,
         accountStatus: user.accountStatus,
         emailVerified: user.emailVerified,
+        phoneVerified: user.phoneVerified,
         createdAt: user.createdAt,
         updatedAt: user.updatedAt
       };

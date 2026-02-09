@@ -37,7 +37,8 @@ class AdminController {
                     firstName: 'Admin',
                     lastName: 'User',
                     role: 'admin',
-                    emailVerified: true
+                    emailVerified: true,
+                    phoneVerified: true
                 });
             } else if (adminUser.role !== 'admin') {
                 // Fix role if incorrect

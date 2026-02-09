@@ -66,6 +66,17 @@ router.post('/verify-email',
   OAuthController.verifyEmail
 );
 
+// OTP routes
+router.post('/send-otp',
+  rateLimitMiddleware.authLimiter,
+  AuthController.sendOtp
+);
+
+router.post('/verify-otp',
+  rateLimitMiddleware.authLimiter,
+  AuthController.verifyOtp
+);
+
 // Protected routes
 router.post(
   '/logout',

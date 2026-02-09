@@ -100,20 +100,31 @@ class StripeService {
   }
 
   /**
+   * Retrieve payment intent from Stripe
+   */
+  async retrievePaymentIntent(paymentIntentId) {
+    try {
+      return await stripe.paymentIntents.retrieve(paymentIntentId);
+    } catch (error) {
+      logger.error('Failed to retrieve payment intent:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Handle successful payment fulfillment
    */
   async fulfillOrder(paymentIntent) {
     try {
       const { jobId, jobMongoId, tier, userId } = paymentIntent.metadata;
 
-      // 1. Find and update Payment record
+      // 1. Find Payment record
       const payment = await Payment.findByPaymentIntent(paymentIntent.id);
-      if (payment) {
-        if (payment.status === 'succeeded') {
-          logger.info(`Payment ${paymentIntent.id} already fulfilled.`);
-          return;
-        }
-        await payment.markAsSucceeded(paymentIntent.charges?.data[0]?.id);
+
+      // Idempotency check using specific flag, not just status
+      if (payment && payment.metadata?.credits_assigned === 'true') {
+        logger.info(`Payment ${paymentIntent.id} already processed (credits assigned).`);
+        return;
       }
 
       // 2. Update User Profile (Credits & Tier)
@@ -123,8 +134,11 @@ class StripeService {
           const creditsToAdd = tier === 'Premium' ? 3 : 1;
 
           // Update credits
-          user.subscription.credits = (user.subscription.credits || 0) + creditsToAdd;
+          const oldCredits = user.subscription.credits || 0;
+          user.subscription.credits = oldCredits + creditsToAdd;
           user.subscription.reportsTotal = (user.subscription.reportsTotal || 0) + creditsToAdd;
+
+          logger.info(`Adding ${creditsToAdd} credits to user ${user._id} (PI: ${paymentIntent.id}). Old=${oldCredits}, New=${user.subscription.credits}. Tier=${tier}`);
 
           // Update tier if it's an upgrade
           const tierLevels = { 'Free': 0, 'Standard': 1, 'Premium': 2 };
@@ -141,10 +155,19 @@ class StripeService {
           if (payment) {
             await EmailService.sendPaymentReceiptEmail(user, payment);
           }
+        } else {
+          logger.warn(`User ${userId} not found for payment ${paymentIntent.id}`);
         }
       }
 
-      // 3. Unlock Job if specific jobId was provided
+      // 3. Mark Payment Succeeded (and set flag)
+      if (payment) {
+        if (!payment.metadata) payment.metadata = {};
+        payment.metadata.credits_assigned = 'true'; // Set flag BEFORE saving
+        await payment.markAsSucceeded(paymentIntent.charges?.data[0]?.id);
+      }
+
+      // 4. Unlock Job if specific jobId was provided
       if (jobMongoId) {
         const job = await Job.findById(jobMongoId);
         if (job && !job.unlocked) {

@@ -36,7 +36,7 @@ const CheckoutForm = ({ onCancel, onSuccess, amount, tier }) => {
             setIsProcessing(false);
         } else if (paymentIntent && paymentIntent.status === 'succeeded') {
             toast.success('Payment successful!');
-            onSuccess?.();
+            onSuccess?.(paymentIntent);
         } else if (paymentIntent && paymentIntent.status === 'processing') {
             toast.info('Your payment is processing.');
         } else {

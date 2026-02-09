@@ -35,10 +35,20 @@ class JobController {
    */
   async createJob(req, res, next) {
     try {
-      const { email, tier = 'Free', metadata = {}, exhaust = false } = req.body;
+      let { email, tier = 'Free', metadata = {}, exhaust = false } = req.body;
       const file = req.file;
 
-      console.log('Upload request received:', { email, file: file?.originalname, user: req.user?._id });
+      // Handle FormData strings
+      if (typeof metadata === 'string') {
+        try {
+          metadata = JSON.parse(metadata);
+        } catch (e) {
+          metadata = {};
+        }
+      }
+      const isExhaust = exhaust === true || exhaust === 'true';
+
+      console.log('Upload request received:', { email, file: file?.originalname, user: req.user?._id, tier, isExhaust });
 
       if (!file) {
         return res.status(400).json({
@@ -119,6 +129,8 @@ class JobController {
         }
 
         // Check Quota / Credits
+        logger.info(`Checking credits for user ${user._id}: Plan=${user.subscription.plan}, Credits=${user.subscription.credits}, ReportsUsed=${user.subscription.reportsUsed}`);
+
         if (user.subscription.credits > 0) {
           // Use Paid Credit
           user.subscription.credits -= 1;
@@ -129,18 +141,16 @@ class JobController {
 
           // If no credits left, transition back to Free plan IMMEDIATELY
           if (user.subscription.credits === 0) {
+            logger.info(`User ${user._id} used last credit. Downgrading to Free.`);
             user.subscription.plan = 'Free';
             user.subscription.reportsTotal = 1; // Revert to monthly free limit capacity
-            // Reset reportsUsed for the Free monthly cycle if needed
-            // But usually we keep it so they can't use a free one right after if they already used it this month?
-            // User requested: "if used then back to free version"
           }
 
           await user.save();
           logger.info(`Used 1 paid credit for user ${user._id} (${jobTier}). Remaining: ${user.subscription.credits}.`);
 
           // One-Shot Premium Enforcement (exhaust flag)
-          if (exhaust && user.subscription.plan === 'Premium') {
+          if (isExhaust && user.subscription.plan === 'Premium') {
             logger.info(`Exhaust flag set. Draining remaining ${user.subscription.credits} credits for user ${user._id} and reverting to Free.`);
             user.subscription.credits = 0;
             user.subscription.plan = 'Free';

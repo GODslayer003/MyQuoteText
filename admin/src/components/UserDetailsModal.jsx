@@ -113,9 +113,9 @@ const UserDetailsModal = ({ isOpen, onClose, user }) => {
                                         </span>
                                     </div>
                                     <div className="flex justify-between items-center border-b border-dashed border-gray-200 pb-2">
-                                        <span className="text-gray-500 text-sm">Email Verified</span>
-                                        <span className={user.emailVerified ? 'text-green-600 font-medium' : 'text-red-500'}>
-                                            {user.emailVerified ? 'Verified' : 'Unverified'}
+                                        <span className="text-gray-500 text-sm">Phone Verified</span>
+                                        <span className={user.phoneVerified ? 'text-green-600 font-medium' : 'text-red-500'}>
+                                            {user.phoneVerified ? 'Verified' : 'Unverified'}
                                         </span>
                                     </div>
                                     <div className="flex justify-between border-b border-dashed border-gray-200 pb-2">

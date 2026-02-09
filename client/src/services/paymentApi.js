@@ -29,5 +29,14 @@ export const paymentApi = {
      */
     mockUpgrade: (tier) => {
         return api.post('/payments/mock-upgrade', { tier });
+    },
+
+    /**
+     * Verify payment intent manually (sync with Stripe)
+     */
+    verifyPayment: (paymentIntentId) => {
+        return api.post('/payments/verify', { paymentIntentId });
     }
 };
+
+export default paymentApi;

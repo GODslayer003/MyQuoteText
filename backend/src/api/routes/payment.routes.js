@@ -25,6 +25,13 @@ router.post(
   safe(PaymentController.createPaymentIntent, 'createPaymentIntent')
 );
 
+// Verify Payment (Manual Sync)
+router.post(
+  '/verify',
+  safe(authMiddleware.authenticate, 'authenticate'),
+  safe(PaymentController.verifyPayment, 'verifyPayment')
+);
+
 // Get payment details
 router.get(
   '/:paymentId',

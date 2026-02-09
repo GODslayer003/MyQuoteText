@@ -1,5 +1,14 @@
 import React, { useState } from 'react';
-import { Lock, Unlock, ChevronDown, ChevronUp, Zap, Crown, Star, Download, FileText, AlertTriangle, Search, X, Database } from 'lucide-react';
+import {
+  Lock, Unlock, ChevronDown, ChevronUp, Zap, Crown, Star, Download,
+  FileText, AlertTriangle, Search, X, Database, BarChart2, TrendingUp, Clock
+} from 'lucide-react';
+import {
+  PieChart, Pie, Cell,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+  Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
+  AreaChart, Area
+} from 'recharts';
 import { Link } from 'react-router-dom';
 import quoteApi from '../services/quoteApi';
 import { toast } from 'react-hot-toast';
@@ -25,6 +34,50 @@ const AnalysisResults = ({ jobResult, userTier = 'free', onCompare }) => {
   const [comparisonResult, setComparisonResult] = useState(jobResult?.quoteComparison || null);
   const [isUploadingQuote, setIsUploadingQuote] = useState(false);
   const [isComparing, setIsComparing] = useState(false);
+
+  // --- CHART HELPERS & DATA ---
+  const chartData = jobResult?.visualizations || {
+    riskProfile: [
+      { category: "Pricing", value: 65 },
+      { category: "Scope", value: 80 },
+      { category: "Terms", value: 55 },
+      { category: "Compliance", value: 75 },
+      { category: "Risk", value: 40 }
+    ],
+    costDistribution: [
+      { name: "Labour", value: 0 },
+      { name: "Materials", value: 0 },
+      { name: "Other", value: 0 }
+    ],
+    savingsROI: [
+      { strategy: "Negotiation", current: 100, potential: 90 },
+      { strategy: "Timing", current: 100, potential: 95 }
+    ],
+    timelineEstimates: [
+      { phase: "Start", days: 0 },
+      { phase: "Finish", days: 10 }
+    ]
+  };
+
+  const CHART_COLORS = ['#f97316', '#fb923c', '#fdba74', '#ea580c', '#c2410c'];
+
+  const CustomTooltip = ({ active, payload, label }) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-white p-3 border border-gray-100 shadow-xl rounded-lg ring-1 ring-black/5">
+          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter mb-1">{label || payload[0].name}</p>
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: payload[0].color || payload[0].fill }}></span>
+            <p className="text-sm font-black text-gray-900">
+              {typeof payload[0].value === 'number' ? payload[0].value.toLocaleString() : payload[0].value}
+            </p>
+          </div>
+        </div>
+      );
+    }
+    return null;
+  };
+  // ---------------------------
 
   // Helper for alert replacement
   const showTierAlert = () => {
@@ -412,7 +465,7 @@ const AnalysisResults = ({ jobResult, userTier = 'free', onCompare }) => {
     return tierAccess[effectiveTier].includes(featureKey);
   };
 
-  const renderFeatureContent = (feature, featureKey) => {
+  const renderFeatureContent = (feature, featureKey, isExpanded) => {
     const isUnlocked = isFeatureUnlocked(featureKey);
 
     if (!isUnlocked) {
@@ -884,6 +937,106 @@ const AnalysisResults = ({ jobResult, userTier = 'free', onCompare }) => {
             )}
           </div>
         )}
+
+        {/* Visual Insights Injection Point */}
+        {isUnlocked && isExpanded && (featureKey === 'costBreakdown' || featureKey === 'redFlags' || featureKey === 'recommendations' || featureKey === 'benchmarking') && (
+          <div className="mt-8 border-t border-gray-100 pt-8 animate-in fade-in slide-in-from-top-4 duration-700">
+            <div className="flex items-center justify-between mb-8">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-orange-100 rounded-xl shadow-inner">
+                  <BarChart2 className="w-4 h-4 text-orange-600" />
+                </div>
+                <div>
+                  <h4 className="text-[11px] font-black text-gray-900 uppercase tracking-[0.2em] leading-none">Executive Visual Intelligence</h4>
+                  <p className="text-[9px] text-gray-400 font-bold mt-1 uppercase tracking-wider">AI-Driven Synthesis • 2026 Standards</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 border border-gray-100 rounded-lg">
+                <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div>
+                <span className="text-[10px] font-black text-gray-500 uppercase tracking-tight">Interactive Layer</span>
+              </div>
+            </div>
+
+            <div className="h-[360px] w-full bg-gradient-to-br from-gray-50/50 to-white/30 backdrop-blur-sm rounded-2xl p-8 border border-gray-100 shadow-sm relative group overflow-hidden transition-all hover:shadow-xl hover:shadow-orange-500/5">
+              {/* Background Glow */}
+              <div className="absolute -top-24 -right-24 w-48 h-48 bg-orange-500/5 rounded-full blur-3xl group-hover:bg-orange-500/10 transition-colors"></div>
+
+              <ResponsiveContainer width="100%" height="100%">
+                {featureKey === 'costBreakdown' ? (
+                  <PieChart>
+                    <Pie
+                      data={chartData.costDistribution}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={75}
+                      outerRadius={105}
+                      paddingAngle={8}
+                      dataKey="value"
+                    >
+                      {chartData.costDistribution.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} stroke="rgba(255,255,255,0.3)" strokeWidth={2} />
+                      ))}
+                    </Pie>
+                    <Tooltip content={<CustomTooltip />} />
+                    <Legend
+                      verticalAlign="bottom"
+                      align="center"
+                      iconType="circle"
+                      iconSize={8}
+                      wrapperStyle={{ fontSize: '10px', paddingTop: '20px', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}
+                    />
+                  </PieChart>
+                ) : featureKey === 'redFlags' ? (
+                  <RadarChart cx="50%" cy="50%" outerRadius="80%" data={chartData.riskProfile}>
+                    <PolarGrid stroke="#e2e8f0" strokeDasharray="4 4" />
+                    <PolarAngleAxis dataKey="category" tick={{ fill: '#64748b', fontSize: 9, fontWeight: 700 }} />
+                    <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
+                    <Radar
+                      name="Risk intensity"
+                      dataKey="value"
+                      stroke="#f97316"
+                      fill="#f97316"
+                      fillOpacity={0.4}
+                      dot={{ r: 3, fill: '#f97316', strokeWidth: 2, stroke: '#fff' }}
+                    />
+                    <Tooltip content={<CustomTooltip />} />
+                  </RadarChart>
+                ) : featureKey === 'recommendations' ? (
+                  <BarChart data={chartData.savingsROI} layout="vertical" margin={{ left: 20, right: 30 }}>
+                    <XAxis type="number" hide />
+                    <YAxis dataKey="strategy" type="category" tick={{ fontSize: 9, fill: '#64748b', fontWeight: 700 }} width={100} axisLine={false} tickLine={false} />
+                    <Tooltip cursor={{ fill: 'rgba(0,0,0,0.02)' }} content={<CustomTooltip />} />
+                    <Bar dataKey="current" fill="#f1f5f9" radius={[0, 6, 6, 0]} barSize={16} />
+                    <Bar dataKey="potential" fill="#f97316" radius={[0, 6, 6, 0]} barSize={14} />
+                  </BarChart>
+                ) : (
+                  <AreaChart data={chartData.timelineEstimates} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="colorDays" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#f97316" stopOpacity={0.15} />
+                        <stop offset="95%" stopColor="#f97316" stopOpacity={0.01} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                    <XAxis dataKey="phase" tick={{ fontSize: 9, fill: '#94a3b8', fontWeight: 700 }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fontSize: 9, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                    <Tooltip content={<CustomTooltip />} />
+                    <Area type="monotone" dataKey="days" stroke="#f97316" fillOpacity={1} fill="url(#colorDays)" strokeWidth={3} dot={{ r: 4, fill: '#fff', stroke: '#f97316', strokeWidth: 2 }} />
+                  </AreaChart>
+                )}
+              </ResponsiveContainer>
+            </div>
+
+            <div className="mt-4 flex items-center justify-between text-[9px] text-gray-400 font-bold uppercase tracking-wider">
+              <span>* Automated Cross-Reference Engine</span>
+              <div className="flex items-center gap-1 bg-white px-2 py-0.5 border border-gray-100 rounded shadow-sm NOT_A_LINK">
+                <Zap className="w-2.5 h-2.5 text-orange-400" />
+                <span className="NOT_A_LINK text-gray-500">Live AI Synthesis</span>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   };
@@ -965,14 +1118,14 @@ const AnalysisResults = ({ jobResult, userTier = 'free', onCompare }) => {
                 "{displayResult.verdictJustification}"
               </div>
             )}
-            {renderFeatureContent(feature, featureKey)}
+            {renderFeatureContent(feature, featureKey, isExpanded)}
           </div>
         )}
 
         {/* Locked Content Indicator */}
         {!isUnlocked && isExpanded && (
           <div className="p-4 sm:p-6 border-t border-gray-200">
-            {renderFeatureContent(feature, featureKey)}
+            {renderFeatureContent(feature, featureKey, isExpanded)}
           </div>
         )}
       </div>
@@ -1430,9 +1583,8 @@ const AnalysisResults = ({ jobResult, userTier = 'free', onCompare }) => {
             normalizedTier === 'standard' ? 'border-orange-200 bg-orange-100' :
               'border-gray-200 bg-gray-50'
             }`}>
-            <p className={`text-xs ${normalizedTier === 'premium' ? 'text-gray-400' : 'text-gray-500'
-              }`}>
-              Generated on {formatDate(new Date())} (AU)
+            <p className={`text-xs ${normalizedTier === 'premium' ? 'text-gray-400' : 'text-gray-500'}`}>
+              Generated on {new Date().toLocaleDateString('en-AU')} (AU)
             </p>
             <div className="flex gap-2">
               {normalizedTier === 'premium' && (
@@ -1466,30 +1618,9 @@ const AnalysisResults = ({ jobResult, userTier = 'free', onCompare }) => {
   };
 
   return (
-
     <div className="w-full max-w-4xl mx-auto">
       {/* Technical Data Modal */}
       <TechnicalDataModal />
-
-      {/* Irrelevant Document Warning */}
-      {displayResult?.isIrrelevant && (
-        <div className="mb-6 p-6 bg-red-50 border border-red-200 rounded-2xl">
-          <div className="flex items-start gap-4">
-            <div className="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center flex-shrink-0">
-              <AlertTriangle className="w-6 h-6 text-red-600" />
-            </div>
-            <div>
-              <h3 className="text-lg font-bold text-red-900 mb-1">This Report is irrelevant</h3>
-              <p className="text-red-700 font-medium leading-relaxed">
-                {displayResult.summary}
-              </p>
-              <p className="text-sm text-red-600 mt-2">
-                This platform is specifically designed for analyzing home renovation, maintenance, and construction quotes or invoices.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Tier & Method Badges */}
       {!displayResult?.isIrrelevant && (

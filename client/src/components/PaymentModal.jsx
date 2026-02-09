@@ -239,10 +239,10 @@ const PaymentModal = ({ isOpen, onClose, plan = 'Standard', price = 7.99, initia
                                 amount={parseFloat(finalPrice)}
                                 tier={plan}
                                 onCancel={() => setStep('summary')}
-                                onSuccess={() => {
+                                onSuccess={(paymentIntent) => {
                                     setStep('success');
                                     setTimeout(() => {
-                                        onSuccess?.();
+                                        onSuccess?.(paymentIntent);
                                         onClose();
                                     }, 2500);
                                 }}

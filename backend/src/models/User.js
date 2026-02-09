@@ -30,6 +30,10 @@ const userSchema = new mongoose.Schema({
     trim: true,
     default: ''
   },
+  phoneVerified: {
+    type: Boolean,
+    default: false
+  },
   address: {
     type: String,
     trim: true,
@@ -184,6 +188,11 @@ userSchema.virtual('hasActiveSubscription').get(function () {
 // Virtual for admin check
 userSchema.virtual('isAdmin').get(function () {
   return this.role === 'admin';
+});
+
+// Virtual for verification status (primary method: phone)
+userSchema.virtual('isVerified').get(function () {
+  return this.phoneVerified;
 });
 
 // Hash password before saving

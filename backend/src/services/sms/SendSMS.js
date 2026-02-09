@@ -13,15 +13,22 @@ const logger = require('../../utils/logger');
 class SMSService {
     constructor() {
         this.config = smsConfig;
-        this.authHeader = this._createAuthHeader();
     }
 
     /**
      * Private: Create Basic Auth header for ClickSend
+     * Pick up fresh from config/env to ensure we have latest values
      */
-    _createAuthHeader() {
-        if (!this.config.username || !this.config.apiKey) return null;
-        const credentials = Buffer.from(`${this.config.username}:${this.config.apiKey}`).toString('base64');
+    _getAuthHeader() {
+        const username = (this.config.username || process.env.CLICKSEND_USERNAME || '').trim();
+        const apiKey = (this.config.apiKey || process.env.CLICKSEND_API_KEY || '').trim();
+
+        if (!username || !apiKey) {
+            logger.error('[SMS Service] Missing credentials for Auth Header');
+            return null;
+        }
+
+        const credentials = Buffer.from(`${username}:${apiKey}`).toString('base64');
         return `Basic ${credentials}`;
     }
 
@@ -39,13 +46,22 @@ class SMSService {
         }
 
         try {
-            logger.info(`[SMS Service] Sending SMS to ${to}...`);
+            const authHeader = this._getAuthHeader();
+            if (!authHeader) {
+                return { success: false, error: 'Authentication credentials missing' };
+            }
+
+            logger.info(`[SMS Service] Attempting production SMS to ${to}...`);
+
+            // For international delivery (like India), alphanumeric Sender IDs are often blocked.
+            // We'll omit the 'from' field to use ClickSend's most reliable Shared Pool delivery.
+            const fromField = to.startsWith('+61') ? this.config.senderId : undefined;
 
             const payload = {
                 messages: [
                     {
                         source: 'MyQuoteMate-Backend',
-                        from: from || this.config.senderId,
+                        from: fromField,
                         body: body,
                         to: to,
                         schedule: 0
@@ -55,25 +71,36 @@ class SMSService {
 
             const response = await axios.post(this.config.apiUrl, payload, {
                 headers: {
-                    'Authorization': this.authHeader,
+                    'Authorization': authHeader,
                     'Content-Type': 'application/json'
                 }
             });
 
-            // ClickSend returns 200 even for some failures, check response status
             const data = response.data;
             if (data.http_code === 200 && data.response_code === 'SUCCESS') {
-                logger.info(`[SMS Service] SMS successfully sent to ${to}. MessageID: ${data.data.messages[0].message_id}`);
+                const msg = data.data.messages[0];
+                logger.info(`[SMS Service] SMS sent successfully. MsgID: ${msg.message_id}, Status: ${msg.status || 'Accepted'}`);
                 return { success: true, data: data.data };
             } else {
-                logger.error('[SMS Service] ClickSend returned an error:', data);
-                return { success: false, error: data.response_msg || 'Unknown failure' };
+                logger.error('[SMS Service] ClickSend API error response:', JSON.stringify(data));
+
+                // Check for balance or other obvious errors
+                if (data.response_msg?.toLowerCase().includes('balance')) {
+                    return { success: false, error: 'Insufficient ClickSend balance' };
+                }
+
+                return { success: false, error: data.response_msg || 'API processing failure' };
             }
 
         } catch (error) {
-            const errorMessage = error.response ? JSON.stringify(error.response.data) : error.message;
-            logger.error(`[SMS Service] Failed to send SMS to ${to}: ${errorMessage}`);
-            return { success: false, error: 'Connection failure or API error' };
+            const status = error.response ? error.response.status : 'No Response';
+            const errorData = error.response ? JSON.stringify(error.response.data) : error.message;
+            logger.error(`[SMS Service] CRITICAL FAILURE sending to ${to}. Status: ${status}, Detail: ${errorData}`);
+
+            if (status === 401) {
+                return { success: false, error: 'Invalid API credentials (401 Unauthorized)' };
+            }
+            return { success: false, error: `SMS Gateway Error: ${status}` };
         }
     }
 

@@ -12,15 +12,15 @@ const logger = require('../../utils/logger');
  * HARD tier limits (cost safety)
  */
 const TIER_LIMITS = {
-  Free: {
+  free: {
     maxInputChars: 7000,
     maxOutputTokens: 7000
   },
-  Standard: {
+  standard: {
     maxInputChars: 20000,
     maxOutputTokens: 20000
   },
-  Premium: {
+  premium: {
     maxInputChars: 40000,
     maxOutputTokens: 16000
   }
@@ -60,8 +60,9 @@ class AIOrchestrator {
   /**
    * Analyze single quote
    */
-  async analyzeQuote(extractedText, tier = 'Free', metadata = {}, imageUrl = null) {
-    const limits = TIER_LIMITS[tier] || TIER_LIMITS.Free;
+  async analyzeQuote(extractedText, rawTier = 'free', metadata = {}, imageUrl = null) {
+    const tier = rawTier.toLowerCase();
+    const limits = TIER_LIMITS[tier] || TIER_LIMITS.free;
 
     try {
       logger.info('AI analysis started', { tier, hasImage: !!imageUrl });
@@ -131,7 +132,7 @@ class AIOrchestrator {
       const response = await this.callOpenAI({
         systemPrompt,
         userPrompt,
-        maxOutputTokens: TIER_LIMITS.Premium.maxOutputTokens
+        maxOutputTokens: TIER_LIMITS.premium.maxOutputTokens
       });
 
       return this.parseComparisonResponse(response);
@@ -245,11 +246,11 @@ class AIOrchestrator {
     const isIrrelevant = parsed.relevance?.isRelevant === false;
 
     if (!isIrrelevant) {
-      if (tier === 'Free' && !parsed.freeSummary) {
+      if (tier === 'free' && !parsed.freeSummary) {
         throw new Error('Invalid free-tier response: missing freeSummary');
       }
 
-      if (tier !== 'Free' && !parsed.analysis) {
+      if (tier !== 'free' && !parsed.analysis) {
         throw new Error(`Invalid ${tier}-tier response: missing analysis`);
       }
     }

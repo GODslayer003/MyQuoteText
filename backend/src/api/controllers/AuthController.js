@@ -2,6 +2,8 @@ const User = require('../../models/User');
 const AuditLog = require('../../models/AuditLog');
 const AuthService = require('../../services/auth/AuthService');
 const TokenService = require('../../services/auth/TokenService');
+const OTP = require('../../models/OTP');
+const SMSService = require('../../services/sms/SendSMS');
 const logger = require('../../utils/logger');
 
 class AuthController {
@@ -11,7 +13,7 @@ class AuthController {
    */
   async register(req, res, next) {
     try {
-      const { email, password, firstName, lastName, phone } = req.body;
+      const { email, password, firstName, lastName, phone, isPhoneVerified } = req.body;
       const BannedUser = require('../../models/BannedUser');
 
       // Check if user is banned
@@ -39,6 +41,7 @@ class AuthController {
         firstName,
         lastName,
         phone,
+        phoneVerified: isPhoneVerified || false,
         metadata: {
           registrationSource: 'manual',
           ipAddress: req.ip,
@@ -76,7 +79,8 @@ class AuthController {
             email: user.email,
             firstName: user.firstName,
             lastName: user.lastName,
-            avatarUrl: user.avatarUrl
+            avatarUrl: user.avatarUrl,
+            phoneVerified: user.phoneVerified
           },
           tokens: {
             accessToken,
@@ -165,11 +169,47 @@ class AuthController {
       }
 
       // Update last login
-      // user.updateLastLogin(); // Use model method if available or manual:
       user.security.lastLoginAt = new Date();
       await user.save();
 
-      // Generate tokens
+      // Check if user has phone number for OTP verification
+      if (user.phone) {
+        // Generate 6-digit code
+        const code = Math.floor(100000 + Math.random() * 900000).toString();
+        const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+        // Save/Update OTP in DB
+        await OTP.findOneAndUpdate(
+          { phone: user.phone },
+          { code, expiresAt, attempts: 0 },
+          { upsert: true, new: true }
+        );
+
+        // Send SMS via ClickSend
+        const smsResult = await SMSService.sendVerificationCode(user.phone, code);
+
+        if (!smsResult.success) {
+          logger.error(`Failed to send login OTP to ${user.phone}: ${smsResult.error}`);
+          // Fallback: If SMS fails, we might want to allow login OR fail. 
+          // For now, let's fail as the user requested OTP verification.
+          return res.status(500).json({
+            success: false,
+            error: 'Failed to send verification code. Please try again.'
+          });
+        }
+
+        logger.info(`Login OTP sent to ${user.phone}`);
+
+        return res.json({
+          success: true,
+          requiresOtp: true,
+          data: {
+            phone: user.phone
+          }
+        });
+      }
+
+      // Generate tokens if no phone (fallback/admin without phone)
       const accessToken = TokenService.generateAccessToken(user._id);
       const refreshToken = TokenService.generateRefreshToken(user._id);
 
@@ -196,7 +236,8 @@ class AuthController {
             firstName: user.firstName,
             lastName: user.lastName,
             avatarUrl: user.avatarUrl,
-            emailVerified: user.emailVerified
+            emailVerified: user.emailVerified,
+            phoneVerified: user.phoneVerified
           },
           tokens: {
             accessToken,
@@ -400,6 +441,150 @@ class AuthController {
       });
     } catch (error) {
       logger.error('Get current user failed:', error);
+      next(error);
+    }
+  }
+  /**
+   * Send OTP to mobile number
+   * POST /api/v1/auth/send-otp
+   */
+  async sendOtp(req, res, next) {
+    try {
+      const { phone } = req.body;
+
+      if (!phone) {
+        return res.status(400).json({
+          success: false,
+          error: 'Phone number is required'
+        });
+      }
+
+      // Generate 6-digit code
+      const code = Math.floor(100000 + Math.random() * 900000).toString();
+      const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+      // Save/Update OTP in DB
+      await OTP.findOneAndUpdate(
+        { phone },
+        { code, expiresAt, attempts: 0 },
+        { upsert: true, new: true }
+      );
+
+      // Send SMS via ClickSend
+      const smsResult = await SMSService.sendVerificationCode(phone, code);
+
+      if (!smsResult.success) {
+        logger.error(`Failed to send OTP to ${phone}: ${smsResult.error}`);
+        return res.status(500).json({
+          success: false,
+          error: smsResult.error || 'Failed to send SMS. Please try again later.'
+        });
+      }
+
+      logger.info(`OTP sent to ${phone}`);
+
+      res.json({
+        success: true,
+        message: 'Verification code sent successfully'
+      });
+    } catch (error) {
+      logger.error('Send OTP failed:', error);
+      next(error);
+    }
+  }
+
+  /**
+   * Verify OTP
+   * POST /api/v1/auth/verify-otp
+   */
+  async verifyOtp(req, res, next) {
+    try {
+      const { phone, code } = req.body;
+
+      if (!phone || !code) {
+        return res.status(400).json({
+          success: false,
+          error: 'Phone number and code are required'
+        });
+      }
+
+      const otpRecord = await OTP.findOne({ phone });
+
+      if (!otpRecord) {
+        return res.status(400).json({
+          success: false,
+          error: 'Invalid or expired code'
+        });
+      }
+
+      if (otpRecord.code !== code) {
+        otpRecord.attempts += 1;
+        await otpRecord.save();
+
+        if (otpRecord.attempts >= 5) {
+          await OTP.deleteOne({ phone });
+          return res.status(400).json({
+            success: false,
+            error: 'Too many failed attempts. Please request a new code.'
+          });
+        }
+
+        return res.status(400).json({
+          success: false,
+          error: 'Invalid verification code'
+        });
+      }
+
+      // Success - Delete OTP record
+      await OTP.deleteOne({ phone });
+
+      // Check if user exists with this phone
+      const user = await User.findOne({ phone });
+      let tokens = null;
+
+      if (user) {
+        user.phoneVerified = true;
+        await user.save();
+
+        // Generate tokens for login flow
+        const accessToken = TokenService.generateAccessToken(user._id);
+        const refreshToken = TokenService.generateRefreshToken(user._id);
+        tokens = {
+          accessToken,
+          refreshToken,
+          expiresIn: process.env.JWT_EXPIRES_IN
+        };
+
+        // Audit log for login via OTP
+        await AuditLog.log({
+          userId: user._id,
+          action: 'user.login.otp_verified',
+          resourceType: 'user',
+          resourceId: user._id.toString(),
+          metadata: {
+            ipAddress: req.ip,
+            userAgent: req.get('user-agent')
+          }
+        });
+      }
+
+      res.json({
+        success: true,
+        message: 'Mobile number verified successfully',
+        data: user ? {
+          user: {
+            id: user._id,
+            email: user.email,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            avatarUrl: user.avatarUrl,
+            phoneVerified: user.phoneVerified
+          },
+          tokens
+        } : null
+      });
+    } catch (error) {
+      logger.error('Verify OTP failed:', error);
       next(error);
     }
   }

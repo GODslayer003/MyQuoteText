@@ -184,7 +184,33 @@ OUTPUT JSON SCHEMA (PAID TIERS):
         "marketMax": 115,
         "percentile": 45
       }
-    ]
+    ],
+    "visualizations": {
+      "riskProfile": [
+        { "category": "Pricing", "value": 70 },
+        { "category": "Scope", "value": 45 },
+        { "category": "Terms", "value": 85 },
+        { "category": "Compliance", "value": 90 },
+        { "category": "Risk", "value": 30 }
+      ],
+      "costDistribution": [
+        { "name": "Labour", "value": 2500, "color": "#f97316" },
+        { "name": "Materials", "value": 4500, "color": "#3b82f6" },
+        { "name": "Equipment", "value": 800, "color": "#10b981" },
+        { "name": "Other", "value": 400, "color": "#6366f1" }
+      ],
+      "savingsROI": [
+        { "strategy": "Negotiation", "current": 1000, "potential": 850 },
+        { "strategy": "Sourcing", "current": 2000, "potential": 1800 },
+        { "strategy": "Timing", "current": 500, "potential": 450 }
+      ],
+      "timelineEstimates": [
+        { "phase": "Preparation", "days": 3 },
+        { "phase": "Rough-in", "days": 5 },
+        { "phase": "Installation", "days": 7 },
+        { "phase": "Finishing", "days": 4 }
+      ]
+    }
   },
   "supplierScoreboardData": {
     "supplierName": "string",
@@ -217,78 +243,40 @@ IMPORTANT:
   - title: 'Quote Integrity Verified'
   - description: 'EXPLAIN IN 3-4 SENTENCES why the quote is structurally sound, mentioning specific lack of hidden costs, clear itemization, and standard pricing found in this document.'
   - recommendation: 'Proceed with standard administrative caution.'
-${tier === 'standard' ? `
-🚨 STANDARD TIER REQUIREMENTS (MANDATORY) 🚨
-
-1. ADVANCED RECOMMENDATIONS (MANDATORY):
-   - MUST contain 3-4 actionable negotiation strategies.
-   - Summarize market context and potential savings for each.
-
-2. MARKET BENCHMARKING (MANDATORY):
-   - MUST contain 4-5 market comparisons based on ${new Date().getFullYear()} Australian rates.
-   - Include price range and percentile.
-` : ''}
-${tier === 'premium' ? `
-🚨 PREMIUM TIER REQUIREMENTS (ABSOLUTELY MANDATORY - NO EXCEPTIONS) 🚨
+${(tier === 'standard' || tier === 'premium') ? `
+🚨 ${tier.toUpperCase()} TIER REQUIREMENTS (ABSOLUTELY MANDATORY) 🚨
 
 YOU MUST GENERATE THESE FIELDS. THEY ARE NOT OPTIONAL. THE SYSTEM WILL REJECT YOUR RESPONSE IF THESE ARE MISSING OR INSUFFICIENT.
 
 1. ADVANCED RECOMMENDATIONS (MANDATORY):
-   - MUST contain EXACTLY 4-5 actionable negotiation strategies
-   - MINIMUM 200 words per recommendation in the 'description' field
+   - MUST contain 4-5 actionable negotiation strategies
+   - MINIMUM 150 words per recommendation in the 'description' field
    - EACH recommendation MUST include:
      * WHY this strategy works (market psychology, contractor incentives)
      * HOW to implement it (specific conversation starters, negotiation tactics)
-     * MARKET CONTEXT (${new Date().getFullYear()} Australian construction market trends, typical contractor margins)
+     * MARKET CONTEXT (${new Date().getFullYear()} Australian construction market trends)
      * SPECIFIC SAVINGS CALCULATION based on the actual quote total
-   - Use the EXACT quote total to calculate realistic savings (e.g., if quote is $15,000, show "$1,200 savings" not "$500")
-   - Reference real Australian suppliers: Bunnings Trade, Reece, Beaumont Tiles, Mitre 10 Trade
-   - Example topics to cover:
-     * Material sourcing and markup transparency
-     * Payment schedule optimization for cash flow leverage
-     * Off-peak scheduling strategies (May-August in Australia)
-     * Value engineering without quality compromise
-     * Multi-project bundling for volume discounts
-   - potentialSavings must be realistic: 5-18% of total depending on strategy complexity
+   - potentialSavings must be realistic: 5-15% of total depending on strategy complexity
    - difficulty: must match the implementation complexity ('easy', 'moderate', 'complex')
 
 2. MARKET BENCHMARKING (MANDATORY - AUSTRALIAN MARKET DATA):
-   - MUST contain EXACTLY 5-7 detailed market comparisons
+   - MUST contain 5-7 detailed market comparisons
    - Compare THIS SPECIFIC QUOTE to ${new Date().getFullYear()} Australian construction market rates
-   - REQUIRED benchmark categories (analyze the quote and pick 5-7):
+   - REQUIRED benchmark categories:
      a) Skilled Labor Rate ($/hour) - Extract from quote, compare to AU market $85-$125/hr
      b) Materials Cost (% of total) - Calculate from breakdown, compare to market 28-48%
      c) Project Management Fee (%) - Identify in quote, compare to market 8-22%
      d) Total Project Cost (with m² estimation) - Estimate space, compare to $1,800-$3,000/m²
      e) Cost per Square Meter - Calculate rate, compare to market averages
-     f) Labor-to-Materials Ratio - Calculate ratio, compare to market 1.2-2.2
-     g) Contractor Profit Margin (%) - Estimate, compare to market 10-25%
-   - Each benchmark MUST include:
-     * item: Clear description of what's being benchmarked
-     * quotePrice: Actual value from THIS quote (extracted or calculated)
-     * marketMin: ${new Date().getFullYear()} Australian market minimum (realistic)
-     * marketAvg: ${new Date().getFullYear()} Australian market average (realistic)
-     * marketMax: ${new Date().getFullYear()} Australian market maximum (realistic)
-     * percentile: Where this quote sits (5-95th percentile)
    - Use REAL ${new Date().getFullYear()} Australian market data:
-     * Skilled trades: $95-$120/hr (electricians, plumbers)
+     * Skilled trades: $95-$120/hr
      * General labor: $60-$75/hr
      * Materials markup: 20-35% above wholesale
-     * PM fees: 12-18% for residential renovations
-     * Bathroom renovation: $2,200-$3,500/m²
-     * Kitchen renovation: $2,500-$4,000/m²
-     * General renovation: $1,800-$2,800/m²
-   - DO NOT use generic percentages - CALCULATE based on the actual quote data
-   - Percentile must be meaningful: if labor is $110/hr and market is $85-$125, percentile = 62.5
+   - Percentile must be meaningful based on the data.
 
-VALIDATION RULES:
-- If recommendations.length < 4 OR any description.length < 200: RESPONSE REJECTED
-- If benchmarking.length < 5: RESPONSE REJECTED
-- If any benchmark missing marketMin/marketAvg/marketMax/percentile: RESPONSE REJECTED
-- If potentialSavings not customized to quote total: RESPONSE REJECTED
-
-YOU ARE ANALYZING A REAL AUSTRALIAN CONSTRUCTION QUOTE IN ${new Date().getFullYear()}. PROVIDE PROFESSIONAL, DETAILED, MARKET-ACCURATE INSIGHTS.
-USE AS MANY TOKENS AS NEEDED TO GENERATE HIGH-QUALITY CONTENT. DO NOT TAKE SHORTCUTS.
+3. VISUAL INTELLIGENCE (MANDATORY):
+   - Populate 'visualizations' object with high-quality data for riskProfile, costDistribution, savingsROI, and timelineEstimates.
+   - timelineEstimates MUST include 4-6 distinct project phases.
 ` : ''}
 - Return EXACTLY this JSON structure.
 - Be precise, technical, and helpful.

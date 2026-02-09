@@ -2,6 +2,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import AuthModal from "../pages/AuthModel";
+import { toast } from "react-hot-toast";
 
 export const AuthContext = createContext(null);
 
@@ -170,41 +171,34 @@ export const AuthProvider = ({ children }) => {
           throw new Error("Invalid email or password");
         } else if (res.status === 423) {
           const err = new Error("Account is locked. Please try again later.");
-          err.lockUntil = data.lockUntil; // Attach lockUntil from response
+          err.lockUntil = data.lockUntil;
           throw err;
         } else {
           throw new Error(data.error || data.message || "Login failed");
         }
       }
 
-      if (!data.success || !data.data?.user) {
-        throw new Error("Invalid response from server");
+      if (data.requiresOtp) {
+        setLoading(false);
+        return { requiresOtp: true, phone: data.data.phone };
       }
 
       const { user: userData, tokens } = data.data;
-
-      // Set user state
       setUser(userData);
-
-      // Store in localStorage
       localStorage.setItem("auth_user", JSON.stringify(userData));
       localStorage.setItem("auth_token", tokens.accessToken);
       localStorage.setItem("refresh_token", tokens.refreshToken);
 
-      // Close modal and handle redirect
       setShowAuthModal(false);
       if (redirectPath) {
         navigate(redirectPath);
         setRedirectPath(null);
       }
-
-      return { success: true };
+      return { success: true, user: userData };
     } catch (err) {
       console.error('Login error:', err);
       const errorMessage = err.message || "Login failed. Please try again.";
       setError(errorMessage);
-
-      // Return error structure for UI components to handle specific cases (like locking)
       return {
         success: false,
         error: errorMessage,
@@ -273,6 +267,66 @@ export const AuthProvider = ({ children }) => {
       console.error('Signup error:', err);
       setError(err.message || "Registration failed. Please try again.");
       return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ----------------------------------
+  // SEND OTP
+  // ----------------------------------
+  const sendOtp = async (phone) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`${API_URL}/auth/send-otp`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json"
+        },
+        body: JSON.stringify({ phone })
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to send verification code");
+      }
+
+      return { success: true };
+    } catch (err) {
+      console.error('Send OTP error:', err);
+      return { success: false, error: err.message };
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ----------------------------------
+  // VERIFY OTP
+  // ----------------------------------
+  const verifyOtp = async (phone, code) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`${API_URL}/auth/verify-otp`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json"
+        },
+        body: JSON.stringify({ phone, code })
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Verification failed");
+      }
+
+      return { success: true };
+    } catch (err) {
+      console.error('Verify OTP error:', err);
+      return { success: false, error: err.message };
     } finally {
       setLoading(false);
     }
@@ -477,6 +531,8 @@ export const AuthProvider = ({ children }) => {
     removeAvatar,
     changePassword,
     deleteAccount,
+    sendOtp,
+    verifyOtp,
     isAuthenticated: !!user,
     requestLogin,
     clearError,
@@ -484,20 +540,19 @@ export const AuthProvider = ({ children }) => {
   }), [
     user, loading, error, login, signup, logout,
     updateUser, refreshUser, uploadAvatar, removeAvatar,
-    changePassword, deleteAccount, requestLogin
+    changePassword, deleteAccount, requestLogin, sendOtp, verifyOtp
   ]);
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600"></div>
-      </div>
-    );
-  }
 
   return (
     <AuthContext.Provider value={contextValue}>
       {children}
+
+      {/* Global initial loading spinner - only show if no user and loading */}
+      {loading && !user && (
+        <div className="fixed inset-0 bg-white/80 backdrop-blur-sm z-[9999] flex items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600"></div>
+        </div>
+      )}
 
       <AuthModal
         isOpen={showAuthModal}

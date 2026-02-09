@@ -20,11 +20,11 @@ import {
 import { useAuth } from "../hooks/useAuth";
 import Swal from 'sweetalert2';
 
-const AuthModal = ({ isOpen, onClose }) => {
+const AuthModal = ({ isOpen, onClose, initialMode = 'login', initialData = {}, onSuccess }) => {
   const { login, signup, loading, error, clearError } = useAuth();
 
   // Mode: 'login', 'signup', or 'forgot-password'
-  const [mode, setMode] = useState('login');
+  const [mode, setMode] = useState(initialMode);
 
   // Login form state
   const [loginData, setLoginData] = useState({
@@ -39,8 +39,19 @@ const AuthModal = ({ isOpen, onClose }) => {
     email: '',
     phone: '',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
+    ...initialData // Spread initial data to pre-fill fields
   });
+
+  // Update mode if initialMode changes when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setMode(initialMode);
+      if (initialData && Object.keys(initialData).length > 0) {
+        setSignupData(prev => ({ ...prev, ...initialData }));
+      }
+    }
+  }, [isOpen, initialMode, initialData]);
 
   // Forgot password state
   const [forgotPasswordData, setForgotPasswordData] = useState({
@@ -201,6 +212,12 @@ const AuthModal = ({ isOpen, onClose }) => {
 
     const result = await login(loginData);
 
+    if (result.requiresOtp) {
+      setMode('otp-login');
+      setSignupData(prev => ({ ...prev, phone: result.phone }));
+      return;
+    }
+
     if (!result.success) {
       // Check for lock info from backend
       if (result.lockUntil) {
@@ -208,18 +225,46 @@ const AuthModal = ({ isOpen, onClose }) => {
         setIsLocked(true);
         setLoginAttempts(5); // Force lock state locally
       } else {
-        // Increment attempts locally for immediate feedback (optional, but good for UI consistency)
+        // Increment attempts locally for immediate feedback 
         const newAttempts = loginAttempts + 1;
         setLoginAttempts(newAttempts);
-
-        // If we hit 5 local attempts but backend didn't lock yet (async sync issue?), 
-        // we can warn user, but backend is source of truth.
       }
     } else {
       setLoginAttempts(0);
       setLockUntil(null);
       setIsLocked(false);
       onClose();
+      if (onSuccess) onSuccess();
+    }
+  };
+
+  const [otpValue, setOtpValue] = useState(['', '', '', '', '', '']);
+
+  const handleOtpChange = (element, index) => {
+    if (isNaN(element.value)) return;
+    const newOtp = [...otpValue];
+    newOtp[index] = element.value;
+    setOtpValue(newOtp);
+
+    if (element.nextSibling && element.value) {
+      element.nextSibling.focus();
+    }
+  };
+
+  const handleOtpLoginSubmit = async (e) => {
+    e.preventDefault();
+    const enteredOtp = otpValue.join('');
+    if (enteredOtp.length !== 6) {
+      setFieldErrors({ otp: 'Please enter the 6-digit code' });
+      return;
+    }
+
+    const result = await verifyOtpDuringLogin(signupData.phone, enteredOtp);
+    if (result.success) {
+      onClose();
+      if (onSuccess) onSuccess();
+    } else {
+      setFieldErrors({ otp: result.error || 'Verification failed' });
     }
   };
 
@@ -327,6 +372,7 @@ const AuthModal = ({ isOpen, onClose }) => {
     const success = await signup(userData);
     if (success) {
       onClose();
+      if (onSuccess) onSuccess();
     }
   };
 
@@ -408,6 +454,8 @@ const AuthModal = ({ isOpen, onClose }) => {
         return <UserPlus className="w-6 h-6 text-white" />;
       case 'forgot-password':
         return <Key className="w-6 h-6 text-white" />;
+      case 'otp-login':
+        return <Shield className="w-6 h-6 text-white" />;
       default:
         return <LogIn className="w-6 h-6 text-white" />;
     }
@@ -421,6 +469,8 @@ const AuthModal = ({ isOpen, onClose }) => {
         return 'Create Account';
       case 'forgot-password':
         return 'Reset Password';
+      case 'otp-login':
+        return 'Two-Step Verification';
       default:
         return 'Sign In';
     }
@@ -434,6 +484,8 @@ const AuthModal = ({ isOpen, onClose }) => {
         return 'Join thousands of smart homeowners';
       case 'forgot-password':
         return "We'll send you a reset link";
+      case 'otp-login':
+        return "Enter the code sent to your phone";
       default:
         return 'Access your account';
     }
@@ -582,14 +634,15 @@ const AuthModal = ({ isOpen, onClose }) => {
             />
           )}
 
-          {mode === 'forgot-password' && !resetSent && (
-            <ForgotPasswordForm
-              forgotPasswordData={forgotPasswordData}
-              handleForgotPasswordChange={handleForgotPasswordChange}
-              handleForgotPasswordSubmit={handleForgotPasswordSubmit}
-              fieldErrors={fieldErrors}
+          {mode === 'otp-login' && (
+            <OtpLoginForm
+              otpValue={otpValue}
+              handleOtpChange={handleOtpChange}
+              handleOtpLoginSubmit={handleOtpLoginSubmit}
               loading={loading}
-              onSwitchToLogin={switchToLogin}
+              phone={signupData.phone}
+              onBack={switchToLogin}
+              fieldErrors={fieldErrors}
             />
           )}
 
@@ -1064,6 +1117,63 @@ const SignupForm = ({
         className="font-medium text-orange-600 hover:text-orange-700 hover:underline"
       >
         Sign in
+      </button>
+    </div>
+  </form>
+);
+
+const OtpLoginForm = ({
+  otpValue,
+  handleOtpChange,
+  handleOtpLoginSubmit,
+  loading,
+  phone,
+  onBack,
+  fieldErrors
+}) => (
+  <form onSubmit={handleOtpLoginSubmit} className="space-y-6">
+    <div className="text-center">
+      <div className="flex justify-center gap-2 mb-6">
+        {otpValue.map((data, index) => (
+          <input
+            key={index}
+            type="text"
+            maxLength="1"
+            value={data}
+            onChange={(e) => handleOtpChange(e.target, index)}
+            onKeyDown={(e) => {
+              if (e.key === 'Backspace' && !otpValue[index] && index > 0) {
+                e.target.previousSibling?.focus();
+              }
+            }}
+            className="w-12 h-14 text-center text-2xl font-bold border-2 border-gray-200 rounded-xl focus:border-orange-500 focus:ring-0 outline-none transition-all"
+            autoFocus={index === 0}
+          />
+        ))}
+      </div>
+      {fieldErrors.otp && (
+        <p className="mt-2 text-sm text-red-600 font-medium">{fieldErrors.otp}</p>
+      )}
+      <p className="text-sm text-gray-500 mt-4">
+        We sent a code to <span className="font-bold text-gray-900">{phone}</span>
+      </p>
+    </div>
+
+    <button
+      type="submit"
+      disabled={loading}
+      className="w-full py-4 bg-black text-white rounded-xl font-bold hover:bg-gray-900 transition-all flex items-center justify-center gap-2 disabled:opacity-70"
+    >
+      {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Verify and Sign In'}
+    </button>
+
+    <div className="text-center">
+      <button
+        type="button"
+        onClick={onBack}
+        className="text-sm font-medium text-gray-500 hover:text-gray-900"
+      >
+        Use a different account
       </button>
     </div>
   </form>

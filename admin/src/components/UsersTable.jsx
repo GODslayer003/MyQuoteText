@@ -308,9 +308,9 @@ const UsersTable = ({ users, loading, pagination, onPageChange }) => {
                               </div>
                             </div>
                             <div>
-                              <p className="text-xs text-gray-600 uppercase font-semibold">Email Verified</p>
+                              <p className="text-xs text-gray-600 uppercase font-semibold">Phone Verified</p>
                               <p className="text-gray-900 mt-1">
-                                {user.emailVerified ? '✓ Yes' : '✗ No'}
+                                {user.phoneVerified ? '✓ Yes' : '✗ No'}
                               </p>
                             </div>
                           </div>

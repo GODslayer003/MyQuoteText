@@ -42,6 +42,7 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
                         user.googleId = googleId;
                         user.authProvider = 'google';
                         user.emailVerified = true; // Google emails are verified
+                        user.phoneVerified = true; // Google account is trusted
                         await user.save();
                         logger.info(`Linked Google account to existing user: ${email}`);
                     }
@@ -67,6 +68,7 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
                     lastName,
                     avatarUrl,
                     emailVerified: true, // Google emails are pre-verified
+                    phoneVerified: true, // Google account is trusted
                     accountStatus: 'active',
                     subscription: {
                         plan: 'Free',

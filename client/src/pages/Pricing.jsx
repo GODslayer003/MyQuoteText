@@ -137,10 +137,10 @@ const Pricing = () => {
       textColor: "text-orange-600",
       border: "border-orange-300",
       button: "from-orange-500 to-amber-600 hover:shadow-orange-500/30 text-white",
-      cta: "Buy 1 Report",
+      cta: "Analyze Now",
       icon: <Zap className="w-6 h-6" />,
       features: [
-        { included: true, text: "Complete AI analysis (1 credit)" },
+        { included: true, text: "Complete AI analysis (Standard Tier)" },
         { included: true, text: "Detailed cost breakdown" },
         { included: true, text: "Market rate benchmarking" },
         { included: true, text: "Advanced recommendations" },
@@ -165,10 +165,10 @@ const Pricing = () => {
       textColor: "text-black",
       border: "border-gray-800",
       button: "bg-black hover:bg-gray-900 text-white",
-      cta: "Buy 1 Reports",
+      cta: "Full Analysis",
       icon: <Crown className="w-6 h-6" />,
       features: [
-        { included: true, text: "Credits for 3 analyses" },
+        { included: true, text: "Comprehensive AI Analysis (3 included)" },
         { included: true, text: "Compare 3 quotes side-by-side" },
         { included: true, text: "Market rate benchmarking" },
         { included: true, text: "Advanced recommendations" },
@@ -248,13 +248,13 @@ const Pricing = () => {
       // Use Swal for a nice modal as requested
       import('sweetalert2').then(({ default: Swal }) => {
         Swal.fire({
-          title: `You already have ${plan.name}`,
-          text: `You have ${user.subscription.credits} active credit(s) remaining for the ${plan.name} plan. You can use them now!`,
+          title: 'Standard Tier Active',
+          text: 'You have an active Standard analysis available. Start your technical review now!',
           icon: 'info',
           showCancelButton: true,
-          confirmButtonText: 'Use Credits',
-          cancelButtonText: 'Buy More',
-          confirmButtonColor: '#ea580c', // orange-600
+          confirmButtonText: 'Start Analysis',
+          cancelButtonText: 'Buy Another',
+          confirmButtonColor: '#ea580c',
         }).then((result) => {
           if (result.isConfirmed) {
             navigate('/check-quote');

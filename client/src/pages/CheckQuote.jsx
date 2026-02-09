@@ -36,14 +36,16 @@ import { useAuth } from '../providers/AuthProvider';
 import { toast } from 'react-hot-toast';
 import Swal from 'sweetalert2';
 import quoteApi from '../services/quoteApi';
+import paymentApi from '../services/paymentApi';
 import jobPollingService from '../services/jobPollingService';
 import AnalysisResults from '../components/AnalysisResults';
 import PaymentModal from '../components/PaymentModal';
+import AuthModal from './AuthModel'; // Importing the default export which is AuthModal
 import MobileAuthModal from '../components/MobileAuthModal';
 
 const CheckQuote = () => {
   const navigate = useNavigate();
-  const { user, isAuthenticated, requestLogin } = useAuth();
+  const { user, isAuthenticated, requestLogin, refreshUser } = useAuth();
   const [isVisible, setIsVisible] = useState(false);
   const [uploadMethod, setUploadMethod] = useState('file'); // 'file' or 'text'
   const [file, setFile] = useState(null);
@@ -58,12 +60,16 @@ const CheckQuote = () => {
   const [success, setSuccess] = useState(null);
   const [currentJob, setCurrentJob] = useState(null);
   const [jobStatus, setJobStatus] = useState(null);
+  const [verifiedPhone, setVerifiedPhone] = useState('');
+  const [showMainAuthModal, setShowMainAuthModal] = useState(false);
   const [jobResult, setJobResult] = useState(null);
 
   // Auth & Payment Flow States
   const [showMobileAuthModal, setShowMobileAuthModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [showLimitModal, setShowLimitModal] = useState(false);
   const [selectedPricingTier, setSelectedPricingTier] = useState(null);
+  const [temporaryTier, setTemporaryTier] = useState(null); // Optimistic UI update for tier
   const [pendingAnalysis, setPendingAnalysis] = useState(false);
 
   const [comparisonQuotes, setComparisonQuotes] = useState([]);
@@ -322,6 +328,7 @@ const CheckQuote = () => {
 
     // STEP 1: Auth Check
     if (!isAuthenticated) {
+      // If guest, start with Mobile Verification (Verify Only)
       setShowMobileAuthModal(true);
       return;
     }
@@ -345,6 +352,30 @@ const CheckQuote = () => {
     performAnalysis();
   };
 
+  // Called when Mobile Verification is successful (Step 1 of Guest Flow)
+  const handleMobileVerificationSuccess = (data) => {
+    // data contains { phone: ... }
+    setVerifiedPhone(data.phone);
+    setShowMobileAuthModal(false);
+
+    // Open Main Auth Modal in Signup mode with pre-filled phone
+    setTimeout(() => {
+      setShowMainAuthModal(true);
+    }, 300);
+  };
+
+  // Called when Main Auth Modal (Login/Signup) is successful
+  const handleMainAuthSuccess = () => {
+    setShowMainAuthModal(false);
+    setVerifiedPhone(''); // Clear temp state
+
+    // Continue to payment flow
+    setTimeout(() => {
+      checkPaymentAndAnalyze();
+    }, 500);
+  };
+
+  // Legacy handler for MobileAuthModal full signup (if used elsewhere, keeping for safety)
   const handleAuthSuccess = (newUser) => {
     // User just logged in/signed up via Mobile Modal
     setShowMobileAuthModal(false);
@@ -358,39 +389,111 @@ const CheckQuote = () => {
     }, 500);
   };
 
-  const handlePaymentSuccess = async () => {
+  const resetToUpload = () => {
+    setPhase('upload');
+    setFile(null);
+    setQuoteText('');
+    setExtractedText('');
+    setCurrentJob(null);
+    setJobStatus(null);
+    setJobResult(null);
+    setError(null);
+    setSuccess(null);
+    setIsAnalyzing(false);
+
+    // Stop any polling
+    if (currentJob?.jobId) {
+      jobPollingService.stopPolling(currentJob.jobId);
+    }
+  };
+
+  const handlePaymentSuccess = async (paymentIntent) => {
     try {
-      // Clear the stored tier from sessionStorage
+      // Capture the purchased tier BEFORE clearing storage
+      const purchasedTier = selectedPricingTier?.tier;
+      let confirmedCredits = 0;
+
+      // Optimistically update UI immediately
+      setTemporaryTier(purchasedTier);
+
+      // Close modal immediately for better UX
+      setShowPaymentModal(false);
+      setPendingAnalysis(false);
+      const loadingToast = toast.loading('Verifying payment & credits...');
+
+      // Manual Verification (Strict Mode)
+      // We MUST verify credits exist before proceeding, otherwise backend will reject with "Limit Reached"
+      if (paymentIntent?.id) {
+        try {
+          const verifyRes = await paymentApi.verifyPayment(paymentIntent.id);
+
+          if (verifyRes.data?.success && verifyRes.data?.data) {
+            const stats = verifyRes.data.data;
+            confirmedCredits = stats.credits;
+            console.log('Payment verified, fresh credits:', confirmedCredits);
+
+            if (confirmedCredits < 1) {
+              throw new Error('Payment verified but no credits found on account.');
+            }
+          } else {
+            throw new Error('Payment verification returned unsuccessful status.');
+          }
+        } catch (e) {
+          console.warn('Verification failed:', e);
+          // If verification fails, WE STOP. Do not proceed to analysis.
+          // This prevents the confusing "Monthly Limit Reached" error.
+          toast.dismiss(loadingToast);
+          toast.error(`Verification failed: ${e.message || 'Could not confirm credits'}. Please refresh/contact support.`);
+          setTemporaryTier(null);
+          return; // EXIT FUNCTION
+        }
+      } else {
+        // No payment intent ID?
+        toast.dismiss(loadingToast);
+        toast.error('Payment Error: Missing transaction ID.');
+        return;
+      }
+
+      // Clear the stored tier
       sessionStorage.removeItem('selectedPricingTier');
       setSelectedPricingTier(null);
 
-      // Close payment modal
-      setShowPaymentModal(false);
-      setPendingAnalysis(false);
-
-      // Refresh user data to get updated credits
+      // Refresh global user state
       await refreshUser();
 
+      toast.dismiss(loadingToast);
+      toast.success(`Payment confirmed! You have ${confirmedCredits} credits.`);
+
       // Auto-trigger analysis
-      toast.success('Payment successful! Starting analysis...');
       setError(null);
       setSuccess(null);
       setIsAnalyzing(true);
 
-      // Small delay to let modal close smoothly
+      // Wait a moment to ensure state propagation
       setTimeout(() => {
-        performAnalysis();
-      }, 300);
+        // Pass both the purchased tier AND the confirmed credit count
+        performAnalysis(purchasedTier, confirmedCredits);
+      }, 500);
+
+      // Clear temporary tier after a delay
+      setTimeout(() => setTemporaryTier(null), 10000);
+
     } catch (error) {
       console.error('Post-payment error:', error);
-      toast.error('Payment succeeded but analysis start failed. Please try analyzing again.');
+      toast.dismiss();
+      toast.error('Payment succeeded but steps failed: ' + error.message);
+      setTemporaryTier(null);
     }
   };
 
-  const performAnalysis = async () => {
+  const performAnalysis = async (overrideTier = null, confirmedCredits = 0) => {
     try {
       const analysisEmail = isAuthenticated ? user?.email : guestEmail;
-      const analysisTier = isAuthenticated ? (user?.subscription?.plan || 'Free') : 'Free';
+      // Use overrideTier if provided (e.g. immediately after payment), otherwise use current user plan
+      const analysisTier = overrideTier || (isAuthenticated ? (user?.subscription?.plan || 'Free') : 'Free');
+
+      // Check for available credits (either from state or confirmation)
+      const hasCredits = (user?.subscription?.credits > 0) || (confirmedCredits > 0);
 
       if (analysisTier.toLowerCase() === 'premium' && files.length > 1) {
         // Multi-quote analysis for Premium
@@ -474,10 +577,18 @@ const CheckQuote = () => {
 
         } catch (err) {
           console.error('Batch analysis error:', err);
-          setError(`Batch analysis failed: ${err.message}`);
-          setPhase('upload');
-          setIsAnalyzing(false);
-          toast.error('Batch analysis failed.', { id: loadingToast });
+          const errorMsg = err.response?.data?.message || err.response?.data?.error || err.message || 'Unknown error';
+
+          if (errorMsg.toLowerCase().includes('limit') || err.status === 403) {
+            setShowLimitModal(true);
+            setPhase('upload');
+            setIsAnalyzing(false);
+          } else {
+            setError(`Batch analysis failed: ${errorMsg}`);
+            setPhase('upload');
+            setIsAnalyzing(false);
+            toast.error('Batch analysis failed.', { id: loadingToast });
+          }
         }
         return;
       }
@@ -562,9 +673,20 @@ const CheckQuote = () => {
             setIsAnalyzing(false);
           },
           (error) => {
-            setError(`Analysis failed: ${error.message}`);
-            setPhase('upload');
-            setIsAnalyzing(false);
+            console.error('Analysis Polling Error:', error);
+            const errorMsg = error.response?.data?.message || error.response?.data?.error || error.message || 'Unknown error';
+
+            if (errorMsg.toLowerCase().includes('limit') || error.status === 403) {
+              // Intercept usage limit errors
+              setShowLimitModal(true);
+              setPhase('upload');
+              setIsAnalyzing(false);
+              // Do NOT set error state to avoid the red alert
+            } else {
+              setError(`Analysis failed: ${errorMsg}`);
+              setPhase('upload');
+              setIsAnalyzing(false);
+            }
           }
         );
 
@@ -624,46 +746,13 @@ const CheckQuote = () => {
       }
 
       // Check for limit reached error
-      if (err.response?.status === 403 && (err.response?.data?.nextAvailableDate || err.message.includes('limit'))) {
-        const nextDateStr = err.response?.data?.nextAvailableDate;
-        const nextDate = nextDateStr ? new Date(nextDateStr) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+      const errorMsg = err.response?.data?.message || err.response?.data?.error || err.message || 'Unknown error';
 
-        Swal.fire({
-          title: 'Monthly Limit Reached',
-          html: `
-            <div class="space-y-4">
-              <p class="text-gray-600">You've used your free quote analysis for this month.</p>
-              <div class="bg-orange-50 p-3 rounded-lg border border-orange-100">
-                <p class="text-sm font-medium text-orange-800">
-                  Next free analysis available on: <br/>
-                  <span className="font-bold text-lg">{nextDate.toLocaleDateString('en-AU', { timeZone: 'Australia/Sydney' })}</span>
-                </p>
-              </div>
-              <p class="text-sm text-gray-500">Upgrade to Standard or Premium for unlimited reports and professional insights!</p>
-            </div>
-          `,
-          icon: 'warning',
-          showCancelButton: true,
-          confirmButtonText: 'Upgrade Now',
-          cancelButtonText: 'Maybe Later',
-          confirmButtonColor: '#ea580c', // orange-600
-          cancelButtonColor: '#9ca3af', // gray-400
-          reverseButtons: true,
-          customClass: {
-            container: 'font-sans',
-            popup: 'rounded-2xl',
-            confirmButton: 'rounded-lg font-bold px-6 py-2',
-            cancelButton: 'rounded-lg font-medium px-6 py-2'
-          }
-        }).then((result) => {
-          if (result.isConfirmed) {
-            navigate('/pricing');
-          }
-        });
-
+      if (err.response?.status === 403 || errorMsg.toLowerCase().includes('limit')) {
+        setShowLimitModal(true);
         setError(null);
       } else {
-        setError(err.message || 'Failed to analyze quote. Please try again.');
+        setError(errorMsg);
       }
       setIsAnalyzing(false);
     }
@@ -1112,14 +1201,14 @@ WARRANTY: 6 years on workmanship`
                         <div className="text-sm text-gray-500 mb-1">Step 1 of 2</div>
                         {user && (
                           <div className="flex gap-2 justify-end">
-                            {/* Priority: Show Selected Tier from Pricing Page first */}
-                            {selectedPricingTier ? (
-                              <div className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold shadow-sm ${selectedPricingTier.tier === 'Premium'
-                                  ? 'bg-gray-900 text-white border border-gray-800' // Blackish theme
-                                  : 'bg-orange-500 text-white border border-orange-600' // Orangish theme
+                            {/* Priority: Show Temporary (Purchased) or Selected Tier first */}
+                            {(temporaryTier || selectedPricingTier) ? (
+                              <div className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold shadow-sm ${(temporaryTier || selectedPricingTier.tier) === 'Premium'
+                                ? 'bg-gray-900 text-white border border-gray-800' // Blackish theme
+                                : 'bg-orange-500 text-white border border-orange-600' // Orangish theme
                                 }`}>
-                                <Zap className={`w-3 h-3 mr-1.5 ${selectedPricingTier.tier === 'Premium' ? 'text-yellow-400' : 'text-white'}`} />
-                                {selectedPricingTier.tier} Selected
+                                <Zap className={`w-3 h-3 mr-1.5 ${(temporaryTier || selectedPricingTier.tier) === 'Premium' ? 'text-yellow-400' : 'text-white'}`} />
+                                {temporaryTier || selectedPricingTier.tier} {temporaryTier ? 'Active' : 'Selected'}
                               </div>
                             ) : (
                               // Else show active subscription status
@@ -1563,15 +1652,77 @@ WARRANTY: 6 years on workmanship`
         </div>
       </section>
 
-      {/* Mobile Auth Modal - Replaces Guest Email Modal */}
+      {/* Payment Modal for Standard/Premium Plans */}
+      <PaymentModal
+        isOpen={showPaymentModal}
+        onClose={() => {
+          setShowPaymentModal(false);
+          setPendingAnalysis(false);
+        }}
+        plan={selectedPricingTier?.tier}
+        price={selectedPricingTier?.price && typeof selectedPricingTier.price === 'string' ? parseFloat(selectedPricingTier.price.replace('$', '')) : selectedPricingTier?.price}
+        onSuccess={handlePaymentSuccess}
+      />
+
+      {/* Mobile Verification Modal (Step 1 of Guest Flow) */}
       <MobileAuthModal
         isOpen={showMobileAuthModal}
         onClose={() => setShowMobileAuthModal(false)}
-        onSuccess={handleAuthSuccess}
+        onSuccess={handleMobileVerificationSuccess} // Use new handler
+        verifyOnly={true} // Only verify, don't signup yet
       />
 
-      {/* Custom Animations */}
+      {/* Main Auth Modal (Step 2 of Guest Flow) */}
+      <AuthModal
+        isOpen={showMainAuthModal}
+        onClose={() => setShowMainAuthModal(false)}
+        initialMode="signup"
+        initialData={{ phone: verifiedPhone }} // Pre-fill phone
+        onSuccess={handleMainAuthSuccess}
+      />
 
+      {/* Limit Reached Modal */}
+      {showLimitModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl w-full max-w-md overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="p-6 text-center">
+              <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Crown className="w-8 h-8 text-orange-600" />
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Monthly Limit Reached</h2>
+              <p className="text-gray-600 mb-6">
+                You've used your free analysis for this month. Upgrade to Premium for unlimted access and advanced features!
+              </p>
+
+              <div className="space-y-3">
+                <button
+                  onClick={() => {
+                    setShowLimitModal(false);
+                    navigate('/pricing');
+                  }}
+                  className="w-full py-3 bg-gradient-to-r from-orange-500 to-amber-600 text-white rounded-xl font-bold hover:shadow-lg hover:shadow-orange-500/30 transition-all flex items-center justify-center gap-2"
+                >
+                  <Sparkles className="w-5 h-5" />
+                  View Upgrade Options
+                </button>
+                <button
+                  onClick={() => setShowLimitModal(false)}
+                  className="w-full py-3 bg-white border border-gray-200 text-gray-700 rounded-xl font-medium hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+            <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 text-center">
+              <p className="text-xs text-gray-500">
+                Credits reset on the 1st of every month
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Custom Animations */}
     </div>
   );
 };
