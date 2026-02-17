@@ -811,10 +811,10 @@ class JobController {
   async compareQuotes(req, res, next) {
     try {
       const { jobIds } = req.body;
-      if (!jobIds || !Array.isArray(jobIds) || jobIds.length < 2) {
+      if (!jobIds || !Array.isArray(jobIds) || jobIds.length < 2 || jobIds.length > 3) {
         return res.status(400).json({
           success: false,
-          error: 'At least two job IDs are required for comparison'
+          error: 'At least two and at most three quotations are required for comparison'
         });
       }
 
@@ -857,6 +857,26 @@ class JobController {
       const comparisonData = await AIOrchestrator.compareQuotes(processedResults, {
         workCategory: jobs[0].metadata?.workCategory
       });
+
+      // 4.1 Persist comparison data back to results
+      if (comparisonData && comparisonData.comparison) {
+        const comp = comparisonData.comparison;
+        await Promise.all(jobs.map(async (job) => {
+          if (job.result) {
+            job.result.quoteComparison = {
+              quotes: comp.quotes || [],
+              winner: comp.winner || {},
+              betterApproach: comp.betterApproach || '',
+              relativePricing: comp.relativePricing || '',
+              valueAssessment: comp.valueAssessment || '',
+              keyDifferences: comp.keyDifferences || [],
+              disclaimer: comp.disclaimer || ''
+            };
+            await job.result.save();
+            logger.info(`Comparison data persisted to Result ${job.result._id} for Job ${job.jobId}`);
+          }
+        }));
+      }
 
       // 5. Premium Credit Enforcement: Drain remaining credits and revert to Free
       if (req.user) {

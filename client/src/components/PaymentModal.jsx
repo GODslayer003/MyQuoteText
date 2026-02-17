@@ -12,7 +12,7 @@ import { loadStripe } from '@stripe/stripe-js';
 import {
     Elements,
 } from '@stripe/react-stripe-js';
-import { useAuth } from '../providers/AuthProvider';
+import { useAuth } from '../hooks/useAuth';
 import { paymentApi } from '../services/paymentApi';
 import { toast } from 'react-hot-toast';
 import CheckoutForm from './CheckoutForm';

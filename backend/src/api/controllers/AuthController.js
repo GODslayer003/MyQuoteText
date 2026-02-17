@@ -4,6 +4,8 @@ const AuthService = require('../../services/auth/AuthService');
 const TokenService = require('../../services/auth/TokenService');
 const OTP = require('../../models/OTP');
 const SMSService = require('../../services/sms/SendSMS');
+const Lead = require('../../models/Lead');
+const Job = require('../../models/Job');
 const logger = require('../../utils/logger');
 
 class AuthController {
@@ -49,6 +51,29 @@ class AuthController {
         }
       });
 
+      // Merge guest jobs if a lead exists
+      try {
+        const lead = await Lead.findOne({ email: email.toLowerCase() });
+        if (lead) {
+          // Update all jobs associated with this lead
+          const updateResult = await Job.updateMany(
+            { leadId: lead._id, userId: null },
+            { $set: { userId: user._id } }
+          );
+
+          logger.info(`Merged ${updateResult.modifiedCount} guest jobs for new user: ${user.email}`);
+
+          // Link lead to user
+          lead.convertedToUserId = user._id;
+          lead.convertedAt = new Date();
+          lead.status = 'converted';
+          await lead.save();
+        }
+      } catch (mergeError) {
+        logger.error(`Failed to merge guest jobs for ${user.email}:`, mergeError);
+        // Don't fail registration if merging fails
+      }
+
       // Generate tokens
       const accessToken = TokenService.generateAccessToken(user._id);
       const refreshToken = TokenService.generateRefreshToken(user._id);
@@ -70,6 +95,43 @@ class AuthController {
       // Send welcome email (non-blocking)
       const EmailService = require('../../services/email/EmailService');
       EmailService.sendWelcomeEmail(user).catch(err => logger.error('Failed to send welcome email:', err));
+
+      // If phone is provided, trigger OTP verification
+      if (phone) {
+        // Generate 6-digit code
+        const code = Math.floor(100000 + Math.random() * 900000).toString();
+        const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+        // Save/Update OTP in DB
+        await OTP.findOneAndUpdate(
+          { phone: phone },
+          { code, expiresAt, attempts: 0 },
+          { upsert: true, new: true }
+        );
+
+        // Send SMS via ClickSend
+        const smsResult = await SMSService.sendVerificationCode(phone, code);
+
+        if (!smsResult.success) {
+          logger.error(`Failed to send registration OTP to ${phone}: ${smsResult.error}`);
+          // Fallback: Continue without OTP if SMS fails, or return error?
+          // Given the requirement "Only ask for OTP during signup", failing seems safer.
+          return res.status(500).json({
+            success: false,
+            error: 'Failed to send verification code. Please try again.'
+          });
+        }
+
+        logger.info(`Registration OTP sent to ${phone}`);
+
+        return res.status(201).json({
+          success: true,
+          requiresOtp: true,
+          data: {
+            phone: phone
+          }
+        });
+      }
 
       res.status(201).json({
         success: true,
@@ -172,44 +234,7 @@ class AuthController {
       user.security.lastLoginAt = new Date();
       await user.save();
 
-      // Check if user has phone number for OTP verification
-      if (user.phone) {
-        // Generate 6-digit code
-        const code = Math.floor(100000 + Math.random() * 900000).toString();
-        const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
-
-        // Save/Update OTP in DB
-        await OTP.findOneAndUpdate(
-          { phone: user.phone },
-          { code, expiresAt, attempts: 0 },
-          { upsert: true, new: true }
-        );
-
-        // Send SMS via ClickSend
-        const smsResult = await SMSService.sendVerificationCode(user.phone, code);
-
-        if (!smsResult.success) {
-          logger.error(`Failed to send login OTP to ${user.phone}: ${smsResult.error}`);
-          // Fallback: If SMS fails, we might want to allow login OR fail. 
-          // For now, let's fail as the user requested OTP verification.
-          return res.status(500).json({
-            success: false,
-            error: 'Failed to send verification code. Please try again.'
-          });
-        }
-
-        logger.info(`Login OTP sent to ${user.phone}`);
-
-        return res.json({
-          success: true,
-          requiresOtp: true,
-          data: {
-            phone: user.phone
-          }
-        });
-      }
-
-      // Generate tokens if no phone (fallback/admin without phone)
+      // Generate tokens
       const accessToken = TokenService.generateAccessToken(user._id);
       const refreshToken = TokenService.generateRefreshToken(user._id);
 

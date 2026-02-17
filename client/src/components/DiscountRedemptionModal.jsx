@@ -9,7 +9,7 @@ import {
     AlertCircle,
     LogIn
 } from 'lucide-react';
-import { useAuth } from '../providers/AuthProvider';
+import { useAuth } from '../hooks/useAuth';
 
 const DiscountRedemptionModal = ({ isOpen, onClose, discount, onSelectPlan }) => {
     const { user, requestLogin } = useAuth();

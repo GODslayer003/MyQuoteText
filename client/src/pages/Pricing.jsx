@@ -41,7 +41,7 @@ import {
 } from 'lucide-react';
 import PaymentModal from '../components/PaymentModal';
 import DiscountRedemptionModal from '../components/DiscountRedemptionModal';
-import { useAuth } from '../providers/AuthProvider';
+import { useAuth } from '../hooks/useAuth';
 import { paymentApi } from '../services/paymentApi';
 import { toast } from 'react-hot-toast'; // Assuming toast is available, or use alert/console
 
@@ -137,7 +137,7 @@ const Pricing = () => {
       textColor: "text-orange-600",
       border: "border-orange-300",
       button: "from-orange-500 to-amber-600 hover:shadow-orange-500/30 text-white",
-      cta: "Analyze Now",
+      cta: "Buy 1 Report",
       icon: <Zap className="w-6 h-6" />,
       features: [
         { included: true, text: "Complete AI analysis (Standard Tier)" },
@@ -165,7 +165,7 @@ const Pricing = () => {
       textColor: "text-black",
       border: "border-gray-800",
       button: "bg-black hover:bg-gray-900 text-white",
-      cta: "Full Analysis",
+      cta: "Buy 1 Report",
       icon: <Crown className="w-6 h-6" />,
       features: [
         { included: true, text: "Comprehensive AI Analysis (3 included)" },
@@ -175,8 +175,8 @@ const Pricing = () => {
         { included: true, text: "Priority 24h processing" },
         { included: true, text: "Bulk upload (up to 3 quotes)" },
         { included: true, text: "Detailed cost breakdown" },
-        { included: true, text: "Dedicated support channel" },
         { included: true, text: "Export to spreadsheet" },
+        { included: true, text: "Multiple quote comparison" },
       ],
       savings: "Reverts to Free after 3 uses",
       included: "Everything in Standard, plus:",

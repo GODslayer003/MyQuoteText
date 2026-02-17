@@ -32,7 +32,7 @@ import {
   Mail
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../providers/AuthProvider';
+import { useAuth } from '../hooks/useAuth';
 import { toast } from 'react-hot-toast';
 import Swal from 'sweetalert2';
 import quoteApi from '../services/quoteApi';
@@ -45,7 +45,19 @@ import MobileAuthModal from '../components/MobileAuthModal';
 
 const CheckQuote = () => {
   const navigate = useNavigate();
-  const { user, isAuthenticated, requestLogin, refreshUser } = useAuth();
+  const {
+    user,
+    isAuthenticated,
+    requestLogin,
+    refreshUser,
+    login,
+    signup,
+    loading: authLoading,
+    error: authError,
+    clearError,
+    verifyOtpDuringLogin
+  } = useAuth();
+
   const [isVisible, setIsVisible] = useState(false);
   const [uploadMethod, setUploadMethod] = useState('file'); // 'file' or 'text'
   const [file, setFile] = useState(null);
@@ -80,8 +92,14 @@ const CheckQuote = () => {
   // Initialize component
   useEffect(() => {
     setIsVisible(true);
-    loadUserJobs();
   }, []);
+
+  // Load user's job history when authenticated
+  useEffect(() => {
+    if (isAuthenticated && !authLoading) {
+      loadUserJobs();
+    }
+  }, [isAuthenticated, authLoading]);
 
   // Check if user came from pricing page with a tier selection
   useEffect(() => {
@@ -261,11 +279,15 @@ const CheckQuote = () => {
     const selectedFiles = Array.from(e.target.files);
     if (selectedFiles.length === 0) return;
 
+    // Detect if user is in Premium mode (either via subscription or pricing selection)
+    const isPremiumTier = (user?.subscription?.plan?.toLowerCase() === 'premium') ||
+      (selectedPricingTier?.tier?.toLowerCase() === 'premium');
+
     const analysisTier = isAuthenticated ? (user?.subscription?.plan?.toLowerCase() || 'free') : 'free';
 
     try {
-      if (analysisTier === 'premium' || isComparisonMode) {
-        // Multi-file logic for Premium
+      if (isPremiumTier || isComparisonMode) {
+        // Multi-file logic for Premium (Min 2, Max 3)
         if (selectedFiles.length + files.length > 3) {
           throw new Error('Maximum 3 quotes allowed for comparison.');
         }
@@ -297,9 +319,13 @@ const CheckQuote = () => {
   };
 
   const validateForm = () => {
+    // Detect if user is in Premium mode (either via subscription or pricing selection)
+    const isPremiumTier = (user?.subscription?.plan?.toLowerCase() === 'premium') ||
+      (selectedPricingTier?.tier?.toLowerCase() === 'premium');
+
     const analysisTier = isAuthenticated ? (user?.subscription?.plan?.toLowerCase() || 'free') : 'free';
 
-    if (analysisTier === 'premium' || isComparisonMode) {
+    if (isPremiumTier || isComparisonMode) {
       if (files.length < 2) {
         setError('Premium comparison requires a minimum of 2 quotes. Please upload at least one more quote.');
         return false;
@@ -340,6 +366,20 @@ const CheckQuote = () => {
   const checkPaymentAndAnalyze = () => {
     // Check if user has a pending tier selection (Standard/Premium)
     if (selectedPricingTier && selectedPricingTier.tier !== 'Free') {
+      // CRITICAL FIX: Check if user already has credits before showing payment modal
+      const hasCredits = user?.subscription?.credits > 0;
+
+      if (hasCredits) {
+        // User has credits - proceed directly to analysis
+        console.log('User has credits, proceeding to analysis without payment');
+        setError(null);
+        setSuccess(null);
+        setIsAnalyzing(true);
+        performAnalysis();
+        return;
+      }
+
+      // User needs to purchase credits
       setPendingAnalysis(true);
       setShowPaymentModal(true);
       return;
@@ -495,7 +535,14 @@ const CheckQuote = () => {
       // Check for available credits (either from state or confirmation)
       const hasCredits = (user?.subscription?.credits > 0) || (confirmedCredits > 0);
 
-      if (analysisTier.toLowerCase() === 'premium' && files.length > 1) {
+      if (analysisTier.toLowerCase() === 'premium') {
+        if (files.length < 2) {
+          setError('Premium analysis requires at least 2 quotes. Please upload more quotes.');
+          setIsAnalyzing(false);
+          toast.error('Premium analysis requires at least 2 quotes.');
+          return;
+        }
+
         // Multi-quote analysis for Premium
         setIsAnalyzing(true);
         setPhase('processing');
@@ -1149,7 +1196,7 @@ WARRANTY: 6 years on workmanship`
                   <div className="pt-4 mt-4 border-t border-gray-200">
                     <div className="flex items-center justify-between text-sm text-gray-600">
                       <span>{chatHistory.length} analyses</span>
-                      {isAuthenticated && chatHistory.length > 0 && (
+                      {isAuthenticated && (
                         <button
                           onClick={() => loadUserJobs()}
                           className="text-orange-500 hover:text-orange-600 text-sm flex items-center gap-1"
@@ -1679,7 +1726,14 @@ WARRANTY: 6 years on workmanship`
         initialMode="signup"
         initialData={{ phone: verifiedPhone }} // Pre-fill phone
         onSuccess={handleMainAuthSuccess}
+        login={login}
+        signup={signup}
+        loading={authLoading}
+        error={authError}
+        clearError={clearError}
+        verifyOtpDuringLogin={verifyOtpDuringLogin}
       />
+
 
       {/* Limit Reached Modal */}
       {showLimitModal && (

@@ -177,7 +177,12 @@ const resultSchema = new mongoose.Schema(
       winner: {
         index: Number,
         reason: String
-      }
+      },
+      betterApproach: String,
+      relativePricing: String,
+      valueAssessment: String,
+      keyDifferences: [String],
+      disclaimer: String
     },
 
     // Analysis metadata

@@ -6,14 +6,6 @@ import { toast } from "react-hot-toast";
 
 export const AuthContext = createContext(null);
 
-// Export useAuth hook for convenience
-export const useAuth = () => {
-  const ctx = useContext(AuthContext);
-  if (!ctx) {
-    throw new Error("useAuth must be used inside AuthProvider");
-  }
-  return ctx;
-};
 
 // Get API base URL
 const API_BASE = import.meta.env.VITE_API_BASE || "https://myquotemate-7u5w.onrender.com";
@@ -178,32 +170,84 @@ export const AuthProvider = ({ children }) => {
         }
       }
 
-      if (data.requiresOtp) {
-        setLoading(false);
-        return { requiresOtp: true, phone: data.data.phone };
+      if (!data.success || !data.data?.user) {
+        throw new Error("Invalid response from server");
       }
 
-      const { user: userData, tokens } = data.data;
-      setUser(userData);
-      localStorage.setItem("auth_user", JSON.stringify(userData));
-      localStorage.setItem("auth_token", tokens.accessToken);
-      localStorage.setItem("refresh_token", tokens.refreshToken);
+      const { user: userDataResponse, tokens } = data.data;
+      const { accessToken, refreshToken } = tokens || {};
+
+      // Set user state
+      setUser(userDataResponse);
+
+      // Store in localStorage
+      localStorage.setItem("auth_user", JSON.stringify(userDataResponse));
+      if (accessToken) localStorage.setItem("auth_token", accessToken);
+      if (refreshToken) localStorage.setItem("refresh_token", refreshToken);
 
       setShowAuthModal(false);
-      if (redirectPath) {
-        navigate(redirectPath);
-        setRedirectPath(null);
-      }
-      return { success: true, user: userData };
+      return { success: true, user: userDataResponse };
     } catch (err) {
       console.error('Login error:', err);
       const errorMessage = err.message || "Login failed. Please try again.";
       setError(errorMessage);
       return {
         success: false,
-        error: errorMessage,
-        lockUntil: err.lockUntil
+        error: errorMessage
       };
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ----------------------------------
+  // VERIFY OTP DURING LOGIN/SIGNUP
+  // ----------------------------------
+  const verifyOtpDuringLogin = async (phone, code) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`${API_URL}/auth/verify-otp`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json"
+        },
+        body: JSON.stringify({ phone, code })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Verification failed");
+      }
+
+      const { user: userData, tokens } = data.data;
+
+      if (!tokens) {
+        throw new Error("Verification successful but no tokens received");
+      }
+
+      // Set user state
+      setUser(userData);
+
+      // Store in localStorage
+      localStorage.setItem("auth_user", JSON.stringify(userData));
+      localStorage.setItem("auth_token", tokens.accessToken);
+      localStorage.setItem("refresh_token", tokens.refreshToken);
+
+      // Close modal and handle redirect
+      setShowAuthModal(false);
+      if (redirectPath) {
+        navigate(redirectPath);
+        setRedirectPath(null);
+      }
+
+      return { success: true, user: userData };
+    } catch (error) {
+      console.error('OTP verification failed:', error);
+      setError(error.message);
+      return { success: false, error: error.message };
     } finally {
       setLoading(false);
     }
@@ -246,6 +290,11 @@ export const AuthProvider = ({ children }) => {
         throw new Error(data.error || data.message || "Registration failed");
       }
 
+      if (data.requiresOtp) {
+        setLoading(false);
+        return { requiresOtp: true, phone: data.data.phone };
+      }
+
       if (!data.success || !data.data?.user) {
         throw new Error("Invalid response from server");
       }
@@ -262,11 +311,11 @@ export const AuthProvider = ({ children }) => {
       if (refreshToken) localStorage.setItem("refresh_token", refreshToken);
 
       setShowAuthModal(false);
-      return true;
+      return { success: true, user: userDataResponse };
     } catch (err) {
       console.error('Signup error:', err);
       setError(err.message || "Registration failed. Please try again.");
-      return false;
+      return { success: false, error: err.message };
     } finally {
       setLoading(false);
     }
@@ -356,9 +405,10 @@ export const AuthProvider = ({ children }) => {
   // ----------------------------------
   // CLEAR ERROR
   // ----------------------------------
-  const clearError = () => {
+  const clearError = useCallback(() => {
     setError(null);
-  };
+  }, []);
+
 
   // ----------------------------------
   // SHOW AUTH MODAL
@@ -533,6 +583,7 @@ export const AuthProvider = ({ children }) => {
     deleteAccount,
     sendOtp,
     verifyOtp,
+    verifyOtpDuringLogin,
     isAuthenticated: !!user,
     requestLogin,
     clearError,
@@ -540,7 +591,8 @@ export const AuthProvider = ({ children }) => {
   }), [
     user, loading, error, login, signup, logout,
     updateUser, refreshUser, uploadAvatar, removeAvatar,
-    changePassword, deleteAccount, requestLogin, sendOtp, verifyOtp
+    changePassword, deleteAccount, requestLogin, sendOtp, verifyOtp, verifyOtpDuringLogin, clearError
+
   ]);
 
   return (
@@ -556,6 +608,12 @@ export const AuthProvider = ({ children }) => {
 
       <AuthModal
         isOpen={showAuthModal}
+        login={login}
+        signup={signup}
+        loading={loading}
+        error={error}
+        clearError={clearError}
+        verifyOtpDuringLogin={verifyOtpDuringLogin}
         onClose={() => {
           setShowAuthModal(false);
           clearError();
@@ -567,6 +625,7 @@ export const AuthProvider = ({ children }) => {
           setRedirectPath(null);
         }}
       />
+
     </AuthContext.Provider>
   );
 };

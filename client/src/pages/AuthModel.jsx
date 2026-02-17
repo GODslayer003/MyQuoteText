@@ -17,11 +17,24 @@ import {
   ArrowLeft,
   Key
 } from 'lucide-react';
-import { useAuth } from "../hooks/useAuth";
+
 import Swal from 'sweetalert2';
 
-const AuthModal = ({ isOpen, onClose, initialMode = 'login', initialData = {}, onSuccess }) => {
-  const { login, signup, loading, error, clearError } = useAuth();
+const AuthModal = ({
+  isOpen,
+  onClose,
+  initialMode = 'login',
+  initialData = {},
+  onSuccess,
+  login,
+  signup,
+  loading,
+  error,
+  clearError = () => { },
+  verifyOtpDuringLogin
+}) => {
+
+
 
   // Mode: 'login', 'signup', or 'forgot-password'
   const [mode, setMode] = useState(initialMode);
@@ -43,7 +56,7 @@ const AuthModal = ({ isOpen, onClose, initialMode = 'login', initialData = {}, o
     ...initialData // Spread initial data to pre-fill fields
   });
 
-  // Update mode if initialMode changes when modal opens
+  // Update mode only when modal first opens
   useEffect(() => {
     if (isOpen) {
       setMode(initialMode);
@@ -51,7 +64,11 @@ const AuthModal = ({ isOpen, onClose, initialMode = 'login', initialData = {}, o
         setSignupData(prev => ({ ...prev, ...initialData }));
       }
     }
-  }, [isOpen, initialMode, initialData]);
+    // We intentionally only run this when isOpen changes to true
+    // to prevent internal state changes (like switching to signup)
+    // from being reverted by parent re-renders.
+  }, [isOpen]);
+
 
   // Forgot password state
   const [forgotPasswordData, setForgotPasswordData] = useState({
@@ -135,17 +152,20 @@ const AuthModal = ({ isOpen, onClose, initialMode = 'login', initialData = {}, o
     setPasswordStrength(0);
     setAcceptedTerms(false);
     setResetSent(false);
-    clearError();
+    if (typeof clearError === 'function') clearError();
+
   };
 
   const switchToSignup = () => {
     setMode('signup');
-    clearError();
+    if (typeof clearError === 'function') clearError();
+
   };
 
   const switchToLogin = () => {
     setMode('login');
-    clearError();
+    if (typeof clearError === 'function') clearError();
+
   };
 
   const switchToForgotPassword = () => {
@@ -205,37 +225,36 @@ const AuthModal = ({ isOpen, onClose, initialMode = 'login', initialData = {}, o
 
     // Verify Captcha interaction
     if (!verifyMathCaptcha()) {
-      setFieldErrors(prev => ({ ...prev, password: 'Incorrect security answer. Please try again.' }));
+      setFieldErrors(prev => ({ ...prev, captcha: 'Incorrect security answer. Please try again.' }));
       generateMathCaptcha(); // Reset on failure
       return;
     }
 
     const result = await login(loginData);
 
-    if (result.requiresOtp) {
-      setMode('otp-login');
-      setSignupData(prev => ({ ...prev, phone: result.phone }));
+    if (!result.success) {
+      if (result.lockUntil) {
+        setIsLocked(true);
+        setLockUntil(new Date(result.lockUntil).getTime());
+        const remainingTime = Math.ceil((new Date(result.lockUntil) - new Date()) / (60 * 1000));
+        setFieldErrors({
+          login: `Invalid credentials. Account is locked. Please try again in ${remainingTime} minutes.`
+        });
+      } else {
+        setFieldErrors({
+          login: result.error || 'Invalid email or password'
+        });
+        setLoginAttempts(prev => prev + 1);
+      }
       return;
     }
 
-    if (!result.success) {
-      // Check for lock info from backend
-      if (result.lockUntil) {
-        setLockUntil(new Date(result.lockUntil).getTime());
-        setIsLocked(true);
-        setLoginAttempts(5); // Force lock state locally
-      } else {
-        // Increment attempts locally for immediate feedback 
-        const newAttempts = loginAttempts + 1;
-        setLoginAttempts(newAttempts);
-      }
-    } else {
-      setLoginAttempts(0);
-      setLockUntil(null);
-      setIsLocked(false);
-      onClose();
-      if (onSuccess) onSuccess();
-    }
+    // Success
+    setLoginAttempts(0);
+    setLockUntil(null);
+    setIsLocked(false);
+    if (onSuccess) onSuccess();
+    onClose();
   };
 
   const [otpValue, setOtpValue] = useState(['', '', '', '', '', '']);
@@ -356,6 +375,14 @@ const AuthModal = ({ isOpen, onClose, initialMode = 'login', initialData = {}, o
       return;
     }
 
+    // Verify Captcha interaction
+    if (!verifyMathCaptcha()) {
+      setFieldErrors(prev => ({ ...prev, captcha: 'Incorrect security answer. Please try again.' }));
+      generateMathCaptcha(); // Reset on failure
+      return;
+    }
+
+
     const userData = {
       email: signupData.email.trim().toLowerCase(),
       password: signupData.password,
@@ -369,10 +396,17 @@ const AuthModal = ({ isOpen, onClose, initialMode = 'login', initialData = {}, o
       }
     };
 
-    const success = await signup(userData);
-    if (success) {
-      onClose();
+    const result = await signup(userData);
+
+    if (result && result.requiresOtp) {
+      setMode('otp-login');
+      setSignupData(prev => ({ ...prev, phone: result.phone }));
+      return;
+    }
+
+    if (result && result.success) {
       if (onSuccess) onSuccess();
+      onClose();
     }
   };
 
@@ -606,8 +640,8 @@ const AuthModal = ({ isOpen, onClose, initialMode = 'login', initialData = {}, o
               isLocked={isLocked}
               onForgotPassword={switchToForgotPassword}
               onSwitchToSignup={switchToSignup}
-              widthMathCaptcha={mathCaptcha}
-              widthMathAnswer={mathAnswer}
+              withMathCaptcha={mathCaptcha}
+              withMathAnswer={mathAnswer}
               setMathAnswer={setMathAnswer}
               setRecaptchaToken={setCaptchaToken}
             />
@@ -631,7 +665,11 @@ const AuthModal = ({ isOpen, onClose, initialMode = 'login', initialData = {}, o
               onSwitchToLogin={switchToLogin}
               getStrengthLabel={getStrengthLabel}
               getStrengthColor={getStrengthColor}
+              withMathCaptcha={mathCaptcha}
+              withMathAnswer={mathAnswer}
+              setMathAnswer={setMathAnswer}
             />
+
           )}
 
           {mode === 'otp-login' && (
@@ -646,11 +684,31 @@ const AuthModal = ({ isOpen, onClose, initialMode = 'login', initialData = {}, o
             />
           )}
 
+          {mode === 'forgot-password' && !resetSent && (
+            <ForgotPasswordForm
+              forgotPasswordData={forgotPasswordData}
+              handleForgotPasswordChange={handleForgotPasswordChange}
+              handleForgotPasswordSubmit={handleForgotPasswordSubmit}
+              fieldErrors={fieldErrors}
+              loading={loading}
+              onSwitchToLogin={switchToLogin}
+            />
+          )}
+
           {mode === 'forgot-password' && resetSent && (
             <div className="text-center">
+              <div className="mb-6 p-4 bg-green-50 rounded-lg flex items-start gap-3">
+                <CheckCircle2 className="w-5 h-5 text-green-600 mt-0.5" />
+                <div className="text-left">
+                  <h3 className="text-sm font-semibold text-green-800">Check your email</h3>
+                  <p className="text-xs text-green-700 mt-1">
+                    We've sent a password reset link to <span className="font-semibold">{forgotPasswordData.email}</span>.
+                  </p>
+                </div>
+              </div>
               <button
                 onClick={switchToLogin}
-                className="px-6 py-3 bg-gradient-to-r from-orange-500 to-amber-600 text-white rounded-lg font-semibold hover:shadow-lg transition-shadow"
+                className="px-6 py-3 bg-gradient-to-r from-orange-500 to-amber-600 text-white rounded-lg font-semibold hover:shadow-lg transition-all"
               >
                 Back to Sign In
               </button>
@@ -676,8 +734,8 @@ const LoginForm = ({
   isLocked,
   onForgotPassword,
   onSwitchToSignup,
-  widthMathCaptcha,
-  widthMathAnswer,
+  withMathCaptcha,
+  withMathAnswer,
   setMathAnswer
 }) => (
   <form onSubmit={handleLoginSubmit} className="space-y-4">
@@ -758,17 +816,23 @@ const LoginForm = ({
     {/* Temporary Math Captcha */}
     <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
       <label className="block text-sm font-medium text-gray-700 mb-2">
-        Security Check: What is {widthMathCaptcha?.q || '2+2'}?
+        Security Check: What is {withMathCaptcha?.q || '2+2'}?
       </label>
       <div className="flex gap-2">
         <input
           type="text"
-          value={widthMathAnswer}
+          value={withMathAnswer}
           onChange={(e) => setMathAnswer(e.target.value)}
-          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
+          className={`flex-1 px-3 py-2 border rounded-lg focus:ring-1 transition-colors ${fieldErrors.captcha
+            ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
+            : 'border-gray-300 focus:border-orange-500 focus:ring-orange-500'
+            }`}
           placeholder="Answer"
         />
       </div>
+      {fieldErrors.captcha && (
+        <p className="mt-1 text-xs text-red-600">{fieldErrors.captcha}</p>
+      )}
     </div>
 
     {/* Submit button */}
@@ -842,8 +906,12 @@ const SignupForm = ({
   passwordRequirements,
   onSwitchToLogin,
   getStrengthLabel,
-  getStrengthColor
+  getStrengthColor,
+  withMathCaptcha,
+  withMathAnswer,
+  setMathAnswer
 }) => (
+
   <form onSubmit={handleSignupSubmit} className="space-y-4">
     {/* Name fields */}
     <div className="grid grid-cols-2 gap-3">
@@ -1091,6 +1159,29 @@ const SignupForm = ({
         <p className="mt-1 text-xs text-red-600">{fieldErrors.terms}</p>
       )}
     </div>
+
+    {/* Temporary Math Captcha */}
+    <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+      <label className="block text-sm font-medium text-gray-700 mb-2">
+        Security Check: What is {withMathCaptcha?.q || '2+2'}?
+      </label>
+      <div className="flex gap-2">
+        <input
+          type="text"
+          value={withMathAnswer}
+          onChange={(e) => setMathAnswer(e.target.value)}
+          className={`flex-1 px-3 py-2 border rounded-lg focus:ring-1 transition-colors ${fieldErrors.captcha
+            ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
+            : 'border-gray-300 focus:border-orange-500 focus:ring-orange-500'
+            }`}
+          placeholder="Answer"
+        />
+      </div>
+      {fieldErrors.captcha && (
+        <p className="mt-1 text-xs text-red-600">{fieldErrors.captcha}</p>
+      )}
+    </div>
+
 
     {/* Submit button */}
     <button

@@ -11,14 +11,15 @@ import {
     Lock,
     Loader2
 } from 'lucide-react';
-import { useAuth } from '../providers/AuthProvider';
+import { useAuth } from '../hooks/useAuth';
 import { toast } from 'react-hot-toast';
 import { countries } from '../constants/countries';
 import { Search, ChevronDown } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 
 const MobileAuthModal = ({ isOpen, onClose, onSuccess, initialEmail = '', verifyOnly = false }) => {
-    const { register, login, sendOtp, verifyOtp } = useAuth();
+    const { signup: register, login, sendOtp, verifyOtp } = useAuth();
+
     const [step, setStep] = useState('mobile'); // mobile, otp, signup
     const [loading, setLoading] = useState(false);
 

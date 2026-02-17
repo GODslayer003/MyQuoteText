@@ -4,7 +4,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft, Loader2, Download, Shield, Printer, Share2 } from 'lucide-react';
 import quoteApi from '../services/quoteApi';
 import AnalysisResults from '../components/AnalysisResults';
-import { useAuth } from '../providers/AuthProvider';
+import { useAuth } from '../hooks/useAuth';
 import Swal from 'sweetalert2';
 
 const AnalysisPage = () => {
